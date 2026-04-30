@@ -28,7 +28,7 @@ def _require_role(roles):
             role = session.get('role_code')
             if role not in roles:
                 flash('Access denied — insufficient role.', 'error')
-                return redirect(url_for('ess_mss.me_inbox'))
+                return redirect(url_for('ess.my_inbox'))
             return f(*a, **kw)
         return wrapper
     return decorator

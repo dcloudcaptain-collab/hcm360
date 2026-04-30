@@ -35,7 +35,7 @@ def _require_role(roles):
                 if request.is_json:
                     return jsonify({'ok': False, 'message': 'Access denied'}), 403
                 flash('Access denied — insufficient role.', 'error')
-                return redirect(url_for('ess_mss.me'))
+                return redirect(url_for('ess.me'))
             return f(*a, **kw)
         return wrapper
     return decorator

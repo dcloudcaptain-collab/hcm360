@@ -73,4 +73,38 @@ run 44_fix_employee_page_access.sql
 run 45_patch_schema.sql
 run 46_access_matrix_final.sql
 
+# ── Phase-5 / module enhancements (50-series) ─────────────────────
+run 10a_benefits.sql
+run 50_field_privacy.sql
+run 51_workforce_planning_access.sql
+run 52_face_checkin.sql
+run 53_step_increment_retirement.sql
+run 54_lgu_critical_gaps.sql
+run 55_remaining_gaps.sql
+run 56_wfp_schema.sql
+run 57_tour_system.sql
+run 58_report_builder_sources.sql
+run 60_requisitions_feature.sql
+run 61_data_source_access.sql
+run 61_task_management.sql
+run 62_employee_groups.sql
+run 63_retirement_rule_profiles.sql
+run 64_wellness_enhancements.sql
+run 65_new_module_tours.sql
+run 66_access_requests.sql
+run 67_analytics_library.sql
+run 68_login_branding.sql
+run 69_dashboard_library.sql
+run 70_reminder_log.sql
+run 71_green_theme.sql
+run 72_emerald_mint_theme.sql
+run 73_dashboard_widgets.sql
+run 74_ipcr_csc_templates.sql
+run 75_portal_landing.sql
+
+# ── Menu realignment (must run after all page_registry inserts) ───
+run 76_menu_realignment.sql
+run 77_access_matrix_realignment.sql
+run 78_role_taxonomy.sql
+
 echo "[init_db] Initialisation complete."

@@ -44,24 +44,24 @@
     <div class="brand">{{ branding.company_name if branding else 'HCM Clean Build' }}</div>
     <div class="small">Metadata-driven platform</div>
     <nav id="sidenav">
-      {# Group order and icons #}
+      {# Group order and icons — 16 industry-standard HR modules #}
       {% set group_meta = {
-        'Core':          {'icon': '🏠', 'open': true},
-        'Workforce':     {'icon': '👥', 'open': true},
-        'Payroll':       {'icon': '💰', 'open': true},
-        'Self-Service':  {'icon': '🙋', 'open': true},
-        'Recruitment':   {'icon': '📋', 'open': false},
-        'Performance':   {'icon': '📝', 'open': false},
-        'Learning':      {'icon': '📚', 'open': false},
-        'Awards':        {'icon': '🏆', 'open': false},
-        '201 File':      {'icon': '📁', 'open': false},
-        'Discipline':    {'icon': '⚖️', 'open': false},
-        'Health':        {'icon': '🏥', 'open': false},
-        'Org Chart':     {'icon': '🏛️', 'open': false},
-        'Analytics':     {'icon': '📊', 'open': false},
-        'AI':            {'icon': '✦',  'open': false},
-        'Admin':         {'icon': '🛡️', 'open': false},
-        'System':        {'icon': '🔌', 'open': false},
+        'Home':                     {'icon': '🏠', 'open': true},
+        'My Workspace':             {'icon': '🙋', 'open': true},
+        'Employee Records':         {'icon': '📁', 'open': true},
+        'Time & Attendance':        {'icon': '🕐', 'open': true},
+        'Leave & Absence':          {'icon': '📅', 'open': true},
+        'Recruitment & Onboarding': {'icon': '📋', 'open': false},
+        'Performance':              {'icon': '📝', 'open': false},
+        'Learning & Development':   {'icon': '📚', 'open': false},
+        'Compensation & Rewards':   {'icon': '🏆', 'open': false},
+        'Payroll':                  {'icon': '💰', 'open': false},
+        'Health & Safety':          {'icon': '🏥', 'open': false},
+        'Employee Relations':       {'icon': '⚖️', 'open': false},
+        'Workforce Planning':       {'icon': '📊', 'open': false},
+        'Analytics & Reports':      {'icon': '📈', 'open': false},
+        'AI Assistants':            {'icon': '✦',  'open': false},
+        'Administration':           {'icon': '🛡️', 'open': false},
       } %}
       {# Build a dict of group → links from nav_links #}
       {% set ns = namespace(grouped={}) %}
@@ -72,21 +72,21 @@
       {% endfor %}
       {# Inject feature-flag-only links into virtual groups #}
       {% if feature_flags.get('LNK_SCENARIOS') %}
-        {% if 'Admin' not in ns.grouped %}{% set _ = ns.grouped.update({'Admin': []}) %}{% endif %}
-        {% set _ = ns.grouped['Admin'].append({'label': 'Simulated Scenarios', 'route_url': '/admin/simulated-scenarios', 'page_code': '_SCENARIOS'}) %}
+        {% if 'Administration' not in ns.grouped %}{% set _ = ns.grouped.update({'Administration': []}) %}{% endif %}
+        {% set _ = ns.grouped['Administration'].append({'label': 'Simulated Scenarios', 'route_url': '/admin/simulated-scenarios', 'page_code': '_SCENARIOS'}) %}
       {% endif %}
       {% if current_user and current_user.role_code == 'SUPER_ADMIN' %}
-        {% if 'System' not in ns.grouped %}{% set _ = ns.grouped.update({'System': []}) %}{% endif %}
-        {% set _ = ns.grouped['System'].append({'label': 'Services', 'route_url': '/admin/services', 'page_code': '_SERVICES'}) %}
+        {% if 'Administration' not in ns.grouped %}{% set _ = ns.grouped.update({'Administration': []}) %}{% endif %}
+        {% set _ = ns.grouped['Administration'].append({'label': 'Services', 'route_url': '/admin/services', 'page_code': '_SERVICES'}) %}
       {% endif %}
 
-      {# Render groups in defined order #}
-      {% for group_name in ['Core', 'Workforce', 'Payroll', 'Self-Service', 'Recruitment', 'Performance', 'Learning', 'Awards', '201 File', 'Discipline', 'Health', 'Org Chart', 'Analytics', 'AI', 'Admin', 'System'] %}
+      {# Render groups in defined order — 16 industry-standard HR modules #}
+      {% for group_name in ['Home', 'My Workspace', 'Employee Records', 'Time & Attendance', 'Leave & Absence', 'Recruitment & Onboarding', 'Performance', 'Learning & Development', 'Compensation & Rewards', 'Payroll', 'Health & Safety', 'Employee Relations', 'Workforce Planning', 'Analytics & Reports', 'AI Assistants', 'Administration'] %}
         {% if group_name in ns.grouped %}
           {% set meta = group_meta[group_name] %}
           {% set links = ns.grouped[group_name] %}
-          {% if group_name == 'Core' %}
-            {# Core links always visible, no collapse #}
+          {% if group_name == 'Home' %}
+            {# Home links always visible, no collapse #}
             <div class="nav-group-label">{{ meta.icon }} {{ group_name }}</div>
             {% for link in links %}
               <a href="{{ link.route_url }}" class="nav-link{{ ' active' if request.path == link.route_url }}"><span class="nav-ico">{{ link.nav_icon or '•' }}</span>{{ link.label }}</a>

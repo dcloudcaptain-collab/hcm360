@@ -2,6 +2,90 @@ from services.db import get_cursor
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Row-level scope (data_scope on core.roles drives what employees a user sees)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def get_role_data_scope(role_code):
+    """Return data_scope ∈ {'SELF','DEPARTMENT','REPORTS','ALL'} for a role.
+    Defaults to 'ALL' if role missing or column not yet present (migration 78)."""
+    if not role_code:
+        return 'ALL'
+    with get_cursor() as cur:
+        try:
+            cur.execute(
+                "SELECT data_scope FROM core.roles WHERE code = %s LIMIT 1",
+                (role_code,),
+            )
+            row = cur.fetchone()
+        except Exception:
+            return 'ALL'
+        if not row or not row.get('data_scope'):
+            return 'ALL'
+        return row['data_scope']
+
+
+def get_employee_scope_filter(role_code, user_id):
+    """Return the row-level filter for queries on core.employees.
+
+    Output:
+      None                  → no filter (full access; SUPER_ADMIN, HR-Ops, etc.)
+      ('IDS', list[int])    → restrict to these employee_ids (SELF, REPORTS, DEPARTMENT)
+      ('NONE', [])          → no rows (caller has no employee linkage and a non-ALL scope)
+    """
+    scope = get_role_data_scope(role_code)
+    if scope == 'ALL':
+        return None
+    if not user_id:
+        return ('NONE', [])
+    with get_cursor() as cur:
+        # Resolve the user's own employee_id + department_id
+        cur.execute("""
+            SELECT u.employee_id, e.department_id
+            FROM core.users u
+            LEFT JOIN core.employees e ON e.id = u.employee_id
+            WHERE u.id = %s
+        """, (user_id,))
+        row = cur.fetchone()
+        if not row or not row.get('employee_id'):
+            return ('NONE', [])
+        own_emp_id = row['employee_id']
+        own_dept_id = row.get('department_id')
+
+        if scope == 'SELF':
+            return ('IDS', [own_emp_id])
+
+        if scope == 'DEPARTMENT':
+            if not own_dept_id:
+                return ('IDS', [own_emp_id])
+            cur.execute(
+                "SELECT id FROM core.employees WHERE department_id = %s",
+                (own_dept_id,),
+            )
+            ids = [r['id'] for r in cur.fetchall()]
+            if own_emp_id not in ids:
+                ids.append(own_emp_id)
+            return ('IDS', ids)
+
+        if scope == 'REPORTS':
+            # Recursive direct + indirect reports of this manager
+            cur.execute("""
+                WITH RECURSIVE subs AS (
+                    SELECT id FROM core.employees
+                     WHERE immediate_supervisor_id = %s
+                    UNION
+                    SELECT e.id FROM core.employees e
+                    JOIN subs s ON e.immediate_supervisor_id = s.id
+                )
+                SELECT id FROM subs
+            """, (own_emp_id,))
+            ids = [r['id'] for r in cur.fetchall()]
+            ids.append(own_emp_id)
+            return ('IDS', ids)
+
+    return None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Navigation
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -390,25 +474,26 @@ def get_all_users_for_access():
 
 
 MODULES = [
-    {'code': 'core',        'label': 'Core / Employees'},
-    {'code': 'attendance',  'label': 'Attendance & DTR'},
-    {'code': 'leave_mgmt',  'label': 'Leave Management'},
-    {'code': 'payroll',     'label': 'Payroll'},
-    {'code': 'rsp',         'label': 'RSP / Recruitment'},
-    {'code': 'pm',          'label': 'Performance Management'},
-    {'code': 'ld',          'label': 'Learning & Development'},
-    {'code': 'rr',          'label': 'Rewards & Recognition'},
-    {'code': 'dms',         'label': 'Employee 201 File'},
-    {'code': 'discipline',  'label': 'Discipline'},
-    {'code': 'health',      'label': 'Health & Safety'},
-    {'code': 'analytics',   'label': 'Analytics & Reports'},
-    {'code': 'data_sources','label': 'Report Data Sources'},
-    {'code': 'ess_mss',          'label': 'ESS / MSS (Self-Service)'},
+    # Order mirrors the sidebar nav_group taxonomy (migration 76)
+    {'code': 'core',               'label': 'Home & Core'},
+    {'code': 'ess_mss',            'label': 'My Workspace (ESS/MSS)'},
+    {'code': 'dms',                'label': 'Employee Records (201 File)'},
+    {'code': 'attendance',         'label': 'Time & Attendance'},
+    {'code': 'leave_mgmt',         'label': 'Leave & Absence'},
+    {'code': 'rsp',                'label': 'Recruitment & Onboarding'},
+    {'code': 'pm',                 'label': 'Performance'},
+    {'code': 'ld',                 'label': 'Learning & Development'},
+    {'code': 'rr',                 'label': 'Compensation & Rewards'},
+    {'code': 'payroll',            'label': 'Payroll'},
+    {'code': 'health',             'label': 'Health & Safety'},
+    {'code': 'discipline',         'label': 'Employee Relations'},
     {'code': 'workforce_planning', 'label': 'Workforce Planning'},
-    {'code': 'orgchart',    'label': 'Organization Chart'},
-    {'code': 'ai',          'label': 'AI / ARIA'},
-    {'code': 'workflow',    'label': 'Workflows'},
-    {'code': 'admin',       'label': 'Administration'},
+    {'code': 'orgchart',           'label': 'Organization Chart'},
+    {'code': 'analytics',          'label': 'Analytics & Reports'},
+    {'code': 'data_sources',       'label': 'Report Data Sources'},
+    {'code': 'ai',                 'label': 'AI Assistants'},
+    {'code': 'workflow',           'label': 'Workflow Engine'},
+    {'code': 'admin',              'label': 'Administration'},
 ]
 
 

@@ -8,6 +8,7 @@ from services.db import get_cursor
 from modules.ess_mss import ess_service
 from services import employee_service as emp_svc
 from services import photo_service
+from services.access_service import get_employee_scope_filter
 from services.privacy_service import apply_privacy, SECTION_MAP
 
 bp = Blueprint('employees', __name__, url_prefix='/employees')
@@ -30,6 +31,23 @@ def _js(obj):
 
 @bp.route('')
 def list_employees():
+    # Row-level scope: SUPER_ADMIN/HR-Ops see all; EMPLOYEE/EXECUTIVE see own dept;
+    # MANAGER sees direct + indirect reports. See doc/role_authority_matrix.md.
+    scope_filter = get_employee_scope_filter(
+        role_code=session.get('role_code'),
+        user_id=session.get('user_id'),
+    )
+    scope_clause = ""
+    scope_params = ()
+    if scope_filter is not None:
+        kind, ids = scope_filter
+        if kind == 'IDS' and ids:
+            scope_clause = " WHERE e.id = ANY(%s)"
+            scope_params = (ids,)
+        else:
+            # No employee linkage and restricted scope → empty list
+            scope_clause = " WHERE FALSE"
+
     with get_cursor() as cur:
 
         # Q1: Status breakdown (unfiltered — drives KPI strip)
@@ -146,8 +164,9 @@ def list_employees():
             LEFT JOIN core.employment_types et ON et.id = e.employment_type_id
             LEFT JOIN core.job_grades       jg ON jg.id = e.job_grade_id
             LEFT JOIN core.employees        m  ON m.id  = e.immediate_supervisor_id
+            """ + scope_clause + """
             ORDER BY e.last_name, e.first_name
-        """)
+        """, scope_params)
         rows = cur.fetchall()
 
     # Serialize for JS embedding
