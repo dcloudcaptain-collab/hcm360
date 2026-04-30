@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block page_title %}Payroll Dashboard{% endblock %}
+{% block content %}
+
+<h2 style="margin:0 0 1.5rem;font-size:1.25rem;font-weight:700;">Payroll Dashboard</h2>
+
+{% if period %}
+<div class="card" style="border-left:4px solid var(--primary);">
+  <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.5rem;">Current Pay Period</div>
+  <div style="display:flex;gap:2rem;align-items:center;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:1.1rem;font-weight:700;">{{ period.period_code }}</div>
+      <div style="font-size:.85rem;color:#6b7280;">{{ period.date_from }} to {{ period.date_to }}</div>
+    </div>
+    <div>
+      <span class="badge {% if period.status == 'OPEN' %}badge-success{% elif period.status == 'PROCESSING' %}badge-warning{% else %}badge-default{% endif %}">
+        {{ period.status }}
+      </span>
+    </div>
+    {% if period.payment_date %}
+    <div>
+      <div style="font-size:.75rem;color:#6b7280;">Pay Date</div>
+      <div style="font-weight:600;">{{ period.payment_date }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% else %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:2rem;">
+  No active pay period. <a href="/payroll/periods">Create one</a>.
+</div>
+{% endif %}
+
+<div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+  <a href="/payroll/runs/new" class="card" style="flex:1;min-width:200px;text-align:center;padding:1.5rem;text-decoration:none;color:inherit;border:2px dashed #d1d5db;">
+    <div style="font-size:1.5rem;">+</div>
+    <div style="font-size:.9rem;font-weight:600;color:var(--primary);">New Pay Run</div>
+  </a>
+  <a href="/payroll/register" class="card" style="flex:1;min-width:200px;text-align:center;padding:1.5rem;text-decoration:none;color:inherit;">
+    <div style="font-size:1.5rem;">&#128196;</div>
+    <div style="font-size:.9rem;font-weight:600;">Payroll Register</div>
+  </a>
+  <a href="/payroll/loans" class="card" style="flex:1;min-width:200px;text-align:center;padding:1.5rem;text-decoration:none;color:inherit;">
+    <div style="font-size:1.5rem;">&#128176;</div>
+    <div style="font-size:.9rem;font-weight:600;">Loans</div>
+  </a>
+  <a href="/payroll/remittances" class="card" style="flex:1;min-width:200px;text-align:center;padding:1.5rem;text-decoration:none;color:inherit;">
+    <div style="font-size:1.5rem;">&#127970;</div>
+    <div style="font-size:.9rem;font-weight:600;">Remittances</div>
+  </a>
+</div>
+
+<h3 style="font-size:1rem;font-weight:600;margin-bottom:.75rem;">Recent Pay Runs</h3>
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Run</th>
+        <th style="padding:10px 14px;">Period</th>
+        <th style="padding:10px 14px;">Employees</th>
+        <th style="padding:10px 14px;">Gross</th>
+        <th style="padding:10px 14px;">Net</th>
+        <th style="padding:10px 14px;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;"><a href="/payroll/runs/{{ r.id }}" style="font-weight:600;color:var(--primary);">#{{ r.id }}</a></td>
+        <td style="padding:9px 14px;font-size:.85rem;">{{ r.cutoff_start }} – {{ r.cutoff_end }}</td>
+        <td style="padding:9px 14px;text-align:center;font-weight:600;">{{ r.employee_count or 0 }}</td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.total_gross or 0) }}</td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;font-weight:700;color:#166534;">{{ '{:,.2f}'.format(r.total_net or 0) }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span class="badge {% if r.status=='COMPLETED' %}badge-success{% elif r.status=='COMPUTED' %}badge-info{% elif r.status=='APPROVED' %}badge-success{% else %}badge-default{% endif %}">{{ r.status }}</span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No pay runs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

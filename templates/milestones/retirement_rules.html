@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block page_title %}Retirement Rules{% endblock %}
+
+{% block extra_css %}
+<style>
+  .profile-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1rem; margin-bottom:1.25rem; }
+  .profile-card {
+     background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+     padding:1.1rem 1.25rem; position:relative;
+  }
+  .profile-card.default { border-color:#4f46e5; box-shadow:0 2px 8px rgba(79,70,229,.1); }
+  .profile-card.inactive { opacity:.55; }
+  .profile-card h3 { margin:0 0 .4rem; font-size:1rem; color:#111827;
+                     display:flex; align-items:center; gap:.4rem; justify-content:space-between; }
+  .profile-card .scope { font-size:.75rem; color:#6b7280; margin-bottom:.75rem; }
+  .profile-card .stats { display:grid; grid-template-columns:1fr 1fr; gap:.4rem .9rem;
+                         font-size:.8rem; padding:.6rem 0; border-top:1px solid #f1f5f9;
+                         border-bottom:1px solid #f1f5f9; margin-bottom:.7rem; }
+  .profile-card .stats span:first-child { color:#6b7280; }
+  .profile-card .stats span:last-child  { font-weight:700; color:#111827; text-align:right; }
+  .profile-card .actions { display:flex; gap:.35rem; justify-content:flex-end; }
+
+  .badge {
+     display:inline-block; padding:2px 8px; border-radius:5px;
+     font-size:.68rem; font-weight:700; text-transform:uppercase;
+  }
+  .badge-default  { background:#4f46e5; color:#fff; }
+  .badge-inactive { background:#fee2e2; color:#991b1b; }
+
+  .btn { display:inline-flex; align-items:center; padding:6px 12px; border-radius:6px;
+         font-size:.78rem; font-weight:600; text-decoration:none; cursor:pointer;
+         border:none; font-family:inherit; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .btn-red     { background:#fff; color:#dc2626; border:1.5px solid #fecaca; }
+
+  .empty-state { background:#fff; border:2px dashed #e5e7eb; border-radius:12px;
+                 padding:2rem; text-align:center; color:#6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">⚙️ Retirement Rules</h2>
+    <div style="font-size:.85rem;color:#6b7280;">
+      {{ profiles|length }} profile{{ 's' if profiles|length != 1 else '' }} configured.
+      One profile is marked <strong>Default</strong> and applies company-wide unless
+      an employee matches a more specific profile (by employment type or department).
+    </div>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/retirement/" class="btn btn-ghost"
+       data-hint="Back to Retirement Monitoring dashboard.">← Dashboard</a>
+    <a href="{{ url_for('milestones.ret_profile_new') }}" class="btn btn-primary"
+       data-hint="Create a new retirement rule profile — early/mandatory age, notice lead months, optional scope by employment type or department.">+ New Rule Profile</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.88rem;
+                background:{% if cat=='error' %}#fee2e2{% else %}#dcfce7{% endif %};
+                color:{% if cat=='error' %}#991b1b{% else %}#166534{% endif %};">
+      {{ msg }}
+    </div>
+  {% endfor %}
+{% endwith %}
+
+{% if profiles %}
+<div class="profile-grid">
+  {% for p in profiles %}
+  <div class="profile-card {% if p.is_default %}default{% endif %} {% if not p.is_active %}inactive{% endif %}">
+    <h3>
+      <span>{{ p.name }}</span>
+      <span>
+        {% if p.is_default %}<span class="badge badge-default">Default</span>{% endif %}
+        {% if not p.is_active %}<span class="badge badge-inactive">Inactive</span>{% endif %}
+      </span>
+    </h3>
+    <div class="scope">
+      {% if p.employment_type_name %}Applies to: <strong>{{ p.employment_type_name }}</strong>
+      {% elif p.department_name %}Applies to: <strong>{{ p.department_name }}</strong>
+      {% else %}Applies to: <strong>Everyone</strong>{% endif %}
+      {% if p.description %} · {{ p.description|truncate(60) }}{% endif %}
+    </div>
+    <div class="stats">
+      <span>🔓 Early retirement</span><span>{{ p.early_retire_age }} y.o.</span>
+      <span>🚨 Mandatory</span><span>{{ p.mandatory_retire_age }} y.o.</span>
+      <span>📅 Notice lead</span><span>{{ p.notice_lead_months }} months</span>
+      <span>🕒 Min service</span><span>{{ p.early_retire_benefit_years }} yrs</span>
+    </div>
+    <div class="actions">
+      <a href="{{ url_for('milestones.ret_profile_edit', pid=p.id) }}" class="btn btn-ghost">Edit</a>
+      {% if not p.is_default %}
+      <form method="post" action="{{ url_for('milestones.ret_profile_delete', pid=p.id) }}"
+            style="display:inline;"
+            onsubmit="return confirm('Deactivate this profile? Employees currently matched to it will fall back to the Default.');">
+        <button type="submit" class="btn btn-red">Deactivate</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">📋</div>
+  <div style="font-weight:600;margin-bottom:.4rem;">No retirement profiles configured.</div>
+  <div style="font-size:.85rem;">
+    <a href="{{ url_for('milestones.ret_profile_new') }}" style="color:#4f46e5;font-weight:600;">Create your first profile</a>
+    to start tracking retirement eligibility.
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

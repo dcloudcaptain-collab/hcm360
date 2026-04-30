@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block page_title %}Enrollment Windows{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Enrollment Windows</h2>
+  <a href="/benefits" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+{% if session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.85rem;display:block;margin-bottom:.5rem;">Create New Window</strong>
+  <form method="post" action="/benefits/windows/new" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Name</label><input name="name" required placeholder="OE 2026" style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Year</label><input name="year" type="number" value="2026" required style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;width:80px;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Opens</label><input name="open_date" type="date" required style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Closes</label><input name="close_date" type="date" required style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Effective</label><input name="effective_date" type="date" required style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;"></div>
+    <button type="submit" style="padding:6px 16px;font-size:.85rem;font-weight:700;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:5px;cursor:pointer;">Create</button>
+  </form>
+</div>
+{% endif %}
+{% if windows %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:#f8fafc;color:#6b7280;font-size:.72rem;text-transform:uppercase;">
+      <th style="padding:10px 12px;text-align:left;">Window</th><th style="padding:10px 12px;">Year</th><th style="padding:10px 12px;">Opens</th><th style="padding:10px 12px;">Closes</th><th style="padding:10px 12px;">Effective</th><th style="padding:10px 12px;">Enrollments</th><th style="padding:10px 12px;">Status</th><th style="padding:10px 12px;">Actions</th>
+    </tr></thead>
+    <tbody>
+      {% for w in windows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:8px 12px;font-weight:500;">{{ w.name }}</td>
+        <td style="padding:8px 12px;text-align:center;">{{ w.year }}</td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:.8rem;">{{ w.open_date }}</td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:.8rem;">{{ w.close_date }}</td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:.8rem;">{{ w.effective_date }}</td>
+        <td style="padding:8px 12px;text-align:center;font-weight:700;">{{ w.enrollment_count }}</td>
+        <td style="padding:8px 12px;text-align:center;"><span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:{% if w.status=='OPEN' %}#dcfce7;color:#166534{% elif w.status=='DRAFT' %}#fef9c3;color:#854d0e{% elif w.status=='CLOSED' %}#fee2e2;color:#991b1b{% else %}#f1f5f9;color:#64748b{% endif %};">{{ w.status }}</span></td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') %}
+          <form method="post" action="/benefits/windows/{{ w.id }}/status" style="display:inline;">
+            {% if w.status == 'DRAFT' %}<button name="status" value="OPEN" style="font-size:.72rem;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:4px;cursor:pointer;">Open</button>
+            {% elif w.status == 'OPEN' %}<button name="status" value="CLOSED" style="font-size:.72rem;padding:3px 10px;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;">Close</button>
+            {% elif w.status == 'CLOSED' %}<button name="status" value="FINALIZED" style="font-size:.72rem;padding:3px 10px;background:#6b7280;color:#fff;border:none;border-radius:4px;cursor:pointer;">Finalize</button>{% endif %}
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding:3rem;text-align:center;color:#9ca3af;">No enrollment windows created yet.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block page_title %}My Personal Data Sheet{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}
+<style>
+  .tab-list { display:flex; gap:.3rem; overflow-x:auto; margin-bottom:.8rem; border-bottom:2px solid #e5e7eb; }
+  .tab-btn { background:none; border:none; padding:.6rem 1rem; cursor:pointer; font-size:.85rem;
+     font-weight:600; color:#6b7280; border-bottom:3px solid transparent; white-space:nowrap; }
+  .tab-btn.active { color:#4f46e5; border-bottom-color:#4f46e5; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .row-list { border:1px solid #e5e7eb; border-radius:8px; padding:.75rem; margin-bottom:.5rem; background:#f9fafb; }
+  .add-btn { background:#ede9fe; color:#5b21b6; border:1px dashed #c4b5fd; padding:.4rem .9rem;
+     border-radius:7px; cursor:pointer; font-size:.82rem; font-weight:600; }
+  .pill-save { position:fixed; bottom:1rem; right:1rem; background:#111827; color:#fff; padding:.5rem 1rem;
+     border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,.15); font-size:.8rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div><h2>📋 Personal Data Sheet (CSC Form 212)</h2>
+       <div class="sub">{% if current %}v{{ current.version }} · {{ current.status }} · last saved {{ current.updated_at.strftime('%b %d, %Y') }}{% else %}New draft{% endif %}</div></div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="save(false)" class="btn btn-ghost">💾 Save Draft</button>
+    <button onclick="save(true)"  class="btn btn-primary">📨 Submit</button>
+  </div>
+</div>
+
+<div class="tab-list" id="tabs">
+  {% for s in sections %}
+  <button type="button" class="tab-btn {{ 'active' if loop.first else '' }}" data-tab="{{ s }}">
+    {{ loop.index }}. {{ s.replace('_', ' ').title() }}
+  </button>
+  {% endfor %}
+</div>
+
+<!-- Section I: Personal Information -->
+<div class="tab-panel active" data-panel="personal_info">
+  <div class="card">
+    <h3>I. Personal Information</h3>
+    <div class="grid-2">
+      <div class="f-group"><label>Full Name</label>
+        <input type="text" data-path="personal_info.full_name" value="{{ data.personal_info.full_name or '' }}" /></div>
+      <div class="f-group"><label>Date of Birth</label>
+        <input type="date" data-path="personal_info.date_of_birth" value="{{ data.personal_info.date_of_birth or '' }}" /></div>
+      <div class="f-group"><label>Place of Birth</label>
+        <input type="text" data-path="personal_info.place_of_birth" value="{{ data.personal_info.place_of_birth or '' }}" /></div>
+      <div class="f-group"><label>Gender</label>
+        <input type="text" data-path="personal_info.gender" value="{{ data.personal_info.gender or '' }}" /></div>
+      <div class="f-group"><label>Civil Status</label>
+        <input type="text" data-path="personal_info.civil_status" value="{{ data.personal_info.civil_status or '' }}" /></div>
+      <div class="f-group"><label>Height (cm)</label>
+        <input type="text" data-path="personal_info.height_cm" value="{{ data.personal_info.height_cm or '' }}" /></div>
+      <div class="f-group"><label>Weight (kg)</label>
+        <input type="text" data-path="personal_info.weight_kg" value="{{ data.personal_info.weight_kg or '' }}" /></div>
+      <div class="f-group"><label>Blood Type</label>
+        <input type="text" data-path="personal_info.blood_type" value="{{ data.personal_info.blood_type or '' }}" /></div>
+      <div class="f-group"><label>Citizenship</label>
+        <input type="text" data-path="personal_info.citizenship" value="{{ data.personal_info.citizenship or 'Filipino' }}" /></div>
+      <div class="f-group"><label>Mobile No.</label>
+        <input type="text" data-path="personal_info.mobile_no" value="{{ data.personal_info.mobile_no or '' }}" /></div>
+      <div class="f-group"><label>Email</label>
+        <input type="email" data-path="personal_info.email" value="{{ data.personal_info.email or '' }}" /></div>
+      <div class="f-group"><label>TIN</label>
+        <input type="text" data-path="personal_info.tin" value="{{ data.personal_info.tin or '' }}" /></div>
+      <div class="f-group"><label>GSIS / SSS No.</label>
+        <input type="text" data-path="personal_info.gsis_no" value="{{ data.personal_info.gsis_no or data.personal_info.sss_no or '' }}" /></div>
+      <div class="f-group"><label>PhilHealth No.</label>
+        <input type="text" data-path="personal_info.philhealth_no" value="{{ data.personal_info.philhealth_no or '' }}" /></div>
+      <div class="f-group"><label>Pag-IBIG No.</label>
+        <input type="text" data-path="personal_info.pagibig_no" value="{{ data.personal_info.pagibig_no or '' }}" /></div>
+      <div class="f-group" style="grid-column:1/-1;"><label>Residential Address</label>
+        <input type="text" data-path="personal_info.residential_address" value="{{ data.personal_info.residential_address or '' }}" /></div>
+      <div class="f-group" style="grid-column:1/-1;"><label>Permanent Address</label>
+        <input type="text" data-path="personal_info.permanent_address" value="{{ data.personal_info.permanent_address or '' }}" /></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section II-VIII: collapsed simpler inputs as free-text JSON for brevity -->
+{% for sec_key, sec_label, hint in [
+    ('family_background','II. Family Background','Name, occupation, date of birth of spouse, father, mother, children'),
+    ('educational_background','III. Educational Background','Elementary, Secondary, Vocational, College, Graduate Studies'),
+    ('civil_service_eligibility','IV. Civil Service Eligibility','Name of examinations, rating, date, place'),
+    ('work_experience','V. Work Experience','Inclusive dates, position title, department, salary, grade, status'),
+    ('voluntary_work','VI. Voluntary Work / Involvement','Organization, inclusive dates, hours, position/nature of work'),
+    ('learning_development','VII. Learning &amp; Development','Title, inclusive dates, hours, type, sponsor'),
+    ('other_information','VIII. Other Information','Skills, hobbies, distinctions, memberships'),
+    ('references','References','Name, address, contact number of character references'),
+    ('attestation','Attestation','Signature date and place'),
+] %}
+<div class="tab-panel" data-panel="{{ sec_key }}">
+  <div class="card">
+    <h3>{{ sec_label|safe }}</h3>
+    <p style="font-size:.82rem;color:#6b7280;">{{ hint|safe }}</p>
+    <div class="f-group">
+      <label>Enter information (free-text or structured)</label>
+      <textarea data-path="{{ sec_key }}.notes" rows="8" placeholder="Enter all relevant information here. For multiple entries, use a new line for each.">{{ (data[sec_key].notes if data[sec_key] and data[sec_key].notes else '') or '' }}</textarea>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<div class="pill-save" id="saveFlash" style="display:none;"></div>
+
+<script>
+  const SECTIONS = {{ sections|tojson }};
+  let current = {{ data|tojson }};
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      document.querySelector(`[data-panel="${b.dataset.tab}"]`).classList.add('active');
+    });
+  });
+
+  // Set deep value on current
+  function setDeep(path, value) {
+    const parts = path.split('.');
+    let node = current;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!node[parts[i]] || typeof node[parts[i]] !== 'object') node[parts[i]] = {};
+      node = node[parts[i]];
+    }
+    node[parts[parts.length - 1]] = value;
+  }
+
+  // Collect data from all inputs
+  function collect() {
+    document.querySelectorAll('[data-path]').forEach(el => {
+      setDeep(el.dataset.path, el.value);
+    });
+    return current;
+  }
+
+  async function save(submit) {
+    const data = collect();
+    const flash = document.getElementById('saveFlash');
+    flash.textContent = submit ? 'Submitting…' : 'Saving draft…';
+    flash.style.display = 'block';
+    try {
+      const r = await fetch('/me/pds', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({data, submit}),
+      });
+      const j = await r.json();
+      flash.textContent = submit
+        ? `✓ Submitted (v${j.version})`
+        : `✓ Draft saved (v${j.version})`;
+      setTimeout(() => flash.style.display = 'none', 2500);
+    } catch (e) {
+      flash.textContent = 'Save failed — try again';
+      flash.style.background = '#dc2626';
+    }
+  }
+</script>
+{% endblock %}

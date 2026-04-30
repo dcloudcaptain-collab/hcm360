@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block page_title %}PBB Records{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Performance-Based Bonus (PBB)</h2>
+</div>
+
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1.25rem;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Year</label>
+    <input name="year" type="number" value="{{ year or '' }}" placeholder="e.g. 2025"
+           style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;width:100px;">
+  </div>
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Tier</label>
+    <select name="tier" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All Tiers</option>
+      {% for t in ['TIER_1','TIER_2','TIER_3','TIER_4','NOT_ELIGIBLE'] %}
+      <option value="{{ t }}" {% if tier_filter == t %}selected{% endif %}>{{ t.replace('_',' ') }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+</form>
+
+{% if records %}
+{% set total_amount = records|sum(attribute='pbb_amount') %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:var(--primary,#4f46e5);">{{ records|length }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Employees</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#16a34a;">₱{{ '{:,.0f}'.format(total_amount or 0) }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Total PBB</span>
+  </div>
+</div>
+{% endif %}
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:left;">Employee</th>
+        <th style="padding:8px 12px;text-align:left;">Department</th>
+        <th style="padding:8px 12px;text-align:center;">Year</th>
+        <th style="padding:8px 12px;text-align:center;">IPCR Rating</th>
+        <th style="padding:8px 12px;text-align:center;">Tier</th>
+        <th style="padding:8px 12px;text-align:right;">Amount</th>
+        <th style="padding:8px 12px;text-align:center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in records %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:500;">{{ p.employee_name }}</td>
+        <td style="padding:8px 12px;color:#6b7280;">{{ p.department_name or '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;">{{ p.year }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if p.ipcr_adjectival == 'Outstanding' %}#dcfce7{% elif p.ipcr_adjectival == 'Very Satisfactory' %}#dbeafe{% elif p.ipcr_adjectival == 'Satisfactory' %}#fef9c3{% else %}#fee2e2{% endif %};
+            color:{% if p.ipcr_adjectival == 'Outstanding' %}#166534{% elif p.ipcr_adjectival == 'Very Satisfactory' %}#1e40af{% elif p.ipcr_adjectival == 'Satisfactory' %}#854d0e{% else %}#991b1b{% endif %};">
+            {{ p.ipcr_adjectival or '—' }}
+          </span>
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-weight:700;
+                   color:{% if p.pbb_tier == 'TIER_1' %}#16a34a{% elif p.pbb_tier == 'TIER_2' %}#2563eb{% elif p.pbb_tier == 'TIER_3' %}#d97706{% else %}#9ca3af{% endif %};">
+          {{ p.pbb_tier.replace('_',' ') }}
+        </td>
+        <td style="padding:8px 12px;text-align:right;font-weight:600;">
+          ₱{{ '{:,.2f}'.format(p.pbb_amount or 0) }}
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if p.status == 'RELEASED' %}#dcfce7{% elif p.status == 'APPROVED' %}#dbeafe{% else %}#fef9c3{% endif %};
+            color:{% if p.status == 'RELEASED' %}#166534{% elif p.status == 'APPROVED' %}#1e40af{% else %}#854d0e{% endif %};">
+            {{ p.status }}
+          </span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No PBB records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

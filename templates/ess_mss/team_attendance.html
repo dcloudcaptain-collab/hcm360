@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block page_title %}Team Attendance Today{% endblock %}
+{% block extra_css %}
+<style>
+  .summary-strip { display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .summary-pill  { flex:1; min-width:100px; border-radius:8px; padding:.75rem 1rem; text-align:center; }
+  .pill-green  { background:#d1fae5; color:#065f46; }
+  .pill-amber  { background:#fef3c7; color:#92400e; }
+  .pill-red    { background:#fee2e2; color:#991b1b; }
+  .pill-grey   { background:#f3f4f6; color:#6b7280; }
+  .pill-count  { font-size:1.6rem; font-weight:800; line-height:1; }
+  .pill-label  { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-top:.2rem; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.72rem; font-weight:600; }
+  .badge-green { background:#d1fae5; color:#065f46; }
+  .badge-amber { background:#fef3c7; color:#92400e; }
+  .badge-red   { background:#fee2e2; color:#991b1b; }
+  .badge-grey  { background:#f3f4f6; color:#6b7280; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
+  <h2 style="margin:0; font-size:1.2rem; font-weight:700;">Team Attendance Today</h2>
+  <a href="/my-team" style="font-size:.85rem; color:var(--primary,#4f46e5); text-decoration:none;">← My Team</a>
+</div>
+
+{% set present_count = today | selectattr('is_present') | list | length %}
+{% set late_count    = today | selectattr('is_late')    | list | length %}
+{% set absent_count  = today | selectattr('is_absent')  | list | length %}
+{% set unknown_count = (today | length) - present_count - late_count - absent_count %}
+
+<div class="summary-strip">
+  <div class="summary-pill pill-green">
+    <div class="pill-count">{{ present_count }}</div>
+    <div class="pill-label">Present</div>
+  </div>
+  <div class="summary-pill pill-amber">
+    <div class="pill-count">{{ late_count }}</div>
+    <div class="pill-label">Late</div>
+  </div>
+  <div class="summary-pill pill-red">
+    <div class="pill-count">{{ absent_count }}</div>
+    <div class="pill-label">Absent</div>
+  </div>
+  {% if unknown_count > 0 %}
+  <div class="summary-pill pill-grey">
+    <div class="pill-count">{{ unknown_count }}</div>
+    <div class="pill-label">No Record</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if today %}
+<section class="card" style="padding:0; overflow:hidden;">
+  <table style="width:100%; border-collapse:collapse; font-size:.875rem;">
+    <thead>
+      <tr style="background:#f9fafb;">
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Employee</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Time In</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Time Out</th>
+        <th style="text-align:right; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Hrs Worked</th>
+        <th style="text-align:right; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Late (min)</th>
+        <th style="text-align:center; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Status</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Location</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for e in today %}
+      <tr style="border-top:1px solid #f3f4f6;
+        {% if e.is_late %}background:#fffbeb;
+        {% elif e.is_absent %}background:#fff5f5;
+        {% endif %}">
+        <td style="padding:.65rem 1rem;">
+          <a href="/employees/{{ e.employee_id }}"
+             style="color:var(--primary,#4f46e5); font-weight:500; text-decoration:none;">
+            {{ e.full_name }}
+          </a>
+          <div style="font-size:.72rem; color:#9ca3af;">{{ e.employee_no }}</div>
+        </td>
+        <td style="padding:.65rem 1rem;">{{ e.time_in or '—' }}</td>
+        <td style="padding:.65rem 1rem;">{{ e.time_out or '—' }}</td>
+        <td style="padding:.65rem 1rem; text-align:right;">{{ e.worked_hours or '—' }}</td>
+        <td style="padding:.65rem 1rem; text-align:right; color:{% if (e.late_minutes or 0) > 0 %}#d97706{% else %}inherit{% endif %};">
+          {{ e.late_minutes if e.late_minutes else '—' }}
+        </td>
+        <td style="padding:.65rem 1rem; text-align:center;">
+          {% if e.is_present %}
+            <span class="badge badge-green">PRESENT</span>
+          {% elif e.is_late %}
+            <span class="badge badge-amber">LATE</span>
+          {% elif e.is_absent %}
+            <span class="badge badge-red">ABSENT</span>
+          {% else %}
+            <span class="badge badge-grey">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:.65rem 1rem; font-size:.82rem; color:#6b7280;">{{ e.location_status or '—' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<div class="card" style="padding:2.5rem; text-align:center; color:#9ca3af;">
+  <div style="font-size:2rem; margin-bottom:.5rem;">📋</div>
+  <div style="font-weight:600;">No direct reports found.</div>
+</div>
+{% endif %}
+
+{% endblock %}

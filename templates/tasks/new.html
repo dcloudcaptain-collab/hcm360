@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block page_title %}New Task{% endblock %}
+{% block extra_css %}{% include 'tasks/_shared.html' %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>➕ New Task</h2>
+    <div class="sub">Assign a task to yourself or a teammate.</div>
+  </div>
+  <a href="{{ url_for('tasks.my_tasks') }}" class="btn btn-ghost">← Back to tasks</a>
+</div>
+
+<form method="post" action="{{ url_for('tasks.new_task') }}">
+  <div class="card">
+    <h3>📝 Task details</h3>
+    <div class="f-group" style="margin-bottom:.85rem;">
+      <label data-hint="A short, action-oriented title. Start with a verb, e.g. 'Review Q1 report'.">Title *</label>
+      <input type="text" name="title" required maxlength="200"
+             value="{{ preset.title or '' }}"
+             placeholder="e.g., Review Q1 budget draft">
+    </div>
+
+    <div class="f-group" style="margin-bottom:.85rem;">
+      <label data-hint="Context, links, or step-by-step details the assignee needs to complete this.">Description</label>
+      <textarea name="description" rows="4"
+                placeholder="Optional — add context, links, acceptance criteria…">{{ preset.description or '' }}</textarea>
+    </div>
+
+    <div class="grid-3">
+      <div class="f-group">
+        <label data-hint="URGENT = red badge, reminders escalate faster. Use sparingly.">Priority</label>
+        <select name="priority">
+          {% for p in ['URGENT','HIGH','NORMAL','LOW'] %}
+          <option value="{{ p }}" {% if (preset.priority or 'NORMAL') == p %}selected{% endif %}>{{ p.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="Drives the list-view filters and reporting slices.">Category</label>
+        <select name="task_category">
+          {% for c in ['WORK','FOLLOWUP','MEETING','DOC_REVIEW','ONBOARDING','OFFBOARDING','PERSONAL'] %}
+          <option value="{{ c }}" {% if (preset.task_category or 'WORK') == c %}selected{% endif %}>
+            {{ c.replace('_',' ').title() }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="Optional due date. Assignees get a reminder 24h before; overdue tasks escalate to assigner after 48h.">Due Date</label>
+        <input type="date" name="due_date" value="">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>👤 Assignee</h3>
+    <div class="f-group">
+      <label data-hint="Leave as yourself for a personal to-do, or search a teammate's name to delegate.">Assign to</label>
+      <div class="ac-wrap">
+        <div id="currentAssignee">
+          {% if me %}
+          <div class="ac-chip">
+            <span>{{ me.name or me.employee_no or 'You' }}</span>
+            {% if me.department %}<span style="opacity:.7;">· {{ me.department }}</span>{% endif %}
+            <button type="button" onclick="clearAssignee()" title="Change">✕</button>
+          </div>
+          <input type="hidden" name="assignee_employee_id" id="assigneeId" value="{{ me.id }}">
+          {% else %}
+          <input type="hidden" name="assignee_employee_id" id="assigneeId" value="">
+          {% endif %}
+        </div>
+        <input type="text" id="assigneeSearch" placeholder="Start typing a name…" autocomplete="off"
+               style="display:{% if me %}none{% else %}block{% endif %};"
+               oninput="searchEmps(this.value)">
+        <div id="acResults" class="ac-results" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.4rem;justify-content:flex-end;">
+    <a href="{{ url_for('tasks.my_tasks') }}" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">Create Task</button>
+  </div>
+</form>
+
+<script>
+(function(){
+  let timer = null;
+  const input   = document.getElementById('assigneeSearch');
+  const results = document.getElementById('acResults');
+  const hidden  = document.getElementById('assigneeId');
+  const current = document.getElementById('currentAssignee');
+
+  window.clearAssignee = function(){
+    hidden.value = '';
+    current.innerHTML = '';
+    input.value = '';
+    input.style.display = 'block';
+    input.focus();
+  };
+
+  window.searchEmps = function(q){
+    clearTimeout(timer);
+    if (!q || q.length < 1) {
+      results.style.display = 'none';
+      return;
+    }
+    timer = setTimeout(async () => {
+      try {
+        const r = await fetch('/api/employees/search?q=' + encodeURIComponent(q));
+        const d = await r.json();
+        if (!d.ok || !d.employees.length) {
+          results.innerHTML = '<div class="ac-item" style="color:#9ca3af;">No matches</div>';
+          results.style.display = 'block';
+          return;
+        }
+        results.innerHTML = d.employees.map(e => `
+          <div class="ac-item" onclick="pickEmp(${e.id}, '${(e.name || '').replace(/'/g,"\\'")}', '${(e.department || '').replace(/'/g,"\\'")}')">
+            <div>${e.name} <span class="sec">· ${e.employee_no || ''}</span></div>
+            <div class="sec">${e.department || ''}${e.work_email ? ' · ' + e.work_email : ''}</div>
+          </div>
+        `).join('');
+        results.style.display = 'block';
+      } catch (e) {
+        results.style.display = 'none';
+      }
+    }, 180);
+  };
+
+  window.pickEmp = function(id, name, dept){
+    hidden.value = id;
+    current.innerHTML = `
+      <div class="ac-chip">
+        <span>${name}</span>
+        ${dept ? `<span style="opacity:.7;">· ${dept}</span>` : ''}
+        <button type="button" onclick="clearAssignee()" title="Change">✕</button>
+      </div>`;
+    input.style.display = 'none';
+    results.style.display = 'none';
+  };
+
+  // Click-outside to close results
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.ac-wrap')) results.style.display = 'none';
+  });
+})();
+</script>
+{% endblock %}

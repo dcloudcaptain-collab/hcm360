@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block page_title %}Feedback Given{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Feedback Given</h2>
+  <a href="{{ url_for('feedback.index') }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.85rem;color:#374151;text-decoration:none;">&larr; Dashboard</a>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Date</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Subject</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Type</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Rating</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Strengths</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Improvements</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for fb in items %}
+      <tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:.6rem .85rem;white-space:nowrap;">{{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else '' }}</td>
+        <td style="padding:.6rem .85rem;">{{ fb.subject_name }}</td>
+        <td style="padding:.6rem .85rem;">
+          <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.68rem;font-weight:600;
+            background:{% if fb.feedback_type == 'PEER' %}#dbeafe{% elif fb.feedback_type == 'UPWARD' %}#fef3c7{% else %}#f3e8ff{% endif %};
+            color:{% if fb.feedback_type == 'PEER' %}#1e40af{% elif fb.feedback_type == 'UPWARD' %}#92400e{% else %}#6b21a8{% endif %};">
+            {{ fb.feedback_type }}
+          </span>
+        </td>
+        <td style="padding:.6rem .85rem;color:#d97706;">
+          {% for i in range(1, 6) %}
+            {% if fb.rating and i <= fb.rating %}&#9733;{% else %}&#9734;{% endif %}
+          {% endfor %}
+        </td>
+        <td style="padding:.6rem .85rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ fb.strengths or '' }}</td>
+        <td style="padding:.6rem .85rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ fb.improvements or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No feedback given yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

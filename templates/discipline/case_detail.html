@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block page_title %}Case {{ case.case_no }}{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Case {{ case.case_no }}</h2>
+  <a href="/discipline/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Cases</a>
+</div>
+
+{# Case header #}
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;border-left:4px solid {% if case.gravity == 'GRAVE' %}#dc2626{% elif case.gravity == 'LESS_GRAVE' %}#d97706{% else %}#2563eb{% endif %};">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:1.1rem;font-weight:700;">{{ case.respondent_name }}</div>
+      <div style="font-size:.85rem;color:#6b7280;">{{ case.department_name or '—' }} · {{ case.offense_type }} · {{ case.legal_basis or '' }}</div>
+      <div style="font-size:.85rem;margin-top:.3rem;">{{ case.offense_description[:200] }}</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;
+        background:{% if case.gravity == 'GRAVE' %}#fee2e2{% elif case.gravity == 'LESS_GRAVE' %}#fef9c3{% else %}#dbeafe{% endif %};
+        color:{% if case.gravity == 'GRAVE' %}#991b1b{% elif case.gravity == 'LESS_GRAVE' %}#854d0e{% else %}#1e40af{% endif %};">
+        {{ case.gravity }} · {{ case.status.replace('_',' ') }}
+      </span>
+      <div style="font-size:.78rem;color:#9ca3af;margin-top:.3rem;">Filed: {{ case.date_filed.strftime('%b %d, %Y') if case.date_filed else '—' }}</div>
+    </div>
+  </div>
+</div>
+
+{# Timeline sections #}
+{% macro section_header(title, count, color) %}
+<div style="display:flex;align-items:center;gap:.5rem;margin:1.25rem 0 .6rem;">
+  <span style="width:10px;height:10px;border-radius:50%;background:{{ color }};"></span>
+  <strong style="font-size:.9rem;">{{ title }}</strong>
+  <span style="font-size:.75rem;color:#9ca3af;">({{ count }})</span>
+</div>
+{% endmacro %}
+
+{# Complaints #}
+{{ section_header('Complaints', complaints|length, '#6366f1') }}
+{% for cp in complaints %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;">
+  <div style="font-size:.85rem;">{{ cp.complaint_text[:300] }}</div>
+  {% if cp.evidence_summary %}<div style="font-size:.78rem;color:#6b7280;margin-top:.2rem;">Evidence: {{ cp.evidence_summary[:150] }}</div>{% endif %}
+  <div style="font-size:.72rem;color:#9ca3af;margin-top:.2rem;">Filed: {{ cp.filed_at.strftime('%b %d, %Y %H:%M') if cp.filed_at else '—' }}</div>
+</div>
+{% endfor %}
+
+{# Investigations #}
+{{ section_header('Investigations', investigations|length, '#d97706') }}
+{% for inv in investigations %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;">
+  <div style="display:flex;justify-content:space-between;">
+    <span style="font-size:.85rem;font-weight:600;">{{ inv.status }}</span>
+    {% if inv.recommendation %}
+    <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+      background:{% if inv.recommendation == 'PROCEED_FORMAL_CHARGE' %}#fee2e2{% elif inv.recommendation == 'DISMISS' %}#dcfce7{% else %}#fef9c3{% endif %};
+      color:{% if inv.recommendation == 'PROCEED_FORMAL_CHARGE' %}#991b1b{% elif inv.recommendation == 'DISMISS' %}#166534{% else %}#854d0e{% endif %};">
+      {{ inv.recommendation.replace('_',' ') }}
+    </span>
+    {% endif %}
+  </div>
+  {% if inv.findings %}<div style="font-size:.82rem;margin-top:.2rem;">{{ inv.findings[:200] }}</div>{% endif %}
+</div>
+{% endfor %}
+
+{# Formal Charges #}
+{{ section_header('Formal Charges', charges|length, '#dc2626') }}
+{% for fc in charges %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;">
+  <div style="font-size:.85rem;">{{ fc.charge_text[:200] }}</div>
+  <div style="font-size:.78rem;color:#6b7280;margin-top:.2rem;">
+    Charged: {{ fc.charge_date.strftime('%b %d, %Y') if fc.charge_date else '—' }} · Answer deadline: {{ fc.answer_deadline.strftime('%b %d, %Y') if fc.answer_deadline else '—' }}
+    {% if fc.answer_received_at %} · Answer received: {{ fc.answer_received_at.strftime('%b %d') }}{% endif %}
+  </div>
+</div>
+{% endfor %}
+
+{# Preventive Suspensions #}
+{% if suspensions %}
+{{ section_header('Preventive Suspensions', suspensions|length, '#9333ea') }}
+{% for ps in suspensions %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;background:{% if ps.is_active %}rgba(147,51,234,.04){% else %}transparent{% endif %};">
+  <div style="font-size:.85rem;font-weight:600;">{{ ps.start_date.strftime('%b %d') }} — {{ ps.end_date.strftime('%b %d, %Y') }} {% if ps.is_active %}<span style="color:#9333ea;">(Active)</span>{% endif %}</div>
+  <div style="font-size:.78rem;color:#6b7280;">{{ ps.reason[:150] }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+{# Hearings #}
+{{ section_header('Hearings', hearings|length, '#0891b2') }}
+{% for h in hearings %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;">
+  <div style="display:flex;justify-content:space-between;">
+    <span style="font-size:.85rem;font-weight:600;">{{ h.hearing_type }} Hearing — {{ h.scheduled_date.strftime('%b %d, %Y %H:%M') if h.scheduled_date else '—' }}</span>
+    <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#374151;">{{ h.status }}</span>
+  </div>
+  {% if h.venue %}<div style="font-size:.78rem;color:#6b7280;">Venue: {{ h.venue }} {% if h.presiding_officer_name %}· Officer: {{ h.presiding_officer_name }}{% endif %}</div>{% endif %}
+</div>
+{% endfor %}
+
+{# Decisions #}
+{{ section_header('Decisions', decisions|length, '#16a34a') }}
+{% for dec in decisions %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;border-left:3px solid {% if dec.verdict == 'GUILTY' %}#dc2626{% elif dec.verdict == 'NOT_GUILTY' %}#16a34a{% else %}#9ca3af{% endif %};">
+  <div style="display:flex;justify-content:space-between;">
+    <span style="font-size:.9rem;font-weight:700;color:{% if dec.verdict == 'GUILTY' %}#dc2626{% elif dec.verdict == 'NOT_GUILTY' %}#16a34a{% else %}#6b7280{% endif %};">{{ dec.verdict.replace('_',' ') }}</span>
+    {% if dec.penalty %}<span style="font-size:.82rem;font-weight:600;">Penalty: {{ dec.penalty.replace('_',' ') }}</span>{% endif %}
+  </div>
+  {% if dec.penalty_details %}<div style="font-size:.82rem;margin-top:.2rem;">{{ dec.penalty_details }}</div>{% endif %}
+  <div style="font-size:.78rem;color:#9ca3af;margin-top:.2rem;">Decided: {{ dec.decision_date.strftime('%b %d, %Y') if dec.decision_date else '—' }} by {{ dec.decided_by_name or '—' }}</div>
+</div>
+{% endfor %}
+
+{# Appeals #}
+{% if appeals %}
+{{ section_header('Appeals', appeals|length, '#f59e0b') }}
+{% for ap in appeals %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:.5rem;">
+  <div style="font-size:.85rem;font-weight:600;">{{ ap.appeal_body.replace('_',' ') }} — {{ ap.status }}</div>
+  <div style="font-size:.82rem;margin-top:.2rem;">{{ ap.grounds[:200] }}</div>
+  <div style="font-size:.72rem;color:#9ca3af;margin-top:.2rem;">Filed: {{ ap.appeal_date.strftime('%b %d, %Y') if ap.appeal_date else '—' }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}

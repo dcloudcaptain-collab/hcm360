@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% block page_title %}Portal{% endblock %}
+
+{% block content %}
+<style>
+  /* ── Welcome banner — theme-token-driven ─────────────────────── */
+  .pt-banner {
+    background: linear-gradient(135deg,
+                  var(--sidebar, #4f46e5) 0%,
+                  var(--primary, #6366f1) 55%,
+                  var(--accent,  #818cf8) 100%);
+    color:#fff; border-radius:14px; padding:1.4rem 1.6rem;
+    margin-bottom:1.25rem; position:relative; overflow:hidden;
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:1rem;
+  }
+  .pt-banner::after {
+    content:''; position:absolute; top:-30px; right:-30px;
+    width:200px; height:200px; border-radius:50%;
+    background:rgba(255,255,255,.06); pointer-events:none;
+  }
+  .pt-banner > * { position:relative; z-index:1; }
+  .pt-greet { font-size:1.5rem; font-weight:800; margin:0; line-height:1.1; }
+  .pt-sub   { font-size:.85rem; opacity:.9; margin-top:.2rem; }
+  .pt-chips { display:flex; gap:.6rem; flex-wrap:wrap; }
+  .pt-chip {
+    background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.25);
+    border-radius:10px; padding:.6rem .9rem; min-width:90px; text-align:center;
+    backdrop-filter:blur(4px);
+  }
+  .pt-chip .n { font-size:1.4rem; font-weight:800; line-height:1; display:block; }
+  .pt-chip .l { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
+
+  /* ── Two-pane layout ─────────────────────────────────────────── */
+  .pt-grid { display:grid; grid-template-columns:300px 1fr; gap:1rem; }
+  @media (max-width: 880px) { .pt-grid { grid-template-columns:1fr; } }
+
+  /* ── Inbox rail ──────────────────────────────────────────────── */
+  .pt-inbox {
+    background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+    padding:1rem; align-self:start;
+    position:sticky; top:1rem;
+  }
+  .pt-inbox h3 { margin:0 0 .35rem; font-size:.95rem; font-weight:800;
+                 display:flex; align-items:center; justify-content:space-between; }
+  .pt-inbox-link {
+    font-size:.72rem; color:var(--primary,#4f46e5); font-weight:600; text-decoration:none;
+  }
+  .pt-inbox-list { display:flex; flex-direction:column; gap:.45rem; margin-top:.5rem; }
+  .pt-inbox-item {
+    display:block; text-decoration:none; color:inherit;
+    padding:.55rem .65rem; border-radius:8px; border:1px solid #f1f5f9;
+    transition:background .15s, border-color .15s;
+  }
+  .pt-inbox-item:hover { background:#f8fafc; border-color:#e2e8f0; }
+  .pt-inbox-item.is-unread { border-color:var(--primary,#4f46e5); }
+  .pt-inbox-item .ttl { font-size:.82rem; font-weight:600; color:#111827; line-height:1.3; }
+  .pt-inbox-item .meta { font-size:.7rem; color:#6b7280; margin-top:.15rem;
+                          display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+  .pri-chip {
+    font-size:.6rem; font-weight:700; padding:1px 6px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .pri-URGENT { background:#fee2e2; color:#991b1b; }
+  .pri-HIGH   { background:#fef3c7; color:#92400e; }
+  .pri-NORMAL { background:#eef2ff; color:#4338ca; }
+  .pri-LOW    { background:#f3f4f6; color:#374151; }
+  .pt-inbox-empty {
+    color:#9ca3af; font-size:.82rem; padding:1rem .5rem; text-align:center;
+    font-style:italic;
+  }
+
+  /* ── Tile grid ───────────────────────────────────────────────── */
+  .pt-tiles { display:flex; flex-direction:column; gap:1rem; }
+  .pt-toolbar {
+    display:flex; align-items:center; gap:.4rem; flex-wrap:wrap;
+    padding:.6rem 0; margin-bottom:.2rem;
+  }
+  .pt-search {
+    flex:1; min-width:220px;
+    border:1.5px solid #e5e7eb; border-radius:8px;
+    padding:.55rem .8rem; font-size:.85rem; font-family:inherit;
+    background:#fff;
+  }
+  .pt-search:focus { outline:none; border-color:var(--primary,#4f46e5);
+                     box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+  .pt-chips-row { display:flex; gap:.3rem; flex-wrap:wrap; }
+  .pt-fchip {
+    padding:5px 11px; border-radius:6px; font-size:.74rem; font-weight:600;
+    color:#374151; background:#fff; border:1px solid #e5e7eb; cursor:pointer;
+  }
+  .pt-fchip.active { background:var(--primary,#4f46e5); color:#fff; border-color:var(--primary,#4f46e5); }
+  .pt-fchip:hover:not(.active) { background:#f3f4f6; }
+
+  .pt-section { background:transparent; }
+  .pt-section h4 {
+    margin:0 0 .55rem; font-size:.72rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.08em; color:#6b7280;
+    padding-left:.2rem;
+  }
+  .pt-section .count { color:#9ca3af; font-weight:500; margin-left:.4rem; letter-spacing:0; text-transform:none; }
+
+  .pt-cards {
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:.75rem;
+  }
+  .pt-card {
+    background:#fff; border:1px solid #e5e7eb; border-radius:11px;
+    padding:.95rem 1rem .85rem;
+    text-decoration:none; color:inherit;
+    display:flex; flex-direction:column; gap:.35rem;
+    transition:transform .12s, box-shadow .15s, border-color .15s;
+  }
+  .pt-card:hover {
+    transform:translateY(-2px);
+    box-shadow:0 10px 24px rgba(15,23,42,.10);
+    border-color:var(--primary,#4f46e5);
+  }
+  .pt-card .icon {
+    width:38px; height:38px; border-radius:9px;
+    background:linear-gradient(135deg, var(--primary,#4f46e5), var(--accent,#818cf8));
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:1.15rem; flex-shrink:0;
+  }
+  .pt-card .title { font-size:.92rem; font-weight:700; color:#111827; line-height:1.25; }
+  .pt-card .meta  { display:flex; gap:.3rem; flex-wrap:wrap; margin-top:.1rem; }
+  .pt-card .chip {
+    font-size:.62rem; font-weight:700; padding:1px 7px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .pt-card .chip-grp { background:#eef2ff; color:#4338ca; }
+  .pt-card .chip-mod { background:#f3f4f6; color:#475569; }
+
+  .pt-empty {
+    background:#fff; border:2px dashed #e5e7eb; border-radius:12px;
+    padding:2rem 1rem; text-align:center; color:#6b7280;
+  }
+
+  /* ── Mode-switch banner — only on the portal itself ──────────── */
+  .pt-mode-banner {
+    background:#f1f5f9; border:1px solid #e2e8f0; border-radius:8px;
+    padding:.5rem .8rem; font-size:.78rem; color:#475569;
+    margin-bottom:.85rem;
+    display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap;
+  }
+  .pt-mode-banner form { display:inline; margin:0; }
+  .pt-mode-banner button {
+    background:#fff; border:1px solid #cbd5e1; padding:4px 10px;
+    border-radius:6px; font-size:.72rem; font-weight:600; cursor:pointer;
+    color:var(--primary,#4f46e5);
+  }
+  .pt-mode-banner button:hover { background:#eef2ff; border-color:var(--primary,#4f46e5); }
+</style>
+
+{# ── Welcome banner ─────────────────────────────────────────── #}
+<div class="pt-banner">
+  <div>
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;opacity:.75;margin-bottom:.2rem;">Unified Workspace</div>
+    <h2 class="pt-greet">
+      Good {% if now.hour < 12 %}morning{% elif now.hour < 17 %}afternoon{% else %}evening{% endif %},
+      {{ current_user.display_name.split()[0] if current_user else 'there' }}
+    </h2>
+    <div class="pt-sub">
+      {{ current_user.role_code if current_user else '' }}
+      {% if total_pages %} · {{ total_pages }} apps available{% endif %}
+    </div>
+  </div>
+  <div class="pt-chips" data-hint="At-a-glance summary — apps you can launch, pending tasks, urgent items.">
+    <div class="pt-chip"><span class="n">{{ total_pages }}</span><span class="l">Apps</span></div>
+    <div class="pt-chip"><span class="n">{{ inbox_counts.total or 0 }}</span><span class="l">Inbox</span></div>
+    <div class="pt-chip"><span class="n">{{ inbox_counts.urgent or 0 }}</span><span class="l">Urgent</span></div>
+  </div>
+</div>
+
+{# ── Mode-switch banner ─────────────────────────────────────── #}
+<div class="pt-mode-banner" data-hint="Switch between Portal mode and Dashboard mode anytime — preference saves automatically.">
+  <span>🧩 You're on <strong>Portal mode</strong>. Prefer the classic KPI dashboard?</span>
+  <form method="post" action="{{ url_for('dashboard.set_landing_pref') }}">
+    <input type="hidden" name="layout" value="dashboard">
+    <button type="submit">📑 Switch to Dashboard mode</button>
+  </form>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.6rem .9rem;border-radius:8px;margin-bottom:.85rem;font-size:.85rem;
+                background:{% if cat=='error' %}#fee2e2{% else %}#dcfce7{% endif %};
+                color:{% if cat=='error' %}#991b1b{% else %}#166534{% endif %};">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+{# ── Two-pane layout ────────────────────────────────────────── #}
+<div class="pt-grid">
+
+  {# ── LEFT: Inbox rail ──────────────────────────────────────── #}
+  <aside class="pt-inbox" data-hint="Your top pending tasks. Click to open the action page.">
+    <h3>
+      <span>📥 Inbox <span style="color:#6b7280;font-weight:500;font-size:.78rem;">·
+        {{ inbox_counts.total or 0 }} pending</span></span>
+      <a href="{{ url_for('ess.my_inbox') if 'ess' in nav_links|default([])|map(attribute='route_url')|join(' ') or true else '/me/inbox' }}"
+         class="pt-inbox-link">Open inbox →</a>
+    </h3>
+    {% if inbox %}
+    <div class="pt-inbox-list">
+      {% for item in inbox %}
+      <a href="{{ item.action_url or '/me/inbox' }}" class="pt-inbox-item {% if not item.is_read %}is-unread{% endif %}">
+        <div class="ttl">{{ item.title or item.task_type or 'Task' }}</div>
+        <div class="meta">
+          {% if item.priority %}<span class="pri-chip pri-{{ item.priority }}">{{ item.priority }}</span>{% endif %}
+          {% if item.task_type %}<span>{{ item.task_type }}</span>{% endif %}
+          <span>· {{ item.age_days or 0 }}d</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="pt-inbox-empty">No pending items.<br>You're all caught up. 🎉</div>
+    {% endif %}
+  </aside>
+
+  {# ── RIGHT: Tile grid ──────────────────────────────────────── #}
+  <main class="pt-tiles">
+    <div class="pt-toolbar" data-hint="Filter by group or search by app name. Tiles inherit your active theme.">
+      <input type="search" id="ptSearch" class="pt-search"
+             placeholder="Search apps and pages…"
+             oninput="ptFilterSearch(this.value)">
+    </div>
+    <div class="pt-chips-row" id="ptChips">
+      <button class="pt-fchip active" data-grp="__all__" onclick="ptFilterGroup(this,'__all__')">All</button>
+      {% for grp, items in groups %}
+      <button class="pt-fchip" data-grp="{{ grp|e }}"
+              onclick="ptFilterGroup(this,'{{ grp|e }}')">{{ grp }}</button>
+      {% endfor %}
+    </div>
+
+    {% if groups %}
+      {% for grp, items in groups %}
+      <section class="pt-section" data-grp="{{ grp|e }}">
+        <h4>{{ grp }}<span class="count">· {{ items|length }} app{{ '' if items|length == 1 else 's' }}</span></h4>
+        <div class="pt-cards">
+          {% for it in items %}
+          <a href="{{ it.route_url }}" class="pt-card"
+             data-grp="{{ grp|e }}"
+             data-search="{{ ((it.title or '') ~ ' ' ~ (it.label or '') ~ ' ' ~ (it.module or '') ~ ' ' ~ (it.route_url or ''))|lower|e }}">
+            <div style="display:flex;align-items:center;gap:.65rem;">
+              <div class="icon">{{ it.nav_icon or '📑' }}</div>
+              <div style="flex:1;min-width:0;">
+                <div class="title">{{ it.label or it.title }}</div>
+                <div class="meta">
+                  <span class="chip chip-grp">{{ grp }}</span>
+                  {% if it.module %}<span class="chip chip-mod">{{ it.module }}</span>{% endif %}
+                </div>
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endfor %}
+    {% else %}
+    <div class="pt-empty">
+      <div style="font-size:2rem;">🚪</div>
+      <div style="margin-top:.4rem;font-weight:600;color:#111827;">No apps available yet.</div>
+      <div style="font-size:.85rem;margin-top:.3rem;">
+        Your role doesn't have access to any pages. Ask an HR admin to grant access.
+      </div>
+    </div>
+    {% endif %}
+  </main>
+
+</div>
+
+<script>
+  function ptFilterGroup(btn, grp){
+    document.querySelectorAll('.pt-fchip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.pt-section').forEach(sec => {
+      sec.style.display = (grp === '__all__' || sec.dataset.grp === grp) ? '' : 'none';
+    });
+    // Re-apply search filter on top
+    ptFilterSearch(document.getElementById('ptSearch').value);
+  }
+  function ptFilterSearch(q){
+    q = (q || '').toLowerCase().trim();
+    let any = false;
+    document.querySelectorAll('.pt-card').forEach(c => {
+      const match = !q || (c.dataset.search || '').includes(q);
+      c.style.display = match ? '' : 'none';
+      if (match) any = true;
+    });
+    // Hide sections that have no visible cards (when searching)
+    document.querySelectorAll('.pt-section').forEach(sec => {
+      if (sec.style.display === 'none') return;  // group filter already hid it
+      const visible = Array.from(sec.querySelectorAll('.pt-card'))
+        .filter(c => c.style.display !== 'none').length;
+      sec.dataset.empty = visible === 0 ? '1' : '';
+      sec.style.opacity = visible === 0 ? '.4' : '';
+    });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block page_title %}UI Theme Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+  .theme-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:1rem;
+    margin-top:1rem;
+  }
+  .theme-card {
+    background:#fff;
+    border:2px solid #e5e7eb;
+    border-radius:14px;
+    overflow:hidden;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    display:flex;
+    flex-direction:column;
+  }
+  .theme-card:hover {
+    transform:translateY(-2px);
+    box-shadow:0 10px 30px rgba(15,23,42,.10);
+  }
+  .theme-card.active {
+    border-color:var(--primary,#0f6f8f);
+    box-shadow:0 0 0 4px rgba(15,111,143,.12);
+  }
+
+  /* Top header band — sidebar color */
+  .swatch-header {
+    height:64px;
+    display:flex;
+    align-items:center;
+    padding:0 1rem;
+    color:#fff;
+    font-weight:700;
+    font-size:.95rem;
+    letter-spacing:-.01em;
+  }
+  /* Color strip with 4 swatches */
+  .swatch-strip { display:flex; height:48px; }
+  .swatch-strip > div { flex:1; }
+
+  /* Body section */
+  .theme-body { padding:.95rem 1rem 1rem; flex:1; display:flex; flex-direction:column; }
+  .theme-name { font-size:1rem; font-weight:700; margin:0 0 .25rem; color:#111827; }
+  .theme-meta { font-size:.72rem; color:#6b7280; line-height:1.45; margin-bottom:.7rem; }
+  .theme-meta code {
+    background:#f3f4f6; padding:1px 5px; border-radius:4px;
+    font-size:.7rem; color:#374151;
+  }
+
+  .badge-active {
+    display:inline-block; background:#ecfdf5; color:#065f46;
+    border:1px solid #a7f3d0; padding:1px 8px; border-radius:999px;
+    font-size:.68rem; font-weight:700; margin-left:.5rem;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+
+  .activate-btn {
+    margin-top:auto;
+    padding:.55rem 1rem;
+    background:var(--primary,#0f6f8f); color:#fff;
+    border:none; border-radius:8px;
+    font-weight:600; font-size:.85rem; cursor:pointer;
+    width:100%;
+  }
+  .activate-btn[disabled] {
+    background:#e5e7eb; color:#9ca3af; cursor:default;
+  }
+  .activate-btn:not([disabled]):hover { filter:brightness(.93); }
+
+  .preview-row { display:flex; gap:.4rem; align-items:center; margin:.5rem 0 .8rem; }
+  .preview-pill {
+    padding:2px 9px; border-radius:999px;
+    font-size:.66rem; font-weight:700;
+    border:1px solid;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:.5rem; margin-bottom:.5rem;">
+  <div>
+    <h1 style="margin:0; font-size:1.35rem; font-weight:800;">🎨 UI Theme Settings</h1>
+    <p class="small" style="margin:.25rem 0 0; color:#6b7280;">
+      Pick the global look and feel. The active theme applies to every user that has not chosen a personal one.
+    </p>
+  </div>
+  <div class="tiny" style="color:#9ca3af;">{{ themes | length }} themes available</div>
+</div>
+
+<div class="theme-grid">
+{% for t in themes %}
+  <div class="theme-card {% if t.is_active %}active{% endif %}">
+
+    {# Preview header — uses sidebar color #}
+    <div class="swatch-header" style="background:{{ t.sidebar_color or '#0f6f8f' }};
+                                       color:{{ t.sidebar_text or '#ffffff' }};">
+      {{ t.name }}
+      {% if t.is_active %}<span class="badge-active">Active</span>{% endif %}
+    </div>
+
+    {# 4-color swatch strip #}
+    <div class="swatch-strip">
+      <div style="background:{{ t.primary_color }};"   title="primary {{ t.primary_color }}"></div>
+      <div style="background:{{ t.secondary_color }};" title="secondary {{ t.secondary_color }}"></div>
+      <div style="background:{{ t.accent_color }};"    title="accent {{ t.accent_color }}"></div>
+      <div style="background:{{ t.bg_color }};"        title="background {{ t.bg_color }}"></div>
+    </div>
+
+    <div class="theme-body" style="background:{{ t.bg_color }}; color:{{ t.text_color or '#173042' }};
+                                    font-family:{{ t.font_family or 'Inter, sans-serif' }};">
+      <div class="theme-name">{{ t.name }}</div>
+      <div class="theme-meta">
+        <code>{{ t.primary_color }}</code> ·
+        <code>{{ t.bg_color }}</code> ·
+        <code>{{ t.text_color or '—' }}</code>
+        <br>
+        <span class="tiny">{{ (t.font_family or 'Inter') | truncate(38, True) }}</span>
+      </div>
+
+      {# Mini live preview #}
+      <div class="preview-row">
+        <span class="preview-pill" style="background:{{ t.primary_color }}; color:#fff; border-color:{{ t.primary_color }};">PRIMARY</span>
+        <span class="preview-pill" style="background:{{ t.bg_color }}; color:{{ t.primary_color }}; border-color:{{ t.primary_color }};">OUTLINE</span>
+      </div>
+
+      <form method="post">
+        <input type="hidden" name="theme_id" value="{{ t.id }}">
+        <button type="submit"
+                class="activate-btn"
+                style="background:{{ t.primary_color }};"
+                {% if t.is_active %}disabled{% endif %}>
+          {% if t.is_active %}✓ Currently Active{% else %}Activate Theme{% endif %}
+        </button>
+      </form>
+    </div>
+
+  </div>
+{% endfor %}
+</div>
+
+<p class="tiny" style="margin-top:1.25rem; color:#9ca3af;">
+  💡 Users can override the global theme on their personal preferences page (<a href="/me/theme" style="color:var(--primary);">/me/theme</a>).
+</p>
+{% endblock %}

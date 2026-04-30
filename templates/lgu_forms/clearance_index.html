@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block page_title %}Clearance — CS Form No. 7{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>✅ CS Form No. 7 — Clearance</h2>
+    <div class="sub">Clearance from Money and Property Accountability (s.2017)</div>
+  </div>
+  {% if is_admin %}
+  <button onclick="showNewForm()" class="btn btn-primary">+ New Clearance</button>
+  {% endif %}
+</div>
+
+{% if is_admin %}
+<div id="newForm" style="display:none;" class="card">
+  <h3>Initiate Clearance</h3>
+  <form method="POST" action="/offboarding/clearance/new" class="grid-2" style="margin-top:.5rem;">
+    <div class="f-group">
+      <label>Employee ID</label>
+      <input type="number" name="employee_id" required />
+    </div>
+    <div class="f-group">
+      <label>Last Working Day</label>
+      <input type="date" name="last_working_day" required />
+    </div>
+    <div style="grid-column:1/-1;display:flex;gap:.4rem;">
+      <button type="submit" class="btn btn-primary">Initiate</button>
+      <button type="button" onclick="document.getElementById('newForm').style.display='none'" class="btn btn-ghost">Cancel</button>
+    </div>
+  </form>
+</div>
+<script>function showNewForm(){document.getElementById('newForm').style.display='block';}</script>
+{% endif %}
+
+{% if rows %}
+<table class="dt" style="margin-top:1rem;">
+  <thead>
+    <tr>
+      <th>Last Day</th>
+      <th>Employee</th>
+      <th>Department</th>
+      <th>Progress</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.last_working_day.strftime('%b %d, %Y') }}</td>
+      <td><div style="font-weight:600;">{{ r.full_name }}</div>
+          <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div></td>
+      <td>{{ r.department_name or '—' }}</td>
+      <td style="font-family:monospace;">
+        {{ r.cleared_count }} / {{ r.total_count }}
+        <div style="margin-top:.25rem;background:#f3f4f6;height:5px;border-radius:4px;overflow:hidden;">
+          <div style="background:#16a34a;height:100%;width:{{ (r.cleared_count / r.total_count * 100) if r.total_count else 0 }}%;"></div>
+        </div>
+      </td>
+      <td><span class="status-badge s-{{ r.status|lower|replace('_','-') }}">{{ r.status.replace('_',' ') }}</span></td>
+      <td><a href="/offboarding/clearance/{{ r.id }}" class="btn-xs btn-ghost" style="color:#4f46e5;border:1px solid #4f46e5;">Open</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;margin-top:1rem;">
+  <div style="font-size:2rem;">✅</div>
+  <div style="font-weight:600;">No clearance forms yet.</div>
+</div>
+{% endif %}
+{% endblock %}

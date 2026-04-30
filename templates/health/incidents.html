@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block page_title %}Incident Reports{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Workplace Incident Reports</h2>
+  <a href="/health/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('REPORTED','Reported'),('INVESTIGATING','Investigating'),('RESOLVED','Resolved'),('CLOSED','Closed')] %}
+  <a href="?status={{ s }}" style="padding:6px 14px;border-radius:20px;font-size:.82rem;text-decoration:none;font-weight:500;
+    {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for i in incidents %}
+  <a href="/health/incidents/{{ i.id }}" class="card" style="padding:1rem;text-decoration:none;color:inherit;display:flex;align-items:center;justify-content:space-between;
+    border-left:4px solid {% if i.severity == 'FATAL' %}#991b1b{% elif i.severity == 'MAJOR' %}#dc2626{% elif i.severity == 'MODERATE' %}#d97706{% else %}#16a34a{% endif %};">
+    <div>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.15rem;">
+        <span style="font-size:.9rem;font-weight:700;">{{ i.incident_no }}</span>
+        <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+          background:{% if i.severity in ('FATAL','MAJOR') %}#fee2e2{% elif i.severity == 'MODERATE' %}#fef9c3{% else %}#dcfce7{% endif %};
+          color:{% if i.severity in ('FATAL','MAJOR') %}#991b1b{% elif i.severity == 'MODERATE' %}#854d0e{% else %}#166534{% endif %};">{{ i.severity }}</span>
+        {% if i.dole_reportable %}<span style="font-size:.65rem;padding:1px 6px;border-radius:999px;background:#dbeafe;color:#1e40af;">DOLE</span>{% endif %}
+      </div>
+      <div style="font-size:.85rem;">{{ i.incident_type.replace('_',' ') }} at {{ i.location }}</div>
+      <div style="font-size:.78rem;color:#6b7280;">{{ i.incident_date.strftime('%b %d, %Y %H:%M') if i.incident_date else '—' }} · {{ i.persons_involved }} person(s) · {{ i.reported_by_name }}</div>
+    </div>
+    <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+      background:{% if i.status == 'CLOSED' %}#dcfce7{% elif i.status == 'RESOLVED' %}#dbeafe{% elif i.status == 'INVESTIGATING' %}#fef9c3{% else %}#f1f5f9{% endif %};
+      color:{% if i.status == 'CLOSED' %}#166534{% elif i.status == 'RESOLVED' %}#1e40af{% elif i.status == 'INVESTIGATING' %}#854d0e{% else %}#374151{% endif %};">{{ i.status }}</span>
+  </a>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No incidents reported.</div>
+  {% endfor %}
+</div>
+{% endblock %}

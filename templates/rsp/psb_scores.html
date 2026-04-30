@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block page_title %}PSB Score Sheet{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">PSB Score Sheet</h2>
+  <a href="/rsp/psb" style="font-size:.85rem;color:var(--primary,#4f46e5);">← PSB Deliberations</a>
+</div>
+
+{# Score entry form #}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Enter / Update Score</h3>
+  <form method="post" action="/rsp/psb/{{ delib_id }}/score">
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr auto;gap:.6rem;align-items:end;">
+      <div>
+        <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Applicant</label>
+        <select name="applicant_id" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:.85rem;">
+          {% for s in scores %}
+          <option value="{{ s.applicant_id }}">{{ s.applicant_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% for field, label in [('education_score','Educ.'),('experience_score','Exp.'),('training_score','Train.'),('performance_score','Perf.'),('interview_score','Interview')] %}
+      <div>
+        <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">{{ label }}</label>
+        <input type="number" name="{{ field }}" min="0" max="25" step="0.01" value="0"
+               style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:.85rem;">
+      </div>
+      {% endfor %}
+      <button type="submit"
+              style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Save
+      </button>
+    </div>
+  </form>
+</section>
+
+{# Ranking table #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:center;">Rank</th>
+        <th style="padding:10px 14px;text-align:left;">Applicant</th>
+        <th style="padding:10px 14px;text-align:center;">Educ.</th>
+        <th style="padding:10px 14px;text-align:center;">Exp.</th>
+        <th style="padding:10px 14px;text-align:center;">Train.</th>
+        <th style="padding:10px 14px;text-align:center;">Perf.</th>
+        <th style="padding:10px 14px;text-align:center;">Interview</th>
+        <th style="padding:10px 14px;text-align:center;font-weight:800;">Total</th>
+        <th style="padding:10px 14px;text-align:center;">NIR</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in scores %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if loop.first %}background:rgba(99,102,241,.04);{% endif %}">
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:1rem;font-weight:800;color:{% if s.rank == 1 %}#d97706{% else %}#6b7280{% endif %};">
+            {{ s.rank or '—' }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;font-weight:{% if s.rank == 1 %}700{% else %}500{% endif %};">
+          {{ s.applicant_name }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">{{ s.education_score }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ s.experience_score }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ s.training_score }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ s.performance_score }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ s.interview_score }}</td>
+        <td style="padding:9px 14px;text-align:center;font-weight:800;color:var(--primary,#4f46e5);">
+          {{ '%.2f'|format(s.total_score or 0) }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          {% if s.is_next_in_rank %}
+          <span style="color:#16a34a;font-weight:700;">✓</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" style="padding:2rem;text-align:center;color:#9ca3af;">No scores entered yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

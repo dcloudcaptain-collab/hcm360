@@ -1,0 +1,956 @@
+{% extends 'base.html' %}
+{% block page_title %}Employee Directory{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════════════════════
+   Employee Directory v3 — Enterprise Three-View
+   Uses theme CSS vars: --primary --card --text --radius
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Global header ─────────────────────────────────── */
+.dir-hdr {
+  display:flex; align-items:center; flex-wrap:wrap;
+  gap:.65rem; margin-bottom:.85rem;
+}
+.dir-title h2 { margin:0 0 .15rem; font-size:1.35rem; font-weight:800; letter-spacing:-.02em; }
+.dir-title p  { margin:0; font-size:.83rem; color:#6b7280; }
+.dir-actions  { display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; margin-left:auto; }
+
+/* Search bar */
+.search-bar {
+  display:flex; align-items:stretch; overflow:hidden;
+  border:1px solid rgba(0,0,0,.14); border-radius:8px;
+  background:var(--card,#fff); min-width:300px; flex:1;
+}
+.search-bar input {
+  flex:1; border:none; outline:none; padding:.5rem .7rem;
+  font-size:.83rem; background:transparent; min-width:0;
+  color:var(--text,#111827);
+}
+.search-bar input::placeholder { color:#9ca3af; }
+.search-bar button {
+  padding:.5rem 1rem; border:none; border-left:1px solid rgba(0,0,0,.1);
+  background:var(--primary,#0f6f8f); color:#fff;
+  font-size:.8rem; font-weight:600; cursor:pointer; white-space:nowrap;
+  transition:opacity .15s;
+}
+.search-bar button:hover { opacity:.88; }
+.search-bar button.busy { opacity:.55; pointer-events:none; }
+
+/* Filter toggle button */
+.btn-flt {
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.48rem .85rem; border:1px solid rgba(0,0,0,.14); border-radius:8px;
+  background:var(--card,#fff); font-size:.82rem; font-weight:600;
+  cursor:pointer; color:var(--text,#111827); transition:background .12s;
+}
+.btn-flt:hover { background:#f1f5f9; }
+.btn-flt.has-f  { border-color:var(--primary,#0f6f8f); color:var(--primary,#0f6f8f); }
+.flt-badge {
+  background:var(--primary,#0f6f8f); color:#fff;
+  border-radius:999px; font-size:.65rem; font-weight:700; padding:0 6px; line-height:1.5;
+}
+
+/* View toggle */
+.vt-wrap { display:flex; border:1px solid rgba(0,0,0,.14); border-radius:8px; overflow:hidden; }
+.vt-btn {
+  padding:.45rem .72rem; border:none; background:var(--card,#fff);
+  cursor:pointer; font-size:.79rem; color:#6b7280; font-weight:500;
+  display:flex; align-items:center; gap:.3rem; transition:background .1s;
+}
+.vt-btn + .vt-btn { border-left:1px solid rgba(0,0,0,.1); }
+.vt-btn.active { background:var(--primary,#0f6f8f); color:#fff; }
+.vt-btn:not(.active):hover { background:#f1f5f9; }
+
+/* CTA buttons */
+.btn-p {
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.48rem 1rem; border-radius:8px; border:none;
+  background:var(--primary,#0f6f8f); color:#fff;
+  font-size:.82rem; font-weight:600; cursor:pointer; text-decoration:none;
+  transition:opacity .15s; white-space:nowrap;
+}
+.btn-p:hover { opacity:.88; }
+.btn-o {
+  display:inline-flex; align-items:center; gap:.3rem;
+  padding:.48rem .85rem; border-radius:8px;
+  border:1px solid rgba(0,0,0,.14); background:var(--card,#fff);
+  color:var(--text,#111827); font-size:.82rem; font-weight:600;
+  cursor:pointer; text-decoration:none; transition:background .1s; white-space:nowrap;
+}
+.btn-o:hover { background:#f1f5f9; }
+
+/* ── Filter panel ──────────────────────────────────── */
+.flt-panel {
+  background:var(--card,#fff); border:1px solid rgba(0,0,0,.09);
+  border-radius:12px; padding:1.1rem 1.25rem 1.2rem;
+  margin-bottom:.85rem; display:none;
+  box-shadow:0 6px 20px rgba(0,0,0,.07);
+}
+.flt-panel.open { display:block; }
+.flt-sec-hdr {
+  font-size:.67rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.07em; color:#9ca3af; margin:.9rem 0 .5rem;
+}
+.flt-sec-hdr:first-child { margin-top:0; }
+.flt-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+  gap:.7rem 1.25rem;
+}
+.flt-lbl { font-size:.71rem; font-weight:600; color:#6b7280; margin-bottom:.3rem; display:block; }
+.chk-list { display:flex; flex-direction:column; gap:.28rem; max-height:120px; overflow-y:auto; }
+.chk-item { display:flex; align-items:center; gap:.38rem; font-size:.8rem; cursor:pointer; }
+.chk-item input { cursor:pointer; accent-color:var(--primary,#0f6f8f); }
+.flt-sel, .flt-date {
+  width:100%; border:1px solid rgba(0,0,0,.12); border-radius:7px;
+  padding:.38rem .65rem; font-size:.8rem; background:#f9fafb; cursor:pointer;
+  box-sizing:border-box;
+}
+.flt-actions {
+  display:flex; gap:.5rem; margin-top:1rem;
+  padding-top:.85rem; border-top:1px solid rgba(0,0,0,.06);
+}
+.btn-apply {
+  padding:.45rem 1.1rem; border-radius:7px; border:none;
+  background:var(--primary,#0f6f8f); color:#fff;
+  font-size:.82rem; font-weight:600; cursor:pointer;
+}
+.btn-reset {
+  padding:.45rem .9rem; border-radius:7px;
+  border:1px solid rgba(0,0,0,.12); background:#fff;
+  font-size:.82rem; font-weight:600; cursor:pointer; color:#6b7280;
+}
+
+/* ── Active chips ──────────────────────────────────── */
+.chips-row { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.7rem; align-items:center; min-height:20px; }
+.chip {
+  display:inline-flex; align-items:center; gap:.25rem;
+  padding:3px 10px; border-radius:999px; font-size:.71rem; font-weight:600; border:1px solid;
+}
+.chip-x { cursor:pointer; opacity:.55; font-size:.85rem; }
+.chip-x:hover { opacity:1; color:#dc2626; }
+.c-blue  { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+.c-amber { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+.c-red   { background:#fef2f2; color:#991b1b; border-color:#fca5a5; }
+.c-teal  { background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
+
+/* ── KPI strip — matches dashboard exactly ─────────── */
+.kpi-strip {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
+  gap:.7rem; margin-bottom:1.25rem;
+}
+.kpi-c {
+  padding:.8rem .95rem; cursor:pointer; text-decoration:none; color:inherit;
+  display:flex; flex-direction:column; gap:.2rem;
+  transition:box-shadow .15s,transform .1s;
+}
+.kpi-c:hover { box-shadow:0 4px 16px rgba(0,0,0,.1); transform:translateY(-1px); }
+.kpi-c-lbl { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#6b7280; }
+.kpi-c-val { font-size:1.55rem; font-weight:800; line-height:1; }
+.kpi-c-sub { font-size:.67rem; color:#b0bec5; }
+
+/* ── Results header ────────────────────────────────── */
+.res-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:.65rem; font-size:.81rem; flex-wrap:wrap; gap:.4rem;
+}
+.sort-sel {
+  border:1px solid rgba(0,0,0,.12); border-radius:7px;
+  padding:.35rem .7rem; font-size:.79rem; background:var(--card,#fff); cursor:pointer;
+}
+.density-tog { display:flex; align-items:center; gap:.3rem; font-size:.75rem; color:#6b7280; }
+.density-tog button {
+  border:1px solid rgba(0,0,0,.12); border-radius:5px;
+  padding:2px 8px; font-size:.72rem; background:var(--card,#fff); cursor:pointer;
+}
+.density-tog button.on { background:var(--primary,#0f6f8f); color:#fff; border-color:transparent; }
+
+/* ── View panels ───────────────────────────────────── */
+.vpanel { display:none; }
+.vpanel.active { display:block; }
+
+/* LIST VIEW */
+.list-scroll { overflow-x:auto; }
+#list-tbl {
+  width:100%; border-collapse:collapse;
+  background:var(--card,#fff); border-radius:var(--radius,10px);
+  border:1px solid rgba(0,0,0,.07); font-size:.79rem;
+}
+#list-tbl thead th {
+  padding:.58rem .75rem; text-align:left;
+  font-size:.65rem; text-transform:uppercase; letter-spacing:.05em;
+  color:#9ca3af; background:#f8fafc; font-weight:700;
+  border-bottom:1px solid rgba(0,0,0,.07);
+  cursor:pointer; user-select:none; white-space:nowrap;
+  transition:color .1s;
+}
+#list-tbl thead th:hover,
+#list-tbl thead th.sa { color:var(--primary,#0f6f8f); }
+#list-tbl tbody td {
+  padding:.58rem .75rem;
+  border-top:1px solid rgba(0,0,0,.04);
+  vertical-align:middle;
+}
+#list-tbl tbody td.comfortable { padding:.85rem .75rem; }
+#list-tbl tbody tr { cursor:pointer; transition:background .1s; }
+#list-tbl tbody tr:hover { background:#f8fafc; }
+.mono-sm { font-family:monospace; font-size:.75rem; color:#9ca3af; }
+
+/* GRID VIEW */
+.grid-wrap {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:.75rem;
+}
+.gc {
+  background:var(--card,#fff); border:1px solid rgba(0,0,0,.07);
+  border-radius:var(--radius,10px); padding:1.1rem 1.1rem .95rem;
+  display:flex; flex-direction:column; gap:.55rem; position:relative;
+  text-decoration:none; color:inherit;
+  transition:box-shadow .15s,transform .1s;
+}
+.gc:hover { box-shadow:0 6px 20px rgba(0,0,0,.09); transform:translateY(-2px); }
+.gc-av {
+  width:44px; height:44px; border-radius:50%; color:#fff;
+  font-size:.9rem; font-weight:700; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:inset 0 -2px 5px rgba(0,0,0,.14);
+}
+.gc-name  { font-size:.9rem; font-weight:700; line-height:1.25; color:var(--text,#111827); }
+.gc-empno { font-size:.7rem; font-family:monospace; color:#9ca3af; margin-top:.05rem; }
+.gc-pos   { font-size:.77rem; color:#374151; min-height:2.2em; line-height:1.4; }
+.gc-dept  { font-size:.71rem; color:#6b7280; display:flex; align-items:center; gap:.35rem; }
+.gc-dot   { width:7px; height:7px; border-radius:2px; flex-shrink:0; }
+.gc-email { font-size:.7rem; color:#9ca3af; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gc-foot  { display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:.45rem; }
+.gc-cor   {
+  position:absolute; top:.7rem; right:.7rem;
+  width:9px; height:9px; border-radius:50%;
+  border:2px solid var(--card,#fff); box-shadow:0 0 0 1px rgba(0,0,0,.12);
+}
+
+/* GALLERY VIEW */
+.gallery-wrap {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(185px,1fr));
+  gap:1rem;
+}
+.gal {
+  background:var(--card,#fff); border:1px solid rgba(0,0,0,.07);
+  border-radius:16px; padding:1.6rem 1rem 1.1rem;
+  display:flex; flex-direction:column; align-items:center; text-align:center; gap:.6rem;
+  text-decoration:none; color:inherit; position:relative;
+  transition:box-shadow .15s,transform .1s;
+}
+.gal:hover { box-shadow:0 8px 28px rgba(0,0,0,.1); transform:translateY(-3px); }
+.gal-av {
+  width:80px; height:80px; border-radius:50%; color:#fff;
+  font-size:1.8rem; font-weight:700;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.18); margin-bottom:.2rem;
+}
+.gal-name { font-size:.92rem; font-weight:700; line-height:1.3; color:var(--text,#111827); }
+.gal-pos  { font-size:.76rem; color:#6b7280; line-height:1.4; }
+.gal-tag  {
+  display:inline-block; padding:2px 10px; border-radius:999px;
+  font-size:.68rem; font-weight:600; background:#f1f5f9; color:#475569;
+}
+.gal-sdot {
+  position:absolute; top:.95rem; right:.95rem;
+  width:10px; height:10px; border-radius:50%;
+  border:2px solid var(--card,#fff); box-shadow:0 0 0 1px rgba(0,0,0,.12);
+}
+
+/* Status dots */
+.d-active   { background:#10b981; }
+.d-prob     { background:#f59e0b; }
+.d-sep      { background:#ef4444; }
+.d-inactive { background:#9ca3af; }
+
+/* Badges */
+.badge { font-size:.65rem; font-weight:700; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; }
+.b-reg  { background:#dbeafe; color:#1d4ed8; }
+.b-con  { background:#fef3c7; color:#92400e; }
+.b-cos  { background:#ede9fe; color:#6d28d9; }
+.b-cas  { background:#ccfbf1; color:#0f766e; }
+.b-oth  { background:#f1f5f9; color:#475569; }
+.b-ok   { background:#d1fae5; color:#065f46; }
+.b-miss { background:#fee2e2; color:#991b1b; }
+.b-exp  { background:#fef3c7; color:#92400e; }
+.b-act  { background:#d1fae5; color:#065f46; }
+.b-prob { background:#fef3c7; color:#92400e; }
+.b-leave{ background:#dbeafe; color:#1e40af; }
+.b-inact{ background:#f1f5f9; color:#475569; }
+.b-rsn  { background:#fee2e2; color:#991b1b; }
+
+/* Pagination */
+.pager { display:flex; align-items:center; justify-content:center; gap:.4rem; margin-top:1.25rem; flex-wrap:wrap; }
+.pg {
+  padding:.38rem .72rem; border-radius:7px; border:1px solid rgba(0,0,0,.12);
+  background:var(--card,#fff); cursor:pointer; font-size:.79rem; font-weight:500;
+  transition:background .1s;
+}
+.pg:hover:not([disabled]):not(.pga) { background:#f1f5f9; }
+.pga  { background:var(--primary,#0f6f8f); color:#fff; border-color:var(--primary,#0f6f8f); }
+.pg[disabled] { opacity:.35; cursor:default; }
+.pg-inf { font-size:.77rem; color:#9ca3af; padding:0 .3rem; }
+
+/* Empty state */
+.empty-st {
+  grid-column:1/-1;
+  background:var(--card,#fff); border:1px dashed rgba(0,0,0,.1);
+  border-radius:14px; padding:3.5rem 1rem; text-align:center; color:#9ca3af;
+}
+.empty-st h3 { font-size:1rem; color:#6b7280; margin:.5rem 0 .3rem; }
+
+/* Responsive */
+@media (max-width:760px) {
+  .dir-actions { width:100%; flex-wrap:wrap; }
+  .search-bar  { min-width:0; max-width:100%; flex:1 1 100%; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ══════════════════════════════════════════════════════════
+   A. GLOBAL HEADER
+══════════════════════════════════════════════════════════ #}
+<div class="dir-hdr">
+  <div class="dir-title">
+    <h2>Employee Directory</h2>
+    <p id="dir-sub">{{ stats.total }} employees across {{ dept_options|length }} departments</p>
+  </div>
+  <div class="dir-actions">
+    <div class="search-bar">
+      <input id="dir-q" type="search" autocomplete="off"
+             placeholder="Search by name, employee ID, position, department…">
+      <button id="dir-search-btn" onclick="doSearch()">🔍 Search</button>
+    </div>
+    <button class="btn-flt" id="flt-toggle" onclick="togglePanel()">
+      ⚙ Filters
+      <span class="flt-badge" id="flt-badge" style="display:none;">0</span>
+      <span id="flt-caret">▼</span>
+    </button>
+    <div class="vt-wrap">
+      <button class="vt-btn" id="vt-list"    onclick="setView('list')"   title="List view">☰ List</button>
+      <button class="vt-btn active" id="vt-grid" onclick="setView('grid')" title="Grid view">⊞ Grid</button>
+      <button class="vt-btn" id="vt-gallery" onclick="setView('gallery')" title="Gallery view">⬛ Gallery</button>
+    </div>
+    <a href="/employees/new" class="btn-p">+ Add Employee</a>
+    <button class="btn-o" onclick="exportCSV()">⬇ Export</button>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════
+   FILTER PANEL
+══════════════════════════════════════════════════════════ #}
+<div class="flt-panel" id="flt-panel">
+  <div class="flt-sec-hdr">Basic Filters</div>
+  <div class="flt-grid">
+    <div>
+      <label class="flt-lbl">Department</label>
+      <div class="chk-list">
+        {% for d in dept_options %}
+        <label class="chk-item">
+          <input type="checkbox" name="f_dept" value="{{ d.code }}"> {{ d.name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <label class="flt-lbl">Position</label>
+      <div class="chk-list">
+        {% for p in position_options %}
+        <label class="chk-item">
+          <input type="checkbox" name="f_pos" value="{{ p }}"> {{ p|truncate(28,True) }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <label class="flt-lbl">Employment Type</label>
+      <div class="chk-list">
+        {% for et in emp_type_options %}
+        <label class="chk-item">
+          <input type="checkbox" name="f_etype" value="{{ et }}"> {{ et|title }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <label class="flt-lbl">Status</label>
+      <div class="chk-list">
+        {% for s in ['ACTIVE','PROBATIONARY','ON_LEAVE','INACTIVE','SUSPENDED','RESIGNED','TERMINATED'] %}
+        <label class="chk-item">
+          <input type="checkbox" name="f_status" value="{{ s }}"> {{ s|title|replace('_',' ') }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="flt-sec-hdr">Advanced Filters</div>
+  <div class="flt-grid">
+    <div>
+      <label class="flt-lbl">Manager</label>
+      <select class="flt-sel" id="f-mgr">
+        <option value="">Any manager</option>
+        {% for m in manager_options %}
+        <option value="{{ m.id }}">{{ m.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="flt-lbl">Salary Grade</label>
+      <select class="flt-sel" id="f-grade">
+        <option value="">Any grade</option>
+        {% for g in grade_options %}
+        <option value="{{ g }}">{{ g }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="flt-lbl">Document Status</label>
+      <select class="flt-sel" id="f-doc">
+        <option value="">Any status</option>
+        <option value="ok">✔ Complete</option>
+        <option value="missing">⚠ Missing</option>
+        <option value="expiring">⏳ Expiring Soon</option>
+      </select>
+    </div>
+    <div>
+      <label class="flt-lbl">Date Hired From</label>
+      <input type="date" class="flt-date" id="f-from">
+    </div>
+    <div>
+      <label class="flt-lbl">Date Hired To</label>
+      <input type="date" class="flt-date" id="f-to">
+    </div>
+    <div>
+      <label class="flt-lbl">Org Health Flags</label>
+      <label class="chk-item"><input type="checkbox" id="f-nomgr"> No Manager Assigned</label>
+      <label class="chk-item" style="margin-top:.3rem;"><input type="checkbox" id="f-nopos"> No Position Mapped</label>
+    </div>
+  </div>
+
+  <div class="flt-actions">
+    <button class="btn-apply" onclick="applyPanel()">Apply Filters</button>
+    <button class="btn-reset" onclick="resetAll()">Reset All</button>
+  </div>
+</div>
+
+{# Active chips row #}
+<div class="chips-row" id="chips-row"></div>
+
+{# ══════════════════════════════════════════════════════════
+   B. KPI STRIP
+══════════════════════════════════════════════════════════ #}
+<div class="kpi-strip">
+  <div class="card kpi-c" onclick="kpiClick('clear')" title="Show all employees">
+    <div class="kpi-c-lbl">👥 Total</div>
+    <div class="kpi-c-val" style="color:var(--primary,#0f6f8f);">{{ stats.total }}</div>
+    <div class="kpi-c-sub">all employees</div>
+  </div>
+  <div class="card kpi-c" onclick="kpiClick('status','ACTIVE')" title="Filter: Active">
+    <div class="kpi-c-lbl">✓ Active</div>
+    <div class="kpi-c-val" style="color:#059669;">{{ stats.by_status.get('ACTIVE',0) }}</div>
+    <div class="kpi-c-sub">→ details</div>
+  </div>
+  <div class="card kpi-c" onclick="kpiClick('doc','missing')" title="Employees with missing 201 documents">
+    <div class="kpi-c-lbl">⚠ Missing Docs</div>
+    <div class="kpi-c-val" style="color:{% if stats.missing_docs>0 %}#dc2626{% else %}#9ca3af{% endif %};">{{ stats.missing_docs }}</div>
+    <div class="kpi-c-sub">incomplete 201</div>
+  </div>
+  <div class="card kpi-c" onclick="kpiClick('doc','expiring')" title="Documents expiring in 30 days">
+    <div class="kpi-c-lbl">🔔 Expiring Docs</div>
+    <div class="kpi-c-val" style="color:{% if stats.expiring_30>0 %}#d97706{% else %}#9ca3af{% endif %};">{{ stats.expiring_30 }}</div>
+    <div class="kpi-c-sub">next 30 days</div>
+  </div>
+  <div class="card kpi-c" onclick="kpiClick('no_manager')" title="Active employees without a manager">
+    <div class="kpi-c-lbl">👤 No Manager</div>
+    <div class="kpi-c-val" style="color:{% if stats.no_manager>0 %}#d97706{% else %}#9ca3af{% endif %};">{{ stats.no_manager }}</div>
+    <div class="kpi-c-sub">supervisor missing</div>
+  </div>
+  <div class="card kpi-c" onclick="kpiClick('no_position')" title="Active employees not linked to a position">
+    <div class="kpi-c-lbl">📋 No Position</div>
+    <div class="kpi-c-val" style="color:{% if stats.no_position>0 %}#d97706{% else %}#9ca3af{% endif %};">{{ stats.no_position }}</div>
+    <div class="kpi-c-sub">not in plantilla</div>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════
+   RESULTS HEADER
+══════════════════════════════════════════════════════════ #}
+<div class="res-hdr">
+  <span id="res-count" style="color:#6b7280;"></span>
+  <div style="display:flex;align-items:center;gap:.65rem;">
+    <div class="density-tog" id="dens-tog" style="display:none;">
+      <span>Density:</span>
+      <button id="dn-compact" class="on" onclick="setDensity('compact')">Compact</button>
+      <button id="dn-comfort" onclick="setDensity('comfortable')">Comfortable</button>
+    </div>
+    <select class="sort-sel" id="sort-sel" onchange="onSort()">
+      <option value="last_name|asc">Name A–Z</option>
+      <option value="last_name|desc">Name Z–A</option>
+      <option value="department_name|asc">Department A–Z</option>
+      <option value="date_hired|desc">Newest Hire</option>
+      <option value="date_hired|asc">Oldest Hire</option>
+      <option value="employee_no|asc">Employee No.</option>
+    </select>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════
+   C. VIEW PANELS
+══════════════════════════════════════════════════════════ #}
+
+{# LIST VIEW #}
+<div class="vpanel" id="vp-list">
+  <div class="list-scroll">
+    <table id="list-tbl">
+      <thead>
+        <tr>
+          <th onclick="sortBy('employee_no')"    data-col="employee_no">Emp ID</th>
+          <th onclick="sortBy('last_name')"      data-col="last_name">Last Name</th>
+          <th onclick="sortBy('first_name')"     data-col="first_name">First Name</th>
+          <th onclick="sortBy('position_title')" data-col="position_title">Position</th>
+          <th onclick="sortBy('department_name')" data-col="department_name">Department</th>
+          <th onclick="sortBy('employment_type')" data-col="employment_type">Type</th>
+          <th onclick="sortBy('status')"          data-col="status">Status</th>
+          <th onclick="sortBy('manager_name')"    data-col="manager_name">Manager</th>
+          <th>Compliance</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="list-body">
+        <tr><td colspan="10" style="text-align:center;padding:2rem;color:#9ca3af;">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# GRID VIEW #}
+<div class="vpanel active" id="vp-grid">
+  <div class="grid-wrap" id="grid-body"></div>
+</div>
+
+{# GALLERY VIEW #}
+<div class="vpanel" id="vp-gallery">
+  <div class="gallery-wrap" id="gallery-body"></div>
+</div>
+
+{# PAGINATION #}
+<div class="pager" id="pager"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ═══════════════════════════════════════════════════════════
+   Employee Directory v3 — Client-Side Engine
+   ═══════════════════════════════════════════════════════════ */
+
+// ── Embedded data ────────────────────────────────────────────
+const EMP  = {{ employees_json | safe }};
+const META = JSON.parse('{{ filter_meta | safe }}');
+const INIT = {{ initial_filters | tojson }};
+
+const DCOL = {HR:'#4f46e5',IT:'#0891b2',FIN:'#059669',OPS:'#d97706',
+              MKT:'#dc2626',ADM:'#7c3aed',LGL:'#db2777',ENG:'#0d9488'};
+const dc = code => DCOL[code] || '#6b7280';
+
+// ── State ────────────────────────────────────────────────────
+const S = {
+  view:    localStorage.getItem('emp-v3') || 'grid',
+  query:   '',
+  f: {
+    dept:[], position:[], emp_type:[], status:[],
+    mgr_id:'', grade:'', doc:'',
+    no_mgr:false, no_pos:false,
+    dt_from:'', dt_to:''
+  },
+  sort:  { col:'last_name', dir:'asc' },
+  page:  1, per:24, density:'compact',
+  data:  []
+};
+
+// Init from URL params
+(function(){
+  const f = S.f;
+  if(INIT.dept?.length)         f.dept     = Array.isArray(INIT.dept) ? INIT.dept : [INIT.dept];
+  if(INIT.status?.length)       f.status   = Array.isArray(INIT.status) ? INIT.status : [INIT.status];
+  if(INIT.emp_type?.length)     f.emp_type = Array.isArray(INIT.emp_type) ? INIT.emp_type : [INIT.emp_type];
+  if(INIT.no_manager==='1')     f.no_mgr   = true;
+  if(INIT.no_position==='1')    f.no_pos   = true;
+  if(INIT.missing_docs==='1')   f.doc      = 'missing';
+  if(INIT.expiring)             f.doc      = 'expiring';
+})();
+
+// ── Filter engine ────────────────────────────────────────────
+function filter(){
+  let d = [...EMP];
+  const f = S.f;
+  if(S.query){
+    const q = S.query.toLowerCase();
+    d = d.filter(e =>
+      (e.last_name||'').toLowerCase().includes(q)||
+      (e.first_name||'').toLowerCase().includes(q)||
+      (e.employee_no||'').toLowerCase().includes(q)||
+      (e.position_title||'').toLowerCase().includes(q)||
+      (e.department_name||'').toLowerCase().includes(q)||
+      (e.work_email||'').toLowerCase().includes(q)
+    );
+  }
+  if(f.dept.length)     d = d.filter(e=>f.dept.includes(e.department_code));
+  if(f.position.length) d = d.filter(e=>f.position.includes(e.position_title));
+  if(f.emp_type.length) d = d.filter(e=>f.emp_type.includes(e.employment_type));
+  if(f.status.length)   d = d.filter(e=>f.status.includes(e.status));
+  if(f.mgr_id)          d = d.filter(e=>String(e.immediate_supervisor_id)===String(f.mgr_id));
+  if(f.grade)           d = d.filter(e=>e.job_grade===f.grade);
+  if(f.doc==='missing')  d = d.filter(e=>e.has_missing_docs);
+  if(f.doc==='expiring') d = d.filter(e=>e.has_expiring_docs);
+  if(f.doc==='ok')       d = d.filter(e=>!e.has_missing_docs&&!e.has_expiring_docs);
+  if(f.no_mgr)  d = d.filter(e=>!e.immediate_supervisor_id);
+  if(f.no_pos)  d = d.filter(e=>!e.position_id);
+  if(f.dt_from) d = d.filter(e=>e.date_hired&&e.date_hired>=f.dt_from);
+  if(f.dt_to)   d = d.filter(e=>e.date_hired&&e.date_hired<=f.dt_to);
+  // Sort
+  const col=S.sort.col, dir=S.sort.dir==='asc'?1:-1;
+  d.sort((a,b)=>{
+    const av=(a[col]||'').toString().toLowerCase();
+    const bv=(b[col]||'').toString().toLowerCase();
+    return av<bv?-dir:av>bv?dir:0;
+  });
+  S.data=[...d]; S.page=1;
+}
+
+function page(){ return S.data.slice((S.page-1)*S.per, S.page*S.per); }
+
+// ── Render orchestrator ──────────────────────────────────────
+function render(){
+  filter();
+  updateMeta();
+  renderChips();
+  const d = page();
+  if(S.view==='list')    renderList(d);
+  if(S.view==='grid')    renderGrid(d);
+  if(S.view==='gallery') renderGallery(d);
+  renderPager();
+  syncSort();
+}
+
+// ── List ─────────────────────────────────────────────────────
+function renderList(d){
+  const tb = document.getElementById('list-body');
+  if(!d.length){ tb.innerHTML=emptyRow(10); return; }
+  const pd = S.density==='comfortable';
+  tb.innerHTML = d.map(e=>`
+<tr onclick="nav(${e.id})">
+  <td class="mono-sm${pd?' comfortable':''}">${x(e.employee_no)}</td>
+  <td style="font-weight:600;"${pd?' class="comfortable"':''}>${x(e.last_name)}</td>
+  <td${pd?' class="comfortable"':''}>${x(e.first_name)}</td>
+  <td style="font-size:.77rem;"${pd?' class="comfortable"':''}>${x(e.position_title)||'<em style="color:#9ca3af">—</em>'}</td>
+  <td${pd?' class="comfortable"':''}>${x(e.department_name)||'—'}</td>
+  <td${pd?' class="comfortable"':''}>${tbadge(e.employment_type)}</td>
+  <td${pd?' class="comfortable"':''}>${sbadge(e.status)}</td>
+  <td style="font-size:.77rem;color:#6b7280;"${pd?' class="comfortable"':''}>${x(e.manager_name)||'—'}</td>
+  <td${pd?' class="comfortable"':''}>${cbadge(e)}</td>
+  <td${pd?' class="comfortable"':''}><a href="/employees/${e.id}" onclick="event.stopPropagation()" style="font-size:.74rem;font-weight:600;color:var(--primary,#0f6f8f);text-decoration:none;">View →</a></td>
+</tr>`).join('');
+}
+
+// ── Avatar helper — photo if present, initials fallback ──────
+function avatarHTML(e, cssClass, fallbackBg){
+  if (e.photo_path) {
+    return `<div class="${cssClass}" style="background:${fallbackBg};overflow:hidden;padding:0;">
+              <img src="/uploads/${e.photo_path}" alt=""
+                   style="width:100%;height:100%;object-fit:cover;display:block;"
+                   onerror="this.parentElement.innerHTML='${ini2(e).replace(/'/g, "\\'")}';this.parentElement.style.padding='';">
+            </div>`;
+  }
+  return `<div class="${cssClass}" style="background:${fallbackBg};">${ini2(e)}</div>`;
+}
+
+// ── Grid ─────────────────────────────────────────────────────
+function renderGrid(d){
+  const el = document.getElementById('grid-body');
+  if(!d.length){ el.innerHTML=`<div class="empty-st">${emptyHTML()}</div>`; return; }
+  el.innerHTML = d.map(e=>{
+    const col=dc(e.department_code);
+    return `<a href="/employees/${e.id}" class="gc">
+  <span class="gc-cor ${dotCls(e.status)}"></span>
+  <div style="display:flex;align-items:center;gap:.7rem;">
+    ${avatarHTML(e, 'gc-av', col)}
+    <div style="flex:1;min-width:0;">
+      <div class="gc-name">${x(e.last_name)}, ${x(e.first_name)}</div>
+      <div class="gc-empno">${x(e.employee_no)}</div>
+    </div>
+  </div>
+  <div class="gc-pos">${x(e.position_title)||'<em style="color:#9ca3af;font-style:normal;">—</em>'}</div>
+  <div class="gc-dept"><span class="gc-dot" style="background:${col};"></span>${x(e.department_name)||'—'}</div>
+  ${e.work_email?`<div class="gc-email">${x(e.work_email)}</div>`:''}
+  <div class="gc-foot">${tbadge(e.employment_type)} ${cbadge(e)}</div>
+</a>`;
+  }).join('');
+}
+
+// ── Gallery ──────────────────────────────────────────────────
+function renderGallery(d){
+  const el = document.getElementById('gallery-body');
+  if(!d.length){ el.innerHTML=`<div class="empty-st">${emptyHTML()}</div>`; return; }
+  el.innerHTML = d.map(e=>{
+    const col=dc(e.department_code);
+    return `<a href="/employees/${e.id}" class="gal">
+  <span class="gal-sdot ${dotCls(e.status)}"></span>
+  ${avatarHTML(e, 'gal-av', col)}
+  <div class="gal-name">${x(e.last_name)}, ${x(e.first_name)}</div>
+  <div class="gal-pos">${x(e.position_title)||''}</div>
+  <span class="gal-tag">${x(e.department_name)||'—'}</span>
+</a>`;
+  }).join('');
+}
+
+// ── Pagination ───────────────────────────────────────────────
+function renderPager(){
+  const total=S.data.length, pages=Math.ceil(total/S.per);
+  const el=document.getElementById('pager');
+  if(pages<=1){el.innerHTML='';return;}
+  const p=S.page, lo=Math.max(1,p-2), hi=Math.min(pages,p+2);
+  let h=`<button class="pg" ${p===1?'disabled':''} onclick="goP(${p-1})">‹</button>`;
+  if(lo>1){ h+=`<button class="pg" onclick="goP(1)">1</button>`; if(lo>2) h+=`<span class="pg-inf">…</span>`; }
+  for(let i=lo;i<=hi;i++) h+=`<button class="pg${i===p?' pga':''}" onclick="goP(${i})">${i}</button>`;
+  if(hi<pages){ if(hi<pages-1) h+=`<span class="pg-inf">…</span>`; h+=`<button class="pg" onclick="goP(${pages})">${pages}</button>`; }
+  h+=`<button class="pg" ${p===pages?'disabled':''} onclick="goP(${p+1})">›</button>`;
+  h+=`<span class="pg-inf">${(p-1)*S.per+1}–${Math.min(p*S.per,total)} of ${total}</span>`;
+  el.innerHTML=h;
+}
+function goP(p){
+  S.page=p;
+  const d=page();
+  if(S.view==='list') renderList(d);
+  if(S.view==='grid') renderGrid(d);
+  if(S.view==='gallery') renderGallery(d);
+  renderPager();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── Chips ────────────────────────────────────────────────────
+function renderChips(){
+  const f=S.f; const chips=[];
+  const p=(label,cls,rm)=>chips.push({label,cls,rm});
+  f.dept.forEach(d=>{
+    const o=META.dept_options.find(x=>x.code===d);
+    p(`Dept: ${o?o.name:d}`,'c-blue',()=>{f.dept=f.dept.filter(x=>x!==d);render();});
+  });
+  f.status.forEach(s=>p(s.replace(/_/g,' '),'c-blue',()=>{f.status=f.status.filter(x=>x!==s);render();}));
+  f.emp_type.forEach(t=>p(t,'c-blue',()=>{f.emp_type=f.emp_type.filter(x=>x!==t);render();}));
+  f.position.forEach(pos=>p(pos.length>22?pos.slice(0,22)+'…':pos,'c-blue',()=>{f.position=f.position.filter(x=>x!==pos);render();}));
+  if(f.mgr_id){const m=META.manager_options.find(o=>String(o.id)===String(f.mgr_id));p(`Mgr: ${m?m.name:f.mgr_id}`,'c-blue',()=>{f.mgr_id='';render();});}
+  if(f.grade) p(`Grade: ${f.grade}`,'c-blue',()=>{f.grade='';render();});
+  if(f.doc==='missing')  p('⚠ Missing Docs','c-red',()=>{f.doc='';render();});
+  if(f.doc==='expiring') p('⏳ Expiring Docs','c-amber',()=>{f.doc='';render();});
+  if(f.doc==='ok')       p('✔ Docs OK','c-teal',()=>{f.doc='';render();});
+  if(f.no_mgr) p('👤 No Manager','c-amber',()=>{f.no_mgr=false;render();});
+  if(f.no_pos) p('📋 No Position','c-amber',()=>{f.no_pos=false;render();});
+  if(f.dt_from) p(`From: ${f.dt_from}`,'c-blue',()=>{f.dt_from='';render();});
+  if(f.dt_to)   p(`To: ${f.dt_to}`,  'c-blue',()=>{f.dt_to='';render();});
+  if(S.query)   p(`"${S.query}"`,     'c-blue',()=>{S.query='';document.getElementById('dir-q').value='';render();});
+  window._chipRm=chips.map(c=>c.rm);
+  const el=document.getElementById('chips-row');
+  if(!chips.length){el.innerHTML='';return;}
+  el.innerHTML=chips.map((c,i)=>`<span class="chip ${c.cls}">${x(c.label)} <span class="chip-x" onclick="_chipRm[${i}]()">✕</span></span>`).join('')
+    +`<span onclick="resetAll()" style="font-size:.72rem;color:#9ca3af;cursor:pointer;margin-left:.2rem;">Clear all ✕</span>`;
+}
+
+// ── Meta / badges ────────────────────────────────────────────
+function updateMeta(){
+  const t=S.data.length, tot=EMP.length;
+  const hasF=hasFilters();
+  document.getElementById('res-count').innerHTML=
+    `<strong style="color:var(--text,#111827)">${t}</strong> employee${t!==1?'s':''} shown`+
+    (hasF||S.query?` <span style="color:#9ca3af">of ${tot} total</span>`:'');
+  document.getElementById('dir-sub').textContent=
+    hasF||S.query ? `${t} of ${tot} employees` :
+    `${tot} employees across ${META.dept_options.length} departments`;
+  // Filter badge
+  const cnt=filterCount();
+  const badge=document.getElementById('flt-badge'), btn=document.getElementById('flt-toggle');
+  badge.style.display=cnt?'':'none'; badge.textContent=cnt;
+  btn.classList.toggle('has-f',cnt>0);
+}
+
+function hasFilters(){
+  const f=S.f;
+  return f.dept.length||f.position.length||f.emp_type.length||f.status.length||
+         f.mgr_id||f.grade||f.doc||f.no_mgr||f.no_pos||f.dt_from||f.dt_to;
+}
+function filterCount(){
+  const f=S.f;
+  return f.dept.length+f.position.length+f.emp_type.length+f.status.length+
+    !!f.mgr_id+!!f.grade+!!f.doc+!!f.no_mgr+!!f.no_pos+!!f.dt_from+!!f.dt_to;
+}
+
+function syncSort(){
+  document.querySelectorAll('#list-tbl thead th[data-col]').forEach(th=>{
+    th.classList.remove('sa');
+    const raw=th.textContent.replace(/ [↑↓]$/,'');
+    th.textContent=raw;
+    if(th.dataset.col===S.sort.col){
+      th.classList.add('sa');
+      th.textContent=raw+(S.sort.dir==='asc'?' ↑':' ↓');
+    }
+  });
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function x(s){ if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ini2(e){
+  // First-name + Last-name initials, FL order (e.g., Gabriel Soriano → GS).
+  const f = (e.first_name||'').trim(), l = (e.last_name||'').trim();
+  const fi = f ? f[0] : '', li = l ? l[0] : '';
+  return (fi + li || '?').toUpperCase();
+}
+function nav(id){ window.location='/employees/'+id; }
+function dotCls(s){
+  if(s==='ACTIVE')return'd-active';
+  if(s==='PROBATIONARY')return'd-prob';
+  if(['RESIGNED','TERMINATED','SEPARATED'].includes(s))return'd-sep';
+  return'd-inactive';
+}
+function sbadge(s){
+  if(!s)return'—';
+  const m={ACTIVE:'b-act',PROBATIONARY:'b-prob',ON_LEAVE:'b-leave',RESIGNED:'b-rsn',TERMINATED:'b-rsn',SUSPENDED:'b-prob'};
+  return`<span class="badge ${m[s]||'b-inact'}">${s.replace(/_/g,' ')}</span>`;
+}
+function tbadge(t){
+  if(!t)return`<span class="badge b-oth">—</span>`;
+  const u=t.toUpperCase();
+  if(u.includes('REGULAR'))  return`<span class="badge b-reg">${x(t)}</span>`;
+  if(u.includes('CONTRACT')) return`<span class="badge b-con">${x(t)}</span>`;
+  if(u.includes('COS'))      return`<span class="badge b-cos">${x(t)}</span>`;
+  if(u.includes('CASUAL'))   return`<span class="badge b-cas">${x(t)}</span>`;
+  return`<span class="badge b-oth">${x(t)}</span>`;
+}
+function cbadge(e){
+  if(e.has_missing_docs)  return`<span class="badge b-miss">⚠ Missing</span>`;
+  if(e.has_expiring_docs) return`<span class="badge b-exp">⏳ Expiring</span>`;
+  return`<span class="badge b-ok">✔ OK</span>`;
+}
+function emptyRow(cols){
+  return`<tr><td colspan="${cols}"><div class="empty-st"><div style="font-size:2.2rem">👥</div><h3>No employees found</h3><p style="font-size:.83rem;margin:0">Try a different search or adjust your filters.</p></div></td></tr>`;
+}
+function emptyHTML(){
+  return`<div style="font-size:2.5rem">👥</div><h3>No employees found</h3><p style="font-size:.83rem;margin:0">Try a different search or adjust your filters.</p>`;
+}
+
+// ── Actions ──────────────────────────────────────────────────
+function doSearch(){
+  const btn=document.getElementById('dir-search-btn');
+  btn.classList.add('busy'); btn.textContent='⟳ Searching…';
+  S.query=document.getElementById('dir-q').value.trim();
+  setTimeout(()=>{ render(); btn.classList.remove('busy'); btn.innerHTML='🔍 Search'; },150);
+}
+
+function togglePanel(){
+  const p=document.getElementById('flt-panel'), open=p.classList.toggle('open');
+  document.getElementById('flt-caret').textContent=open?'▲':'▼';
+}
+
+function applyPanel(){
+  const f=S.f;
+  f.dept     =[...document.querySelectorAll('input[name=f_dept]:checked')].map(x=>x.value);
+  f.position =[...document.querySelectorAll('input[name=f_pos]:checked')].map(x=>x.value);
+  f.emp_type =[...document.querySelectorAll('input[name=f_etype]:checked')].map(x=>x.value);
+  f.status   =[...document.querySelectorAll('input[name=f_status]:checked')].map(x=>x.value);
+  f.mgr_id   =document.getElementById('f-mgr').value;
+  f.grade    =document.getElementById('f-grade').value;
+  f.doc      =document.getElementById('f-doc').value;
+  f.dt_from  =document.getElementById('f-from').value;
+  f.dt_to    =document.getElementById('f-to').value;
+  f.no_mgr   =document.getElementById('f-nomgr').checked;
+  f.no_pos   =document.getElementById('f-nopos').checked;
+  document.getElementById('flt-panel').classList.remove('open');
+  document.getElementById('flt-caret').textContent='▼';
+  render();
+}
+
+function resetAll(){
+  const f=S.f;
+  f.dept=[];f.position=[];f.emp_type=[];f.status=[];
+  f.mgr_id='';f.grade='';f.doc='';
+  f.no_mgr=false;f.no_pos=false;f.dt_from='';f.dt_to='';
+  S.query='';
+  document.getElementById('dir-q').value='';
+  document.querySelectorAll('.flt-panel input[type=checkbox]').forEach(x=>x.checked=false);
+  ['f-mgr','f-grade','f-doc'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-from').value='';
+  document.getElementById('f-to').value='';
+  render();
+}
+
+function kpiClick(type, val){
+  const f=S.f;
+  if(type==='clear')   { resetAll(); return; }
+  if(type==='status')  { f.status=f.status.includes(val)?[]:  [val]; }
+  if(type==='doc')     { f.doc   =f.doc===val?'':val; }
+  if(type==='no_manager')  { f.no_mgr=!f.no_mgr; }
+  if(type==='no_position') { f.no_pos=!f.no_pos; }
+  render();
+}
+
+function setView(v){
+  S.view=v; localStorage.setItem('emp-v3',v);
+  document.querySelectorAll('.vpanel').forEach(el=>el.classList.remove('active'));
+  document.getElementById('vp-'+v).classList.add('active');
+  document.querySelectorAll('.vt-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('vt-'+v).classList.add('active');
+  document.getElementById('dens-tog').style.display=v==='list'?'flex':'none';
+  const d=page();
+  if(v==='list')    renderList(d);
+  if(v==='grid')    renderGrid(d);
+  if(v==='gallery') renderGallery(d);
+}
+
+function onSort(){
+  const [col,dir]=document.getElementById('sort-sel').value.split('|');
+  S.sort={col,dir}; render();
+}
+function sortBy(col){
+  S.sort.dir=S.sort.col===col&&S.sort.dir==='asc'?'desc':'asc';
+  S.sort.col=col;
+  const v=`${col}|${S.sort.dir}`;
+  const sel=document.getElementById('sort-sel');
+  if([...sel.options].some(o=>o.value===v)) sel.value=v;
+  render();
+}
+
+function setDensity(d){
+  S.density=d;
+  document.getElementById('dn-compact').classList.toggle('on',d==='compact');
+  document.getElementById('dn-comfort').classList.toggle('on',d==='comfortable');
+  renderList(page());
+}
+
+function exportCSV(){
+  const cols=['employee_no','last_name','first_name','position_title','department_name','employment_type','status','manager_name','work_email','date_hired','job_grade'];
+  const hdrs=['Employee ID','Last Name','First Name','Position','Department','Employment Type','Status','Manager','Email','Date Hired','Grade'];
+  const rows=[hdrs.join(',')];
+  S.data.forEach(e=>rows.push(cols.map(c=>`"${String(e[c]||'').replace(/"/g,'""')}"`).join(',')));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download=`employees_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ── Enter key on search ──────────────────────────────────────
+document.getElementById('dir-q').addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
+
+// ── Init ─────────────────────────────────────────────────────
+setView(S.view);
+render();
+</script>
+{% endblock %}

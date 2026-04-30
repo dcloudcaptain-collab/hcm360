@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block page_title %}Request Feedback{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Request Feedback</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Ask someone to provide feedback about an employee.</p>
+  </div>
+  <a href="{{ url_for('feedback.index') }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.85rem;color:#374151;text-decoration:none;">&larr; Dashboard</a>
+</div>
+
+<div class="card" style="padding:1.25rem;max-width:600px;">
+  <form method="POST" action="{{ url_for('feedback.request_submit') }}">
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Who is being reviewed? <span style="color:#dc2626;">*</span></label>
+      <select name="subject_id" required
+              style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;box-sizing:border-box;">
+        <option value="">-- Select employee to review --</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.full_name }} ({{ emp.department_name or 'N/A' }})</option>
+        {% endfor %}
+      </select>
+      <span style="font-size:.7rem;color:#9ca3af;">The person who will be evaluated.</span>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Who should respond? <span style="color:#dc2626;">*</span></label>
+      <select name="respondent_id" required
+              style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;box-sizing:border-box;">
+        <option value="">-- Select who will give feedback --</option>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.full_name }} ({{ emp.department_name or 'N/A' }})</option>
+        {% endfor %}
+      </select>
+      <span style="font-size:.7rem;color:#9ca3af;">The person who will write the feedback.</span>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Feedback Type <span style="color:#dc2626;">*</span></label>
+      <select name="feedback_type" required
+              style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;box-sizing:border-box;">
+        <option value="PEER">Peer — colleague at same level</option>
+        <option value="UPWARD">Upward — subordinate reviewing supervisor</option>
+        <option value="DOWNWARD">Downward — supervisor reviewing direct report</option>
+        <option value="SELF">Self — self-assessment</option>
+        <option value="EXTERNAL">External — client or stakeholder</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Message / Context</label>
+      <textarea name="message" rows="3" placeholder="What should the respondent focus on? e.g., Q1 performance, project collaboration, leadership..."
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;box-sizing:border-box;"></textarea>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Due Date</label>
+      <input type="date" name="due_date"
+             style="padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+
+    <div style="display:flex;gap:.5rem;">
+      <button type="submit"
+              style="padding:8px 22px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Send Request
+      </button>
+      <a href="{{ url_for('feedback.index') }}" style="padding:8px 18px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;text-decoration:none;color:#374151;">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

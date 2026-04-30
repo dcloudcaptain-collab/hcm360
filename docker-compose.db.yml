@@ -1,0 +1,50 @@
+version: "3.9"
+
+# ================================================================
+# HCM360 CENTRALIZED HRIS DATABASE
+# Port  : 5440 (host) → 5432 (container)
+# DB    : hris_central
+# Usage : docker compose -f docker-compose.db.yml up -d
+# ================================================================
+
+services:
+  hris_db:
+    image: postgres:15
+    container_name: hris_central_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       hris_central
+      POSTGRES_USER:     hris_admin
+      POSTGRES_PASSWORD: hris_secure_pw   # change in production
+    ports:
+      - "5440:5432"
+    volumes:
+      - hris_db_data:/var/lib/postgresql/data
+      - ./db/hris_schema.sql:/docker-entrypoint-initdb.d/01_hris_schema.sql:ro
+      - ./db/hris_change_tracking.sql:/docker-entrypoint-initdb.d/02_hris_change_tracking.sql:ro
+      - ./db/hris_analytics_ai.sql:/docker-entrypoint-initdb.d/03_hris_analytics_ai.sql:ro
+      - ./db/hris_ai_services.sql:/docker-entrypoint-initdb.d/04_hris_ai_services.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hris_admin -d hris_central"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    command: >
+      postgres
+        -c max_connections=200
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+        -c work_mem=4MB
+        -c maintenance_work_mem=64MB
+        -c wal_buffers=16MB
+        -c checkpoint_completion_target=0.9
+        -c random_page_cost=1.1
+        -c effective_io_concurrency=200
+        -c autovacuum=on
+        -c log_min_duration_statement=500
+        -c log_line_prefix='%t [%p] %u@%d '
+
+volumes:
+  hris_db_data:
+    driver: local

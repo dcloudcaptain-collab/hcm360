@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block page_title %}KPI Builder{% endblock %}
+{% block content %}
+<section class="card">
+  <h3>KPI Query Registry</h3>
+  <p class="small">This clean build includes a registry for SQL-backed KPI definitions and API exposure. Query execution governance should still be hardened before production use.</p>
+  <table><thead><tr><th>Code</th><th>Label</th><th>SQL Key</th><th>Description</th></tr></thead><tbody>{% for k in kpis %}<tr><td>{{ k.kpi_code }}</td><td>{{ k.kpi_label }}</td><td>{{ k.sql_key }}</td><td>{{ k.description }}</td></tr>{% endfor %}</tbody></table>
+</section>
+{% endblock %}

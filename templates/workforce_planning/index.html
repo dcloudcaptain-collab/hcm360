@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block page_title %}Workforce Planning{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Workforce Planning</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Scenario modeling, headcount projections, and cost analysis.</p>
+  </div>
+  <a href="/workforce-planning/scenarios/new" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;background:var(--primary,#4f46e5);color:#fff;">+ New Scenario</a>
+</div>
+
+{# Stats #}
+{% if stats %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1.25rem;">
+  {% for label, key, color in [
+    ('Total Scenarios','total_scenarios','#4f46e5'), ('Active','active_scenarios','#16a34a'),
+    ('Draft','draft_scenarios','#d97706'),
+    ('Projected Cost (Active)','active_projected_cost','#2563eb'),
+    ('Skill Gaps','skill_gaps','#dc2626')
+  ] %}
+  <div class="card" style="padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;color:{{ color }};">
+      {% if 'cost' in key %}₱{{ '{:,.0f}'.format(stats[key] or 0) }}{% else %}{{ stats[key] or 0 }}{% endif %}
+    </div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Current vs Planned #}
+{% if current_vs_planned %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Current vs Planned Headcount (Active Scenario)</strong>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Department</th>
+        <th style="padding:6px 8px;text-align:center;">Current</th>
+        <th style="padding:6px 8px;text-align:center;">Planned</th>
+        <th style="padding:6px 8px;text-align:center;">Variance</th>
+        <th style="padding:6px 8px;">Visual</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in current_vs_planned %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ row.department }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;">{{ row.current_hc }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;color:var(--primary,#4f46e5);">{{ row.planned_hc }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;color:{% if row.variance > 0 %}#16a34a{% elif row.variance < 0 %}#dc2626{% else %}#6b7280{% endif %};">
+          {% if row.variance > 0 %}+{% endif %}{{ row.variance }}
+        </td>
+        <td style="padding:6px 8px;">
+          {% set max_hc = [row.current_hc, row.planned_hc]|max or 1 %}
+          <div style="display:flex;gap:2px;align-items:center;">
+            <div style="width:{{ (row.current_hc / max_hc * 80)|int }}px;height:8px;background:#94a3b8;border-radius:2px;" title="Current"></div>
+            <div style="width:{{ (row.planned_hc / max_hc * 80)|int }}px;height:8px;background:var(--primary,#4f46e5);border-radius:2px;opacity:.6;" title="Planned"></div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# Scenarios List #}
+{% if scenarios %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#f8fafc;color:#6b7280;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:10px 12px;text-align:left;">Scenario</th>
+        <th style="padding:10px 12px;">Type</th>
+        <th style="padding:10px 12px;">Horizon</th>
+        <th style="padding:10px 12px;">Plan Lines</th>
+        <th style="padding:10px 12px;text-align:right;">Projected Cost</th>
+        <th style="padding:10px 12px;">Status</th>
+        <th style="padding:10px 12px;">Created By</th>
+        <th style="padding:10px 12px;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in scenarios %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:10px 12px;">
+          <a href="/workforce-planning/scenarios/{{ s.id }}" style="font-weight:600;color:var(--primary,#4f46e5);">{{ s.name }}</a>
+          {% if s.description %}<div style="font-size:.72rem;color:#9ca3af;">{{ s.description[:60] }}{% if s.description|length > 60 %}...{% endif %}</div>{% endif %}
+        </td>
+        <td style="padding:10px 12px;text-align:center;font-size:.78rem;">{{ s.scenario_type }}</td>
+        <td style="padding:10px 12px;text-align:center;font-size:.78rem;">{{ s.horizon_months }}mo</td>
+        <td style="padding:10px 12px;text-align:center;font-weight:700;">{{ s.plan_lines }}</td>
+        <td style="padding:10px 12px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(s.projected_cost or 0) }}</td>
+        <td style="padding:10px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if s.status=='ACTIVE' %}#dcfce7;color:#166534{% elif s.status=='DRAFT' %}#fef9c3;color:#854d0e{% elif s.status=='APPROVED' %}#dbeafe;color:#1d4ed8{% else %}#f1f5f9;color:#64748b{% endif %};">{{ s.status }}</span>
+        </td>
+        <td style="padding:10px 12px;text-align:center;font-size:.8rem;">{{ s.created_by_name or '—' }}</td>
+        <td style="padding:10px 12px;text-align:center;">
+          <a href="/workforce-planning/scenarios/{{ s.id }}" style="font-size:.8rem;color:var(--primary,#4f46e5);font-weight:600;">View →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding:3rem;text-align:center;color:#9ca3af;">No scenarios yet. Create one to start planning.</div>
+{% endif %}
+
+{% endblock %}

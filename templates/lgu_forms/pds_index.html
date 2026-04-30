@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block page_title %}Personal Data Sheets{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📋 Personal Data Sheets (CSC Form 212)</h2>
+       <div class="sub">Manage employee PDS — draft, submit, verify</div></div>
+</div>
+
+<div class="filters">
+  <a href="?" class="{{ 'active' if not status_filter else '' }}">All</a>
+  {% for s in ['DRAFT','SUBMITTED','VERIFIED','ARCHIVED'] %}
+  <a href="?status={{ s }}" class="{{ 'active' if status_filter == s else '' }}">{{ s.title() }}</a>
+  {% endfor %}
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr><th>Employee</th><th>Department</th><th>Version</th><th>As Of</th>
+        <th>Status</th><th>Submitted</th><th>Verified</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td><div style="font-weight:600;">{{ r.full_name }}</div>
+          <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div></td>
+      <td>{{ r.department_name or '—' }}</td>
+      <td style="font-family:monospace;">v{{ r.version }}</td>
+      <td>{{ r.as_of_date.strftime('%b %d, %Y') if r.as_of_date else '—' }}</td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td style="font-size:.8rem;">{{ r.submitted_at.strftime('%b %d') if r.submitted_at else '—' }}</td>
+      <td style="font-size:.8rem;">{{ r.verified_at.strftime('%b %d') if r.verified_at else '—' }}</td>
+      <td>
+        {% if r.status == 'SUBMITTED' %}
+          <button onclick="verifyPds({{ r.id }})" class="btn-xs btn-green">✓ Verify</button>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">📋</div><div style="font-weight:600;">No PDS records yet.</div>
+  <div style="font-size:.85rem;margin-top:.3rem;">Employees file their own PDS at /me/pds.</div>
+</div>
+{% endif %}
+
+<script>
+  async function verifyPds(id) {
+    if (!confirm('Mark this PDS as verified?')) return;
+    const r = await fetch(`/pds/${id}/verify`, {method:'POST'});
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endblock %}

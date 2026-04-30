@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block page_title %}Life Events{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Life Events</h2>
+  <a href="/benefits" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.85rem;display:block;margin-bottom:.5rem;">Report Life Event</strong>
+  <form method="post" action="/benefits/life-events/new" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
+    <div style="min-width:200px;flex:1;"><label style="font-size:.68rem;color:#6b7280;display:block;">Employee</label>
+      <select name="employee_id" required style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;">
+        <option value="">— Select —</option>
+        {% for u in g.users %}<option value="{{ u.id }}">{{ u.display_name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Event Type</label>
+      <select name="event_type" required style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;">
+        {% for t in ['MARRIAGE','BIRTH','ADOPTION','DIVORCE','DEATH','JOB_CHANGE'] %}<option value="{{ t }}">{{ t|replace('_',' ') }}</option>{% endfor %}
+      </select>
+    </div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Date</label><input name="event_date" type="date" required style="border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;"></div>
+    <div style="flex:1;"><label style="font-size:.68rem;color:#6b7280;display:block;">Description</label><input name="description" placeholder="Details..." style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;"></div>
+    <button type="submit" style="padding:6px 16px;font-size:.85rem;font-weight:700;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:5px;cursor:pointer;">Create</button>
+  </form>
+</div>
+{% if events %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:#f8fafc;color:#6b7280;font-size:.72rem;text-transform:uppercase;">
+      <th style="padding:10px 12px;text-align:left;">Employee</th><th style="padding:10px 12px;">Event</th><th style="padding:10px 12px;">Date</th><th style="padding:10px 12px;">Window</th><th style="padding:10px 12px;">Status</th><th style="padding:10px 12px;">Action</th>
+    </tr></thead>
+    <tbody>
+      {% for ev in events %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:8px 12px;font-weight:500;">{{ ev.employee_name }}</td>
+        <td style="padding:8px 12px;text-align:center;">{{ ev.event_type|replace('_',' ') }}</td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:.8rem;">{{ ev.event_date }}</td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;">{{ ev.change_window_days }}d</td>
+        <td style="padding:8px 12px;text-align:center;"><span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:{% if ev.status=='OPEN' %}#fef9c3;color:#854d0e{% elif ev.status=='CLOSED' %}#dcfce7;color:#166534{% else %}#f1f5f9;color:#64748b{% endif %};">{{ ev.status }}</span></td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if ev.status == 'OPEN' and session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') %}
+          <form method="post" action="/benefits/life-events/{{ ev.id }}/close" style="display:inline;">
+            <button style="font-size:.72rem;padding:3px 10px;background:#16a34a;color:#fff;border:none;border-radius:4px;cursor:pointer;">Close</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding:3rem;text-align:center;color:#9ca3af;">No life events recorded.</div>
+{% endif %}
+{% endblock %}

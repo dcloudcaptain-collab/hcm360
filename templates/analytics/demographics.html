@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block page_title %}HR Demographics Report{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<style>
+  @media print { .sidebar,.topbar,.no-print{display:none!important;} .main{margin:0!important;padding:0!important;} .layout{display:block!important;} }
+  .demo-table { width:100%;border-collapse:collapse;font-size:.85rem; }
+  .demo-table th { padding:8px 12px;text-align:left;background:rgba(0,0,0,.03);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280; }
+  .demo-table td { padding:7px 12px;border-top:1px solid rgba(0,0,0,.06); }
+  .demo-table .num { text-align:right;font-weight:600; }
+  .demo-table .male { color:#2563eb; }
+  .demo-table .female { color:#ec4899; }
+  .demo-table .total-col { font-weight:800;color:#374151; }
+  .demo-section { margin-bottom:1.5rem; }
+  .demo-section h3 { font-size:.95rem;font-weight:700;margin:0 0 .5rem;padding-bottom:.3rem;border-bottom:2px solid var(--primary,#4f46e5); }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;" class="no-print">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">HR Demographics & Workforce Profile</h2>
+  <div style="display:flex;gap:.5rem;">
+    <button onclick="window.print()" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;background:none;cursor:pointer;">Print</button>
+    <a href="/reports/" style="font-size:.85rem;color:var(--primary,#4f46e5);padding:7px 0;">← Reports</a>
+  </div>
+</div>
+
+<div style="text-align:center;margin-bottom:1rem;">
+  <div style="font-size:.8rem;color:#6b7280;">Republic of the Philippines · Municipality of Mariveles, Bataan</div>
+  <div style="font-size:1rem;font-weight:700;">HUMAN RESOURCE WORKFORCE PROFILE REPORT</div>
+  <div style="font-size:.8rem;color:#9ca3af;">All data with Male/Female breakdown · PRIME-HRM Level 2 Compliance</div>
+</div>
+
+{% macro render_table(title, data, chart_id=None) %}
+<section class="demo-section">
+  <h3>{{ title }}</h3>
+  <div style="display:flex;gap:1rem;align-items:flex-start;">
+    <table class="demo-table" style="flex:1;">
+      <thead><tr><th>Category</th><th class="num" style="color:#2563eb;">Male</th><th class="num" style="color:#ec4899;">Female</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        {% for row in data %}
+        <tr>
+          <td>{{ row.category or '—' }}</td>
+          <td class="num male">{{ row.male_count or 0 }}</td>
+          <td class="num female">{{ row.female_count or 0 }}</td>
+          <td class="num total-col">{{ row.total or 0 }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:1rem;">No data available</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if chart_id and data %}
+    <div style="width:280px;flex-shrink:0;" class="no-print">
+      <canvas id="{{ chart_id }}" height="180"></canvas>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endmacro %}
+
+{{ render_table('1. Gender Profile (Overall & by Department)', reports.gender_profile, 'chart_gender') }}
+{{ render_table('2. Age Profile', reports.age_profile, 'chart_age') }}
+{{ render_table('3. Status of Appointment', reports.appointment_status, 'chart_appt') }}
+{{ render_table('4. Rank Classification', reports.rank_classification) }}
+{{ render_table('5. Educational Attainment', reports.educational_attainment, 'chart_edu') }}
+{{ render_table('6. Eligibility Profile', reports.eligibility_profile) }}
+{{ render_table('7. Plantilla Summary', reports.plantilla_summary, 'chart_plantilla') }}
+{{ render_table('8. Salary Grade Distribution', reports.salary_grade_dist) }}
+{{ render_table('9. Training Participation (' + year|string + ')', reports.training_participation) }}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function barChart(id, labels, males, females) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Male', data: males, backgroundColor: '#3b82f6' },
+          { label: 'Female', data: females, backgroundColor: '#ec4899' }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } },
+        scales: { x: { ticks: { font: { size: 9 } } }, y: { beginAtZero: true, ticks: { font: { size: 9 } } } }
+      }
+    });
+  }
+
+  {% for chart_id, data_key in [('chart_gender','gender_profile'),('chart_age','age_profile'),('chart_appt','appointment_status'),('chart_edu','educational_attainment'),('chart_plantilla','plantilla_summary')] %}
+  {% set data = reports[data_key] %}
+  {% if data %}
+  barChart('{{ chart_id }}',
+    {{ data|map(attribute='category')|list|tojson }},
+    {{ data|map(attribute='male_count')|list|tojson }},
+    {{ data|map(attribute='female_count')|list|tojson }});
+  {% endif %}
+  {% endfor %}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,75 @@
+{# Shared styles for G08-G18 pages — imported by each template #}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between;
+       flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .page-head .sub { font-size:.85rem; color:#6b7280; }
+
+  .btn { display:inline-flex; align-items:center; gap:.35rem; padding:8px 16px;
+     border-radius:8px; font-size:.85rem; font-weight:600; text-decoration:none;
+     cursor:pointer; border:none; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .btn-green   { background:#16a34a; color:#fff; }
+  .btn-amber   { background:#f59e0b; color:#fff; }
+  .btn-red     { background:#dc2626; color:#fff; }
+  .btn-xs      { padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px; }
+
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:11px; padding:1.1rem 1.25rem; }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:.85rem; margin-bottom:1rem; }
+  .kpi { background:#fff; border:1px solid #e5e7eb; border-radius:11px; padding:.85rem 1rem; }
+  .kpi .lbl { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
+  .kpi .num { font-size:1.7rem; font-weight:800; margin-top:.2rem; line-height:1; color:#111827; }
+  .kpi.red   .num { color:#dc2626; }
+  .kpi.amber .num { color:#d97706; }
+  .kpi.green .num { color:#16a34a; }
+  .kpi.blue  .num { color:#2563eb; }
+  .kpi.indigo .num { color:#4f46e5; }
+
+  table.dt { width:100%; border-collapse:collapse; font-size:.87rem; background:#fff;
+     border-radius:11px; overflow:hidden; border:1px solid #e5e7eb; }
+  table.dt th { text-align:left; padding:.6rem .85rem; background:#f9fafb; color:#6b7280;
+     font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.5px solid #e5e7eb; }
+  table.dt td { padding:.65rem .85rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  table.dt tbody tr:last-child td { border-bottom:none; }
+  table.dt tbody tr:hover td { background:#f9fafb; }
+
+  .status-badge { display:inline-block; padding:2px 10px; border-radius:999px;
+     font-size:.72rem; font-weight:700; }
+  .s-upcoming   { background:#fef3c7; color:#92400e; }
+  .s-eligible   { background:#dbeafe; color:#1d4ed8; }
+  .s-awarded    { background:#dcfce7; color:#166534; }
+  .s-waived     { background:#f3f4f6; color:#6b7280; }
+  .s-draft      { background:#f3f4f6; color:#6b7280; }
+  .s-submitted  { background:#dbeafe; color:#1d4ed8; }
+  .s-verified   { background:#dcfce7; color:#166534; }
+  .s-archived   { background:#f3f4f6; color:#6b7280; }
+  .s-pending    { background:#fef3c7; color:#92400e; }
+  .s-signed     { background:#dcfce7; color:#166534; }
+  .s-declined   { background:#fee2e2; color:#991b1b; }
+  .s-high       { background:#fee2e2; color:#991b1b; }
+  .s-medium     { background:#fef3c7; color:#92400e; }
+  .s-low        { background:#dcfce7; color:#166534; }
+
+  .filters { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.9rem; }
+  .filters a { padding:5px 12px; border-radius:999px; font-size:.78rem; font-weight:600;
+      text-decoration:none; border:1.5px solid #e5e7eb; color:#374151; background:#fff; }
+  .filters a.active { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:.9rem; }
+  @media (max-width:720px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .f-group { display:flex; flex-direction:column; gap:.3rem; }
+  .f-group label { font-size:.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .f-group input, .f-group select, .f-group textarea {
+     width:100%; padding:.55rem .7rem; border:1.5px solid #d1d5db; border-radius:8px;
+     font-size:.9rem; font-family:inherit; }
+  .f-group textarea { min-height:70px; resize:vertical; }
+
+  .factor-chip { display:inline-block; background:#fef3c7; color:#92400e;
+     padding:2px 8px; border-radius:5px; margin:2px; font-size:.72rem; font-weight:600; }
+  .progress-bar { height:8px; background:#f3f4f6; border-radius:999px; overflow:hidden; }
+  .progress-bar > div { height:100%; }
+</style>

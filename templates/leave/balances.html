@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}Leave Balances{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Leave Balances — {{ year }}</h2>
+  <a href="/reports/leave" style="font-size:.85rem;color:var(--primary,#4f46e5);">Leave Report →</a>
+</div>
+
+{# Employee filter #}
+<form method="get" class="card" style="padding:.75rem 1rem;display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.25rem;">Department</label>
+    <select name="department_id" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if filters.department_id|string==d.id|string %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.25rem;">Search Name</label>
+    <input type="text" name="q" value="{{ filters.q or '' }}" placeholder="Employee name..."
+           style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+  </div>
+  <button type="submit" style="padding:6px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+</form>
+
+{# Balance matrix — employees as rows, leave types as columns #}
+<section class="card" style="padding:0;overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.825rem;white-space:nowrap;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);">
+        <th style="padding:10px 14px;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;position:sticky;left:0;background:rgba(249,250,251,1);">Employee</th>
+        {% for lt in leave_types %}
+        <th style="padding:10px 10px;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;" title="{{ lt.name }}">
+          {{ lt.code }}
+        </th>
+        {% endfor %}
+        <th style="padding:10px 14px;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for emp in employees %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 14px;font-weight:500;position:sticky;left:0;background:#fff;">
+          <a href="/employees/{{ emp.id }}" style="color:inherit;text-decoration:none;">{{ emp.full_name }}</a>
+          <div style="font-size:.72rem;color:#9ca3af;">{{ emp.department }}</div>
+        </td>
+        {% for lt in leave_types %}
+        {% set bal = balances.get(emp.id, {}).get(lt.id) %}
+        <td style="padding:8px 10px;text-align:center;">
+          {% if bal %}
+          <div style="font-size:.875rem;font-weight:700;
+            color:{% if bal.balance <= 0 %}#dc2626{% elif bal.balance < 3 %}#d97706{% else %}#166534{% endif %};">
+            {{ '%.1f'|format(bal.balance) }}
+          </div>
+          <div style="font-size:.68rem;color:#9ca3af;">/ {{ '%.0f'|format(bal.entitled_days) }}</div>
+          {% else %}
+          <span style="color:#d1d5db;">—</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+        <td style="padding:8px 14px;text-align:center;">
+          <a href="/leave/balances/{{ emp.id }}" style="font-size:.775rem;color:var(--primary,#4f46e5);">Detail</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="{{ leave_types|length + 2 }}" style="padding:2rem;text-align:center;color:#9ca3af;">No employees found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div style="margin-top:.75rem;font-size:.775rem;color:#9ca3af;">
+  Values show remaining balance / entitlement. <span style="color:#dc2626;">Red</span> = exhausted, <span style="color:#d97706;">Amber</span> = low (< 3 days).
+</div>
+
+{% endblock %}

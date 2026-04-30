@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block page_title %}Payroll Runs{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Payroll Runs</h2>
+  <a href="/payroll/runs/new"
+     style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border-radius:7px;font-size:.875rem;font-weight:600;text-decoration:none;">
+    + New Pay Run
+  </a>
+</div>
+
+{# Status filter #}
+<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('DRAFT','Draft'),('PROCESSING','Processing'),('SUBMITTED','For Approval'),('APPROVED','Approved'),('COMPLETED','Completed')] %}
+  <a href="/payroll/runs?status={{ s }}"
+     style="padding:5px 14px;border-radius:20px;font-size:.825rem;font-weight:{% if status==s %}700{% else %}400{% endif %};
+            background:{% if status==s %}var(--primary,#4f46e5){% else %}rgba(0,0,0,.05){% endif %};
+            color:{% if status==s %}#fff{% else %}#6b7280{% endif %};text-decoration:none;">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Run #</th>
+        <th style="padding:10px 14px;">Cutoff Period</th>
+        <th style="padding:10px 14px;">Pay Date</th>
+        <th style="padding:10px 14px;">Employees</th>
+        <th style="padding:10px 14px;">Gross Pay</th>
+        <th style="padding:10px 14px;">Net Pay</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:600;font-family:monospace;">
+          <a href="/payroll/runs/{{ r.id }}" style="color:var(--primary,#4f46e5);text-decoration:none;">#{{ r.id }}</a>
+        </td>
+        <td style="padding:9px 14px;">
+          <div style="font-weight:500;">{{ r.cutoff_start }} – {{ r.cutoff_end }}</div>
+          <div style="font-size:.72rem;color:#9ca3af;">{{ r.cutoff_type }}</div>
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.pay_date or '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-weight:600;">{{ r.employee_count or 0 }}</td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;">
+          ₱ {{ '{:,.2f}'.format(r.total_gross or 0) }}
+        </td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;font-weight:700;color:#166534;">
+          ₱ {{ '{:,.2f}'.format(r.total_net or 0) }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;
+            background:{% if r.status=='COMPLETED' %}#dcfce7{% elif r.status=='PROCESSING' %}#dbeafe{% elif r.status=='SUBMITTED' %}#fef9c3{% elif r.status=='APPROVED' %}#d1fae5{% else %}#f1f5f9{% endif %};
+            color:{% if r.status=='COMPLETED' %}#166534{% elif r.status=='PROCESSING' %}#1e40af{% elif r.status=='SUBMITTED' %}#854d0e{% elif r.status=='APPROVED' %}#065f46{% else %}#475569{% endif %};">
+            {{ r.status }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;white-space:nowrap;">
+          <a href="/payroll/runs/{{ r.id }}" style="font-size:.775rem;color:var(--primary,#4f46e5);">Detail</a>
+          &nbsp;
+          <a href="/payroll/register?run_id={{ r.id }}" style="font-size:.775rem;color:#6b7280;">Register</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="padding:2rem;text-align:center;color:#9ca3af;">No payroll runs found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if total > 20 %}
+<div style="display:flex;gap:.5rem;justify-content:center;margin-top:1rem;font-size:.875rem;">
+  {% if page > 1 %}
+  <a href="?status={{ status or '' }}&page={{ page-1 }}" style="padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;color:#374151;text-decoration:none;">Prev</a>
+  {% endif %}
+  <span style="padding:4px 12px;color:#6b7280;">Page {{ page }}</span>
+  {% if page * 20 < total %}
+  <a href="?status={{ status or '' }}&page={{ page+1 }}" style="padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;color:#374151;text-decoration:none;">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

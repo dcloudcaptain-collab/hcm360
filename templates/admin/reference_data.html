@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block page_title %}Reference Data Management{% endblock %}
+{% block content %}
+<section class="card">
+  <h3>Reference Tables</h3>
+  <table><thead><tr><th>Key</th><th>Table</th><th>Action</th></tr></thead><tbody>
+  {% for key, ref in references.items() %}
+  <tr><td>{{ key }}</td><td>{{ ref.table }}</td><td><a href="/admin/reference-data/{{ key }}">Open</a></td></tr>
+  {% endfor %}
+  </tbody></table>
+</section>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block page_title %}Dynamic Form Builder{% endblock %}
+{% block content %}
+<section class="card"><h3>Form Registry</h3><table><thead><tr><th>Form</th><th>Module</th><th>Description</th></tr></thead><tbody>{% for f in forms %}<tr><td>{{ f.form_name }}</td><td>{{ f.module_code }}</td><td>{{ f.description }}</td></tr>{% endfor %}</tbody></table></section>
+<section class="card"><h3>Fields</h3><table><thead><tr><th>Form ID</th><th>Label</th><th>Type</th><th>Required</th><th>Source</th></tr></thead><tbody>{% for field in fields %}<tr><td>{{ field.dynamic_form_id }}</td><td>{{ field.field_label }}</td><td>{{ field.field_type }}</td><td>{{ field.is_required }}</td><td>{{ field.data_source or '-' }}</td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

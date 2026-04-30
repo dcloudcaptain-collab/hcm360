@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Requested green palette:
+         Primary #006E00 · Secondary #0A640A · Accent #00780A · Dark #004D00 -->
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#004D00"/>
+      <stop offset="50%" stop-color="#006E00"/>
+      <stop offset="100%" stop-color="#00780A"/>
+    </linearGradient>
+    <radialGradient id="g2" cx="80%" cy="20%" r="65%">
+      <stop offset="0%"  stop-color="#0A640A" stop-opacity=".55"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="g3" cx="15%" cy="90%" r="55%">
+      <stop offset="0%"  stop-color="#00780A" stop-opacity=".45"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <pattern id="grid" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M 120 0 L 0 0 0 120" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#g1)"/>
+  <rect width="1920" height="1080" fill="url(#g2)"/>
+  <rect width="1920" height="1080" fill="url(#g3)"/>
+  <rect width="1920" height="1080" fill="url(#grid)"/>
+  <!-- Decorative rings -->
+  <circle cx="1600" cy="280" r="180" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+  <circle cx="1600" cy="280" r="300" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1.5"/>
+  <circle cx="1600" cy="280" r="440" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="1"/>
+  <circle cx="300"  cy="880" r="120" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+  <circle cx="300"  cy="880" r="220" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1.5"/>
+</svg>

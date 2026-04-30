@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block page_title %}My {{ cfg.label }}s{% endblock %}
+{% block content %}
+<style>
+.sub-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;}
+.sub-hdr h2{font-size:1.2rem;font-weight:700;margin:0;}
+.btn{padding:7px 16px;border:none;border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;}
+.btn-primary{background:var(--primary,#4f46e5);color:#fff;}
+.btn-danger{background:#dc2626;color:#fff;}
+.btn-sm{padding:4px 10px;font-size:.75rem;}
+.btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db;}
+table{width:100%;border-collapse:collapse;font-size:.85rem;}
+th{text-align:left;padding:.6rem .75rem;background:#f9fafb;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;}
+td{padding:.6rem .75rem;border-top:1px solid #f3f4f6;}
+.empty{text-align:center;padding:2rem;color:#9ca3af;}
+.badge-yes{background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:600;}
+.badge-no{background:#f3f4f6;color:#9ca3af;padding:2px 8px;border-radius:999px;font-size:.72rem;}
+</style>
+
+<div class="sub-hdr">
+  <div>
+    <h2>My {{ cfg.label }}s</h2>
+    <p style="font-size:.83rem;color:#6b7280;margin:.15rem 0 0;">Manage your personal {{ cfg.label|lower }} records</p>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <a href="{{ url_for('ess.my_sub_new', sub_key=sub_key) }}" class="btn btn-primary">+ Add {{ cfg.label }}</a>
+    <a href="{{ url_for('ess.my_profile') }}" class="btn btn-outline">← My Profile</a>
+  </div>
+</div>
+
+<section class="card" style="padding:0;overflow-x:auto;">
+{% if items %}
+<table>
+  <thead>
+    <tr>
+      {% for col in cfg.list_cols %}<th>{{ col|replace('_',' ')|title }}</th>{% endfor %}
+      <th style="width:120px;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      {% for col in cfg.list_cols %}
+      <td>
+        {% if item[col] is sameas true %}<span class="badge-yes">Yes</span>
+        {% elif item[col] is sameas false %}<span class="badge-no">No</span>
+        {% else %}{{ item[col] or '—' }}{% endif %}
+      </td>
+      {% endfor %}
+      <td style="white-space:nowrap;">
+        <a href="{{ url_for('ess.my_sub_edit', sub_key=sub_key, item_id=item.id) }}" class="btn btn-outline btn-sm">Edit</a>
+        <form method="post" action="{{ url_for('ess.my_sub_delete', sub_key=sub_key, item_id=item.id) }}"
+              style="display:inline;" onsubmit="return confirm('Delete this {{ cfg.label|lower }}?');">
+          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty">No {{ cfg.label|lower }}s found. <a href="{{ url_for('ess.my_sub_new', sub_key=sub_key) }}">Add one</a>.</div>
+{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block page_title %}My Analytics{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  .ins-head { display:flex;align-items:center;justify-content:space-between;
+              gap:.75rem;flex-wrap:wrap;margin-bottom:1rem; }
+  .ins-head h2 { margin:0;font-size:1.3rem;font-weight:800; }
+  .ins-head .sub { font-size:.85rem;color:#6b7280; }
+
+  .ins-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:1rem; }
+  .ins-card {
+     background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+     padding:.9rem 1rem 1.1rem;display:flex;flex-direction:column;gap:.6rem;
+     min-height:320px;position:relative;
+  }
+  .ins-card .top { display:flex;align-items:center;justify-content:space-between;gap:.5rem; }
+  .ins-card .title { display:flex;align-items:center;gap:.5rem;font-weight:700;color:#111827; }
+  .ins-card .icon  { font-size:1.2rem; }
+  .ins-card .cat   {
+     font-size:.65rem;font-weight:700;text-transform:uppercase;
+     letter-spacing:.04em;background:#eef2ff;color:#4338ca;
+     padding:2px 8px;border-radius:999px;
+  }
+  .ins-card .desc  { font-size:.75rem;color:#6b7280;margin:-.3rem 0 .2rem; }
+  .ins-card .body  { flex:1;min-height:200px;position:relative; }
+  .ins-card .body canvas { max-width:100%; }
+  .ins-card .empty { color:#9ca3af;font-size:.85rem;text-align:center;padding:2rem 0; }
+  .ins-card .remove {
+     background:none;border:none;cursor:pointer;color:#9ca3af;font-size:1rem;
+     padding:4px 8px;border-radius:6px;
+  }
+  .ins-card .remove:hover { color:#dc2626;background:#fee2e2; }
+
+  .ins-empty {
+     background:#fff;border:2px dashed #e5e7eb;border-radius:12px;
+     padding:3rem;text-align:center;color:#6b7280;
+  }
+  .ins-empty h3 { margin:0 0 .5rem;color:#111827;font-weight:700; }
+  .btn { display:inline-flex;align-items:center;padding:8px 16px;
+         border-radius:8px;font-size:.85rem;font-weight:600;
+         text-decoration:none;cursor:pointer;border:none;font-family:inherit; }
+  .btn-primary { background:#4f46e5;color:#fff; }
+  .btn-ghost   { background:#fff;color:#374151;border:1.5px solid #d1d5db; }
+</style>
+
+<div class="ins-head">
+  <div>
+    <h2>📊 My Analytics</h2>
+    <div class="sub"
+         data-hint="Pinned insights from your Reports & Insights Library. Each card is one insight per funnel — remove any with the ✕ button.">
+      {% if pinned_count > 0 %}
+        You have {{ pinned_count }} insight{{ '' if pinned_count == 1 else 's' }} pinned.
+      {% else %}
+        Showing default insights. Open the Library to personalize.
+      {% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+    <a href="{{ url_for('insights.library') }}" class="btn btn-primary"
+       data-hint="Browse the full catalog and tick which insights you want pinned here.">
+      ➕ Manage Library
+    </a>
+    {% endif %}
+    <a href="/reports/builder" class="btn btn-ghost"
+       data-hint="Drag-drop Report Builder for ad-hoc analysis across 32 data sources.">📈 Report Builder</a>
+  </div>
+</div>
+
+{% if rendered %}
+<div class="ins-grid">
+  {% for ins in rendered %}
+  <div class="ins-card" data-code="{{ ins.code }}">
+    <div class="top">
+      <div class="title">
+        <span class="icon">{{ ins.icon }}</span>
+        <span>{{ ins.title }}</span>
+      </div>
+      <div style="display:flex;gap:.3rem;align-items:center;">
+        <span class="cat">{{ ins.category }}</span>
+        {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER','EMPLOYEE','EXECUTIVE') %}
+        <button class="remove" title="Unpin from My Analytics"
+                onclick="unpin('{{ ins.code }}', this)"
+                data-hint="Unpin this insight. You can re-add it from the Library anytime.">✕</button>
+        {% endif %}
+      </div>
+    </div>
+    {% if ins.description %}
+    <div class="desc">{{ ins.description }}</div>
+    {% endif %}
+    <div class="body">
+      {% if ins.error %}
+        <div class="empty" style="color:#b91c1c;">⚠ This insight couldn't load: {{ ins.error|e }}</div>
+      {% elif not ins.labels %}
+        <div class="empty">No data available yet.</div>
+      {% else %}
+        <canvas id="chart_{{ ins.code }}" height="220"></canvas>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="ins-empty">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">📊</div>
+  <h3>No insights pinned yet.</h3>
+  <p style="font-size:.9rem;margin:.4rem 0 1rem;">
+    Open the <strong>Insights Library</strong> to pick the charts you want to see here.
+  </p>
+  {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+  <a href="{{ url_for('insights.library') }}" class="btn btn-primary">➕ Open Library</a>
+  {% else %}
+  <p style="font-size:.8rem;color:#9ca3af;">
+    Ask your HR administrator to grant you access to the Insights Library.
+  </p>
+  {% endif %}
+</div>
+{% endif %}
+
+<script>
+  // Color schemes (Chart.js 4)
+  const PALETTE = {
+    indigo:  {main:'#4f46e5', bg:'rgba(79,70,229,.20)',  multi:['#4f46e5','#7c3aed','#2563eb','#0ea5e9','#06b6d4','#10b981','#f59e0b','#ef4444']},
+    emerald: {main:'#059669', bg:'rgba(5,150,105,.20)',  multi:['#065f46','#10b981','#34d399','#a7f3d0','#065f46','#059669','#0d9488','#14b8a6']},
+    amber:   {main:'#d97706', bg:'rgba(217,119,6,.25)',  multi:['#b45309','#d97706','#f59e0b','#fbbf24','#fcd34d','#fde68a','#fef3c7','#ea580c']},
+    rose:    {main:'#be185d', bg:'rgba(190,24,93,.20)',  multi:['#9d174d','#be185d','#db2777','#ec4899','#f472b6','#f9a8d4','#fbcfe8','#fecdd3']},
+    sky:     {main:'#0369a1', bg:'rgba(3,105,161,.20)',  multi:['#075985','#0369a1','#0ea5e9','#38bdf8','#7dd3fc','#bae6fd','#e0f2fe','#0284c7']},
+    mixed:   {main:'#4f46e5', bg:'rgba(79,70,229,.20)',  multi:['#4f46e5','#059669','#d97706','#be185d','#0ea5e9','#7c3aed','#10b981','#f59e0b']},
+  };
+
+  function makeChart(ins){
+    const el = document.getElementById('chart_' + ins.code);
+    if (!el || !ins.labels || !ins.labels.length) return;
+    const pal = PALETTE[ins.color_scheme] || PALETTE.indigo;
+    const multi = ['doughnut','pie'].includes(ins.chart_type);
+    const horiz = ins.chart_type === 'horizontalBar';
+    const type  = horiz ? 'bar' : ins.chart_type;
+
+    const ctx = el.getContext('2d');
+    const ds = {
+      label: ins.title,
+      data:  ins.values,
+      backgroundColor: multi ? pal.multi.slice(0, ins.labels.length) : pal.bg,
+      borderColor:     multi ? pal.multi.slice(0, ins.labels.length) : pal.main,
+      borderWidth: 2,
+      tension: 0.3,
+      fill: ins.chart_type === 'line',
+    };
+    if (ins.chart_type === 'line') {
+      ds.backgroundColor = pal.bg;
+      ds.pointBackgroundColor = pal.main;
+      ds.pointRadius = 3;
+    }
+
+    new Chart(ctx, {
+      type: type,
+      data: { labels: ins.labels, datasets: [ds] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: horiz ? 'y' : 'x',
+        plugins: {
+          legend: { display: multi, position: 'bottom',
+                    labels: { boxWidth: 10, font: { size: 10 } } },
+          tooltip: { enabled: true },
+        },
+        scales: multi ? {} : {
+          y: { beginAtZero: true, ticks: { font: { size: 10 } } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 0 } },
+        },
+      },
+    });
+  }
+
+  async function unpin(code, btn){
+    const card = btn.closest('.ins-card');
+    btn.disabled = true;
+    try {
+      const fd = new FormData();
+      fd.append('code', code);
+      fd.append('enabled', 'false');
+      const res = await fetch('{{ url_for("insights.toggle") }}', {
+        method: 'POST', body: fd, credentials: 'same-origin',
+      });
+      const j = await res.json();
+      if (j.ok) {
+        card.style.transition = 'opacity .2s,transform .2s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(.97)';
+        setTimeout(() => card.remove(), 220);
+      } else {
+        btn.disabled = false;
+        alert('Could not unpin: ' + (j.error || 'unknown'));
+      }
+    } catch (e) {
+      btn.disabled = false;
+      alert('Network error');
+    }
+  }
+
+  // Boot — render all charts with data passed from server
+  const INSIGHTS = {{ rendered|tojson }};
+  document.addEventListener('DOMContentLoaded', function(){
+    (INSIGHTS || []).forEach(makeChart);
+  });
+</script>
+{% endblock %}

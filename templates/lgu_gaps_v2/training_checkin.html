@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block page_title %}Training Check-In{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}
+<style>
+  .video-card { background:#0b1020; border-radius:14px; overflow:hidden; position:relative; aspect-ratio:4/3; max-width:480px; margin:0 auto; }
+  .video-card video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .video-card canvas { display:none; }
+  .shift-toggle { display:flex; gap:.5rem; margin-bottom:.8rem; }
+  .shift-toggle label { flex:1; padding:.8rem; border:2px solid #d1d5db; border-radius:10px;
+    text-align:center; cursor:pointer; font-weight:700; background:#fff; }
+  .shift-toggle input:checked + span { background:#4f46e5; color:#fff; }
+  .shift-toggle label:has(input:checked) { border-color:#4f46e5; background:#ede9fe; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📚 Training Check-In</h2>
+       <div class="sub">{{ sess.program_title }} · {{ sess.session_date.strftime('%b %d, %Y') if sess.session_date else '' }}{% if sess.venue %} · {{ sess.venue }}{% endif %}</div></div>
+  <a href="/me" class="btn btn-ghost">← Back</a>
+</div>
+
+{% if not enrollment_id %}
+<div class="card" style="text-align:center;padding:2rem;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;">
+  <div style="font-size:2rem;">⛔</div>
+  <div style="font-weight:700;">You are not enrolled in this session.</div>
+  <div style="font-size:.88rem;color:#6b7280;">Contact L&D to be added.</div>
+</div>
+{% else %}
+
+<div style="max-width:540px;margin:0 auto;">
+  <div class="shift-toggle">
+    <label><input type="radio" name="shift" value="AM" checked style="display:none;"><span style="display:block;">🌅 AM Session</span></label>
+    <label><input type="radio" name="shift" value="PM" style="display:none;"><span style="display:block;">🌇 PM Session</span></label>
+  </div>
+
+  <div class="video-card">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="snapshot"></canvas>
+  </div>
+
+  <div class="card" style="margin-top:.8rem;">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.2rem 0;">
+      <span style="color:#6b7280;">📍 Location</span>
+      <span id="geoStatus">Waiting…</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.2rem 0;">
+      <span style="color:#6b7280;">Latitude</span>
+      <span id="geoLat" style="font-family:monospace;">—</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.2rem 0;">
+      <span style="color:#6b7280;">Longitude</span>
+      <span id="geoLng" style="font-family:monospace;">—</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.2rem 0;">
+      <span style="color:#6b7280;">Accuracy</span>
+      <span id="geoAcc">—</span>
+    </div>
+  </div>
+
+  <button id="btnSubmit" class="btn btn-primary" style="width:100%;padding:14px;font-size:1rem;margin-top:.8rem;" disabled>
+    📸 Capture &amp; Submit
+  </button>
+
+  <div id="result" style="display:none;padding:.8rem;border-radius:10px;margin-top:.8rem;font-size:.9rem;"></div>
+</div>
+
+<script>
+  const SESSION_ID = {{ session_id }};
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('snapshot');
+  const btn = document.getElementById('btnSubmit');
+  let stream = null, currentPos = null;
+
+  async function startCamera() {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {facingMode: 'user'}, audio: false
+    });
+    video.srcObject = stream;
+    await video.play();
+  }
+
+  function watchGeo() {
+    if (!navigator.geolocation) return;
+    document.getElementById('geoStatus').textContent = 'Requesting…';
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        currentPos = pos;
+        document.getElementById('geoStatus').textContent = 'Locked ✓';
+        document.getElementById('geoLat').textContent = pos.coords.latitude.toFixed(6);
+        document.getElementById('geoLng').textContent = pos.coords.longitude.toFixed(6);
+        document.getElementById('geoAcc').textContent = `±${pos.coords.accuracy.toFixed(0)} m`;
+        btn.disabled = false;
+      },
+      (err) => {
+        document.getElementById('geoStatus').textContent = 'Denied: ' + err.message;
+      },
+      {enableHighAccuracy: true, timeout: 15000}
+    );
+  }
+
+  function captureSnapshot() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  }
+
+  btn.addEventListener('click', async () => {
+    const shift = document.querySelector('input[name=shift]:checked').value;
+    if (!currentPos) { alert('Waiting for GPS…'); return; }
+    btn.disabled = true; btn.textContent = '⏳ Submitting…';
+    const photo = captureSnapshot();
+    const payload = {
+      shift_period: shift,
+      latitude: currentPos.coords.latitude,
+      longitude: currentPos.coords.longitude,
+      accuracy_m: currentPos.coords.accuracy,
+      device_id: navigator.userAgent.slice(0, 80),
+      photo_b64: photo,
+    };
+    const r = await fetch(`/learning/sessions/${SESSION_ID}/checkin/api`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json();
+    const box = document.getElementById('result');
+    box.style.display = 'block';
+    box.style.background = j.ok ? '#f0fdf4' : '#fef2f2';
+    box.style.borderColor = j.ok ? '#86efac' : '#fecaca';
+    box.style.color = j.ok ? '#166534' : '#991b1b';
+    box.style.border = '1px solid ' + (j.ok ? '#86efac' : '#fecaca');
+    box.textContent = j.ok
+      ? `✓ Checked in for ${shift} at ${new Date(j.checked_in_at).toLocaleTimeString()}.`
+      : `✗ ${j.message || 'Check-in failed.'}`;
+    btn.disabled = !j.ok;
+    btn.textContent = j.ok ? '✓ Done' : '📸 Try Again';
+  });
+
+  (async function init() {
+    try {
+      await startCamera();
+    } catch (e) { console.error(e); }
+    watchGeo();
+  })();
+</script>
+{% endif %}
+{% endblock %}

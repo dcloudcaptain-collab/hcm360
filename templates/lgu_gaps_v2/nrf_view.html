@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block page_title %}NRF #{{ r.id }}{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📝 Narrative Report #{{ r.id }}</h2>
+       <div class="sub">{{ r.employee_name }} · <span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></div></div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <a href="/learning/nrf" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+<div class="card">
+  <div style="border-bottom:2px solid #e5e7eb;padding-bottom:.8rem;margin-bottom:.8rem;">
+    <h3 style="margin:0;font-size:1.1rem;">{{ r.training_title }}</h3>
+    <div style="font-size:.85rem;color:#6b7280;margin-top:.2rem;">
+      📅 {{ r.training_dates }} · 📍 {{ r.venue or '—' }} · 👤 {{ r.facilitator or '—' }}
+    </div>
+  </div>
+
+  <h4 style="color:#4f46e5;margin:1rem 0 .3rem;">Learning Objectives</h4>
+  <p style="font-size:.92rem;line-height:1.5;">{{ r.learning_objectives or '—' }}</p>
+
+  <h4 style="color:#4f46e5;margin:1rem 0 .3rem;">Key Learnings</h4>
+  <p style="font-size:.92rem;line-height:1.5;">{{ r.key_learnings or '—' }}</p>
+
+  <h4 style="color:#4f46e5;margin:1rem 0 .3rem;">Application Plans</h4>
+  <p style="font-size:.92rem;line-height:1.5;">{{ r.application_plans or '—' }}</p>
+
+  {% if r.challenges %}
+  <h4 style="color:#4f46e5;margin:1rem 0 .3rem;">Challenges</h4>
+  <p style="font-size:.92rem;line-height:1.5;">{{ r.challenges }}</p>
+  {% endif %}
+
+  {% if r.recommendations %}
+  <h4 style="color:#4f46e5;margin:1rem 0 .3rem;">Recommendations</h4>
+  <p style="font-size:.92rem;line-height:1.5;">{{ r.recommendations }}</p>
+  {% endif %}
+
+  {% if r.evaluation_rating %}
+  <h4 style="color:#4f46e5;margin:1rem 0 .3rem;">Rating</h4>
+  <p style="font-size:1.2rem;">{{ '⭐' * (r.evaluation_rating|int) }} ({{ r.evaluation_rating }}/5)</p>
+  {% endif %}
+
+  <div style="display:flex;gap:3rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e5e7eb;font-size:.8rem;color:#6b7280;">
+    <span><strong>Submitted:</strong> {{ r.submitted_at.strftime('%b %d, %Y %I:%M %p') if r.submitted_at else '—' }}</span>
+    {% if r.approved_at %}<span><strong>Approved:</strong> {{ r.approved_at.strftime('%b %d, %Y') }}</span>{% endif %}
+  </div>
+</div>
+{% endblock %}

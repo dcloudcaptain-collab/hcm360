@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block page_title %}Loans{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Employee Loans</h2>
+  <a href="/payroll/loans/new" class="btn btn-sm">+ New Loan</a>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('PENDING','Pending'),('ACTIVE','Active'),('FULLY_PAID','Fully Paid')] %}
+  <a href="/payroll/loans?status={{ s }}"
+     style="padding:5px 14px;border-radius:20px;font-size:.825rem;font-weight:{% if status==s %}700{% else %}400{% endif %};
+            background:{% if status==s %}var(--primary){% else %}rgba(0,0,0,.05){% endif %};
+            color:{% if status==s %}#fff{% else %}#6b7280{% endif %};">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;">Type</th>
+        <th style="padding:10px 14px;">Principal</th>
+        <th style="padding:10px 14px;">Outstanding</th>
+        <th style="padding:10px 14px;">Monthly Ded.</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:500;">{{ r.full_name }}<div style="font-size:.72rem;color:#9ca3af;">{{ r.employee_no }}</div></td>
+        <td style="padding:9px 14px;text-align:center;"><span class="badge badge-default">{{ r.loan_type }}</span></td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.principal_amount or 0) }}</td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;font-weight:600;color:#d97706;">{{ '{:,.2f}'.format(r.outstanding_balance or 0) }}</td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.monthly_deduction or 0) }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span class="badge {% if r.status == 'ACTIVE' %}badge-success{% elif r.status == 'PENDING' %}badge-warning{% elif r.status == 'FULLY_PAID' %}badge-info{% else %}badge-default{% endif %}">{{ r.status }}</span>
+        </td>
+        <td style="padding:9px 14px;">
+          <a href="/payroll/loans/{{ r.id }}" style="font-size:.75rem;color:var(--primary);">Detail</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No loans found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

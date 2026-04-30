@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block page_title %}My Attendance{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">My Attendance</h2>
+  <div style="display:flex;gap:.5rem;">
+    {% for m, label in [(1,'1 Month'),(3,'3 Months'),(6,'6 Months')] %}
+    <a href="/me/attendance?months={{ m }}"
+       style="padding:5px 12px;border-radius:20px;font-size:.825rem;
+              background:{% if months==m %}var(--primary,#4f46e5){% else %}rgba(0,0,0,.05){% endif %};
+              color:{% if months==m %}#fff{% else %}#6b7280{% endif %};text-decoration:none;font-weight:{% if months==m %}600{% else %}400{% endif %};">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+{# OT summary #}
+{% if ot_summary %}
+<div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% for status, color, bg in [('PENDING','#854d0e','#fef9c3'),('APPROVED','#166534','#dcfce7'),('REJECTED','#991b1b','#fee2e2')] %}
+  {% if ot_summary.get(status) %}
+  <div style="padding:.5rem 1rem;border-radius:8px;background:{{ bg }};text-align:center;min-width:90px;">
+    <div style="font-size:1.2rem;font-weight:800;color:{{ color }};">{{ ot_summary[status] }}</div>
+    <div style="font-size:.72rem;color:{{ color }};">OT {{ status }}</div>
+  </div>
+  {% endif %}
+  {% endfor %}
+  <a href="/attendance/overtime/new"
+     style="padding:.5rem 1rem;border-radius:8px;background:var(--primary,#4f46e5);color:#fff;text-decoration:none;display:flex;align-items:center;font-size:.85rem;font-weight:600;">
+    + File OT
+  </a>
+</div>
+{% endif %}
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Date</th>
+        <th style="padding:10px 14px;">Time In</th>
+        <th style="padding:10px 14px;">Time Out</th>
+        <th style="padding:10px 14px;">Hours</th>
+        <th style="padding:10px 14px;">Late</th>
+        <th style="padding:10px 14px;">OT</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;">Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in logs %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);
+        background:{% if r.is_holiday %}rgba(124,58,237,.04){% elif r.is_absent %}rgba(220,38,38,.03){% elif r.is_late %}rgba(217,119,6,.03){% else %}transparent{% endif %};">
+        <td style="padding:9px 14px;font-family:monospace;font-weight:500;">{{ r.work_date }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.time_in.strftime('%H:%M') if r.time_in else '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.time_out.strftime('%H:%M') if r.time_out else '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-weight:600;">{{ '%.1f'|format(r.worked_hours) if r.worked_hours else '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;color:{% if r.late_minutes and r.late_minutes > 0 %}#d97706{% else %}#9ca3af{% endif %};">
+          {{ r.late_minutes ~ 'm' if r.late_minutes and r.late_minutes > 0 else '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;color:{% if r.ot_hours and r.ot_hours > 0 %}#4f46e5{% else %}#9ca3af{% endif %};">
+          {{ '%.1f'|format(r.ot_hours) ~ 'h' if r.ot_hours and r.ot_hours > 0 else '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-size:.75rem;font-weight:600;
+          color:{% if r.is_absent %}#dc2626{% elif r.is_holiday %}#7c3aed{% elif r.is_late %}#d97706{% elif r.is_present %}#16a34a{% else %}#9ca3af{% endif %};">
+          {% if r.is_absent %}ABSENT{% elif r.is_holiday %}HOLIDAY{% elif r.is_late %}LATE{% elif r.is_present %}PRESENT{% elif r.is_restday %}REST{% else %}—{% endif %}
+        </td>
+        <td style="padding:9px 14px;font-size:.8rem;color:#6b7280;">{{ r.remarks or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="padding:2rem;text-align:center;color:#9ca3af;">No attendance records found for the selected period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

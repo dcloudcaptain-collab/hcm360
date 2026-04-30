@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block page_title %}Branding & Login{% endblock %}
+
+{% block content %}
+<style>
+  .br-head { display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem; }
+  .br-head h2 { margin:0;font-size:1.3rem;font-weight:800; }
+  .br-grid { display:grid;grid-template-columns:1.2fr .8fr;gap:1.25rem; }
+  @media (max-width: 960px) { .br-grid { grid-template-columns: 1fr; } }
+
+  .br-card {
+    background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+    padding:1.1rem 1.25rem;
+  }
+  .br-card h3 { margin:0 0 .75rem;font-size:1rem;font-weight:700;color:#111827; }
+  .br-field { display:flex;flex-direction:column;gap:.35rem;margin-bottom:.9rem; }
+  .br-field label {
+    font-size:.72rem;font-weight:700;color:#6b7280;
+    text-transform:uppercase;letter-spacing:.05em;
+  }
+  .br-field input, .br-field select, .br-field textarea {
+    border:1.5px solid #d1d5db;border-radius:8px;padding:.6rem .75rem;
+    font-size:.9rem;font-family:inherit;background:#fff;
+  }
+  .br-field input:focus, .br-field select:focus {
+    outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.15);
+  }
+  .br-field .hint { font-size:.72rem;color:#6b7280;font-style:italic; }
+
+  /* Live preview */
+  .preview {
+    position:relative;background:#0f172a;border-radius:12px;overflow:hidden;
+    min-height:420px;display:flex;align-items:center;justify-content:center;
+    color:#fff;border:1px solid #1e293b;
+  }
+  .preview .bg {
+    position:absolute;inset:0;background-position:center;background-size:cover;
+    background-repeat:no-repeat;opacity:.55;
+  }
+  .preview .bg::after {
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(15,23,42,.85) 0%,rgba(30,64,175,.65) 100%);
+  }
+  .preview .panel {
+    position:relative;background:rgba(255,255,255,.97);color:#111827;
+    padding:1.75rem 1.5rem 1.25rem;border-radius:12px;min-width:260px;max-width:88%;
+    text-align:center;box-shadow:0 20px 50px -10px rgba(0,0,0,.5);
+    backdrop-filter:blur(10px);
+  }
+  .preview .panel h4 { margin:0 0 .2rem;font-size:1.15rem;font-weight:800;color:#0f172a; }
+  .preview .panel .tag { font-size:.78rem;color:#6b7280;margin-bottom:1rem; }
+  .preview .panel button {
+    background:#4f46e5;color:#fff;border:none;padding:.55rem 1.25rem;
+    border-radius:7px;font-weight:600;font-size:.85rem;width:100%;
+  }
+  .preview .pb {
+    position:absolute;bottom:.75rem;left:0;right:0;
+    text-align:center;font-size:.72rem;color:rgba(255,255,255,.7);letter-spacing:.04em;
+  }
+
+  .btn { display:inline-flex;align-items:center;padding:9px 18px;
+         border-radius:8px;font-size:.9rem;font-weight:600;
+         text-decoration:none;cursor:pointer;border:none;font-family:inherit; }
+  .btn-primary { background:#4f46e5;color:#fff; }
+  .btn-ghost   { background:#fff;color:#374151;border:1.5px solid #d1d5db; }
+</style>
+
+<div class="br-head">
+  <div>
+    <h2>🎨 Branding & Login</h2>
+    <div style="font-size:.85rem;color:#6b7280;"
+         data-hint="Every value here is live-applied. Changes take effect immediately — no restart needed.">
+      Configure company name, tagline, login wallpaper, and the "Powered by" footer. Values are stored in
+      <code>core.company_branding</code>.
+    </div>
+  </div>
+  <div>
+    <a href="/login" target="_blank" class="btn btn-ghost"
+       data-hint="Open the login page in a new tab to preview the changes.">↗ Open Login Page</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.88rem;
+                background:{% if cat=='error' %}#fee2e2{% else %}#dcfce7{% endif %};
+                color:{% if cat=='error' %}#991b1b{% else %}#166534{% endif %};">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form method="post" id="brandingForm">
+<div class="br-grid">
+
+  <!-- ─── Left: form ─── -->
+  <div>
+    <div class="br-card">
+      <h3>🏢 Company identity</h3>
+
+      <div class="br-field">
+        <label for="company_name">Company Name</label>
+        <input id="company_name" name="company_name" maxlength="200"
+               value="{{ branding.company_name or '' }}"
+               placeholder="e.g., Municipality of Mariveles, Bataan"
+               data-hint="Full legal name of the company or LGU.">
+      </div>
+
+      <div class="br-field">
+        <label for="short_name">Short Name</label>
+        <input id="short_name" name="short_name" maxlength="60"
+               value="{{ branding.short_name or '' }}"
+               placeholder="e.g., LGU Mariveles"
+               data-hint="Short form used in nav headers and tight spaces.">
+      </div>
+
+      <div class="br-field">
+        <label for="logo_text">Logo Text</label>
+        <input id="logo_text" name="logo_text" maxlength="40"
+               value="{{ branding.logo_text or '' }}"
+               placeholder="e.g., HCM360"
+               data-hint="The word-mark shown in the top-left of every page.">
+      </div>
+
+      <div class="br-field">
+        <label for="primary_color">Primary Color</label>
+        <input id="primary_color" name="primary_color" type="color"
+               value="{{ branding.primary_color or '#1e40af' }}"
+               style="width:110px;height:40px;padding:3px;cursor:pointer;"
+               data-hint="Used for buttons, links, and the login gradient.">
+      </div>
+
+      <div class="br-field">
+        <label for="tagline">Tagline (in-app)</label>
+        <input id="tagline" name="tagline" maxlength="200"
+               value="{{ branding.tagline or '' }}"
+               placeholder="e.g., Intelligent HR for Growing Companies"
+               data-hint="Shown under the logo in the top nav and email footers.">
+      </div>
+    </div>
+
+    <div class="br-card" style="margin-top:1rem;">
+      <h3>🔐 Login page</h3>
+
+      <div class="br-field">
+        <label for="login_tagline">Login Tagline</label>
+        <input id="login_tagline" name="login_tagline" maxlength="200"
+               value="{{ branding.login_tagline or '' }}"
+               placeholder="e.g., Intelligent HR for the Public Sector"
+               data-hint="Shown below the product name on the sign-in panel.">
+      </div>
+
+      <div class="br-field">
+        <label for="login_show_wallpaper">Show Wallpaper?</label>
+        <select id="login_show_wallpaper" name="login_show_wallpaper"
+                data-hint="Toggle the background image. Disable for a clean gradient.">
+          <option value="true"  {% if branding.login_show_wallpaper == 'true' %}selected{% endif %}>Yes — show wallpaper</option>
+          <option value="false" {% if branding.login_show_wallpaper != 'true' %}selected{% endif %}>No — gradient only</option>
+        </select>
+      </div>
+
+      <div class="br-field">
+        <label for="login_wallpaper_url">Wallpaper URL</label>
+        <input id="login_wallpaper_url" name="login_wallpaper_url" maxlength="500"
+               value="{{ branding.login_wallpaper_url or '' }}"
+               placeholder="/static/img/login-wallpaper.jpg or https://…"
+               data-hint="Public URL or /static/ path. Use a 1920×1080 landscape image for best results.">
+        <div class="hint">
+          Drop your own image into <code>static/img/</code> then paste the
+          <code>/static/img/your-file.jpg</code> path here.
+        </div>
+      </div>
+
+      <div class="br-field">
+        <label for="login_powered_by">Footer "Powered by" text</label>
+        <input id="login_powered_by" name="login_powered_by" maxlength="120"
+               value="{{ branding.login_powered_by or '' }}"
+               placeholder="e.g., CXTech Solutions"
+               data-hint="Small attribution shown at the bottom of the login page.">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.5rem;margin-top:1rem;justify-content:flex-end;">
+      <a href="{{ url_for('dashboard.index') }}" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">💾 Save Branding</button>
+    </div>
+  </div>
+
+  <!-- ─── Right: live preview ─── -->
+  <div>
+    <div class="br-card" style="position:sticky;top:1rem;">
+      <h3>👀 Live preview</h3>
+      <div class="preview" id="preview">
+        <div class="bg" id="previewBg"></div>
+        <div class="panel">
+          <h4 id="pv_name">{{ branding.company_name or 'HCM360' }}</h4>
+          <div class="tag" id="pv_tag">{{ branding.login_tagline or 'Intelligent HR for the Public Sector' }}</div>
+          <button type="button" disabled>Sign in</button>
+        </div>
+        <div class="pb" id="pv_pb">Powered by <strong>{{ branding.login_powered_by or 'CXTech Solutions' }}</strong></div>
+      </div>
+      <p style="font-size:.75rem;color:#6b7280;margin:.6rem 0 0;">
+        Preview updates as you type. Hit Save to apply.
+      </p>
+    </div>
+  </div>
+
+</div>
+</form>
+
+<script>
+  function applyBg(){
+    const show = document.getElementById('login_show_wallpaper').value === 'true';
+    const url  = document.getElementById('login_wallpaper_url').value;
+    const bg   = document.getElementById('previewBg');
+    if (show && url) {
+      bg.style.backgroundImage = `url("${url}")`;
+      bg.style.display = 'block';
+    } else {
+      bg.style.backgroundImage = '';
+      bg.style.display = 'none';
+    }
+  }
+  document.getElementById('company_name').addEventListener('input', e => {
+    document.getElementById('pv_name').textContent = e.target.value || 'HCM360';
+  });
+  document.getElementById('login_tagline').addEventListener('input', e => {
+    document.getElementById('pv_tag').textContent = e.target.value ||
+      'Intelligent HR for the Public Sector';
+  });
+  document.getElementById('login_powered_by').addEventListener('input', e => {
+    document.getElementById('pv_pb').innerHTML =
+      'Powered by <strong>' + (e.target.value || 'CXTech Solutions') + '</strong>';
+  });
+  document.getElementById('login_wallpaper_url').addEventListener('input', applyBg);
+  document.getElementById('login_show_wallpaper').addEventListener('change', applyBg);
+  applyBg();
+</script>
+{% endblock %}

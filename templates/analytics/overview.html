@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% block page_title %}Analytics & Reports{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Fetch and render KPI trend sparklines
+  var charts = document.querySelectorAll('[data-kpi-chart]');
+  charts.forEach(function(canvas) {
+    var module  = canvas.dataset.module;
+    var kpiCode = canvas.dataset.kpiChart;
+    fetch('/reports/kpis/trend.json?module=' + module + '&kpi_code=' + kpiCode + '&days=14')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        new Chart(canvas, {
+          type: 'line',
+          data: {
+            labels: data.map(function(d) { return d.date; }),
+            datasets: [{ data: data.map(function(d) { return d.value; }),
+              borderColor: '#4f46e5', borderWidth: 2, pointRadius: 0,
+              fill: true, backgroundColor: 'rgba(99,102,241,.1)', tension: 0.4 }]
+          },
+          options: { plugins: { legend: { display: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            animation: false }
+        });
+      }).catch(function(){});
+  });
+});
+</script>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Analytics & KPI Dashboard</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/reports/reports" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Report Builder</a>
+    <form method="post" action="/reports/kpis/refresh" style="display:inline;">
+      <button type="submit" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;background:none;cursor:pointer;color:#374151;">↻ Refresh KPIs</button>
+    </form>
+  </div>
+</div>
+
+{# Module navigation tabs #}
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for mod, label, icon in [
+    ('','Overview','📊'),
+    ('attendance','Attendance','🕐'),
+    ('leave','Leave','🏖'),
+    ('payroll','Payroll','💰'),
+    ('headcount','Headcount','👥'),
+  ] %}
+  <a href="{% if mod %}/reports/{{ mod }}{% else %}/reports{% endif %}"
+     style="padding:6px 14px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            background:rgba(0,0,0,.05);color:#6b7280;display:flex;align-items:center;gap:.35rem;">
+    {{ icon }} {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{# KPI widget grid #}
+{% if widgets %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;">
+  {% for w in widgets %}
+  <a href="{{ w.filter_url or '#' }}" class="card"
+     style="padding:1rem;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:.35rem;
+            transition:box-shadow .15s,transform .1s;"
+     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.12)';this.style.transform='translateY(-1px)'"
+     onmouseout="this.style.boxShadow='';this.style.transform=''">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">{{ w.metric_label }}</span>
+      <span style="font-size:.9rem;opacity:.4;">{{ w.icon or '📈' }}</span>
+    </div>
+    <strong style="font-size:1.75rem;font-weight:800;line-height:1;color:var(--primary,#4f46e5);">
+      {{ w.value if w.value is not none else '—' }}
+    </strong>
+    <canvas data-kpi-chart="{{ w.kpi_code }}" data-module="{{ w.module }}"
+            style="height:36px;max-height:36px;" height="36"></canvas>
+    <small style="font-size:.7rem;color:#9ca3af;">Click to drill down →</small>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Quick drill-down links #}
+<div class="grid two" style="gap:1.25rem;">
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Workforce Reports</h3>
+    <div style="display:flex;flex-direction:column;gap:.4rem;">
+      {% for href, label, desc in [
+        ('/reports/headcount','Headcount by Department','Active employees per department'),
+        ('/reports/attendance','Attendance Rate Trends','Late arrivals, absences, OT hours'),
+        ('/reports/leave','Leave Utilization YTD','Usage by type and department'),
+        ('/reports/payroll','Payroll Cost MTD','Gross, net, and government remittances'),
+      ] %}
+      <a href="{{ href }}" style="display:flex;justify-content:space-between;align-items:center;
+                 padding:.5rem .75rem;border-radius:6px;text-decoration:none;color:inherit;
+                 background:rgba(0,0,0,.02);transition:background .15s;"
+         onmouseover="this.style.background='rgba(99,102,241,.07)'"
+         onmouseout="this.style.background='rgba(0,0,0,.02)'">
+        <div>
+          <div style="font-size:.875rem;font-weight:600;">{{ label }}</div>
+          <div style="font-size:.775rem;color:#9ca3af;">{{ desc }}</div>
+        </div>
+        <span style="color:var(--primary,#4f46e5);">→</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Export Data</h3>
+    <form method="post" action="/reports/export" style="display:flex;flex-direction:column;gap:.65rem;">
+      <div>
+        <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.25rem;">Report Type</label>
+        <select name="report_type" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+          {% for rt in report_types %}
+          <option value="{{ rt }}">{{ rt.replace('_',' ').title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+        <div>
+          <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">From</label>
+          <input type="date" name="date_from" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:.85rem;">
+        </div>
+        <div>
+          <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">To</label>
+          <input type="date" name="date_to" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:.85rem;">
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <button type="submit" name="fmt" value="xlsx"
+                style="flex:1;padding:7px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">
+          ↓ Excel
+        </button>
+        <button type="submit" name="fmt" value="csv"
+                style="flex:1;padding:7px;background:none;border:1px solid #d1d5db;border-radius:6px;font-size:.875rem;cursor:pointer;">
+          ↓ CSV
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+{% endblock %}

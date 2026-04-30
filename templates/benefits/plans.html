@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block page_title %}Benefit Plans{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Benefit Plans</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/benefits/plans/new" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;background:var(--primary,#4f46e5);color:#fff;">+ New Plan</a>
+    <a href="/benefits" style="font-size:.82rem;color:var(--primary,#4f46e5);padding:6px 0;">← Dashboard</a>
+  </div>
+</div>
+{% if plans %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#f8fafc;color:#6b7280;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:10px 12px;text-align:left;">Plan</th>
+        <th style="padding:10px 12px;">Type</th>
+        <th style="padding:10px 12px;">Category</th>
+        <th style="padding:10px 12px;">Provider</th>
+        <th style="padding:10px 12px;">Coverage</th>
+        <th style="padding:10px 12px;text-align:right;">ER Cost</th>
+        <th style="padding:10px 12px;text-align:right;">EE Cost</th>
+        <th style="padding:10px 12px;">Enrolled</th>
+        <th style="padding:10px 12px;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in plans %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:10px 12px;"><a href="/benefits/plans/{{ p.id }}" style="font-weight:600;color:var(--primary,#4f46e5);">{{ p.name }}</a><div style="font-size:.72rem;color:#9ca3af;">{{ p.code }}</div></td>
+        <td style="padding:10px 12px;text-align:center;font-size:.8rem;">{{ p.type_name }}</td>
+        <td style="padding:10px 12px;text-align:center;"><span style="font-size:.68rem;font-weight:600;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:#64748b;">{{ p.category }}</span></td>
+        <td style="padding:10px 12px;text-align:center;font-size:.8rem;">{{ p.provider or '—' }}</td>
+        <td style="padding:10px 12px;text-align:center;font-size:.78rem;">{{ p.coverage_level or '—' }}</td>
+        <td style="padding:10px 12px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(p.employer_cost) }}</td>
+        <td style="padding:10px 12px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(p.employee_cost) }}</td>
+        <td style="padding:10px 12px;text-align:center;font-weight:700;">{{ p.enrolled_count }}</td>
+        <td style="padding:10px 12px;text-align:center;"><span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:{% if p.is_active %}#dcfce7;color:#166534{% else %}#fee2e2;color:#991b1b{% endif %};">{% if p.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding:3rem;text-align:center;color:#9ca3af;">No benefit plans configured. Create one to get started.</div>
+{% endif %}
+{% endblock %}

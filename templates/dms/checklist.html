@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block page_title %}Document Checklist{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">201 File Document Categories</h2>
+  <a href="/dms/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;">
+  {% for cat in categories %}
+  <div class="card" style="padding:1rem;">
+    <div style="font-size:.95rem;font-weight:700;">{{ cat.name }}</div>
+    <div style="font-size:.78rem;color:#6b7280;margin-top:.15rem;">Code: {{ cat.code }}</div>
+    {% if cat.description %}<div style="font-size:.78rem;color:#374151;margin-top:.3rem;">{{ cat.description[:80] }}</div>{% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;grid-column:1/-1;">No categories configured.</div>
+  {% endfor %}
+</div>
+{% endblock %}

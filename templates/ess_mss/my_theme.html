@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block page_title %}My Theme Preference{% endblock %}
+
+{% block extra_css %}
+<style>
+  .mt-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:1rem;
+    margin-top:1rem;
+  }
+  .mt-card {
+    background:#fff;
+    border:2px solid #e5e7eb;
+    border-radius:14px;
+    overflow:hidden;
+    transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    display:flex;
+    flex-direction:column;
+  }
+  .mt-card:hover {
+    transform:translateY(-2px);
+    box-shadow:0 10px 28px rgba(15,23,42,.10);
+  }
+  .mt-card.current {
+    border-color:var(--primary,#0f6f8f);
+    box-shadow:0 0 0 4px rgba(15,111,143,.12);
+  }
+
+  .mt-header {
+    height:60px;
+    display:flex;
+    align-items:center;
+    padding:0 1rem;
+    color:#fff;
+    font-weight:700;
+    font-size:.9rem;
+    letter-spacing:-.01em;
+  }
+  .mt-swatch-strip { display:flex; height:42px; }
+  .mt-swatch-strip > div { flex:1; }
+
+  .mt-body { padding:.9rem 1rem 1rem; flex:1; display:flex; flex-direction:column; }
+  .mt-name { font-size:1rem; font-weight:700; margin:0 0 .2rem; }
+  .mt-meta { font-size:.7rem; color:#6b7280; line-height:1.45; margin-bottom:.65rem; }
+  .mt-meta code {
+    background:#f3f4f6; padding:1px 5px; border-radius:4px;
+    font-size:.68rem; color:#374151;
+  }
+
+  .mt-pill-row { display:flex; gap:.35rem; align-items:center; margin:.45rem 0 .7rem; }
+  .mt-pill {
+    padding:2px 9px; border-radius:999px;
+    font-size:.66rem; font-weight:700; border:1px solid;
+  }
+
+  .mt-submit {
+    margin-top:auto;
+    padding:.52rem 1rem;
+    color:#fff; border:none; border-radius:8px;
+    font-weight:600; font-size:.82rem; cursor:pointer;
+    width:100%;
+  }
+  .mt-submit[disabled] {
+    background:#e5e7eb !important; color:#9ca3af; cursor:default;
+  }
+
+  .mt-current-badge {
+    display:inline-block; background:#ecfdf5; color:#065f46;
+    border:1px solid #a7f3d0; padding:1px 8px; border-radius:999px;
+    font-size:.65rem; font-weight:700; margin-left:.5rem;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+
+  /* System Default card uses a gradient header instead of a single colour */
+  .mt-default-header {
+    background:linear-gradient(135deg,#6366f1,#0f6f8f);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:.5rem; margin-bottom:.6rem;">
+  <div>
+    <h1 style="margin:0; font-size:1.3rem; font-weight:800;">🎨 My Theme Preference</h1>
+    <p class="small" style="margin:.25rem 0 0; color:#6b7280;">
+      Pick your preferred look. This only affects your account — your co-workers still see the company default.
+    </p>
+  </div>
+  <a href="/me" class="tiny" style="color:var(--primary); font-weight:600;">← Back to Portal</a>
+</div>
+
+{# ── Flash messages (success confirmation) ── #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.6rem 1rem; border-radius:8px; margin-bottom:.5rem;
+                background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46;
+                font-size:.85rem; font-weight:600;">
+      ✓ {{ msg }}
+    </div>
+  {% endfor %}
+{% endwith %}
+
+<div class="mt-grid">
+
+  {# ── System Default card ─────────────────────────────── #}
+  <div class="mt-card {% if not user_theme_id %}current{% endif %}">
+    <div class="mt-header mt-default-header">
+      System Default
+      {% if not user_theme_id %}<span class="mt-current-badge">Current</span>{% endif %}
+    </div>
+    <div class="mt-swatch-strip">
+      <div style="background:#6366f1;"></div>
+      <div style="background:#0f6f8f;"></div>
+      <div style="background:#5fa8c6;"></div>
+      <div style="background:#f4f7fb;"></div>
+    </div>
+    <div class="mt-body">
+      <div class="mt-name">System Default</div>
+      <div class="mt-meta">
+        Follow whatever theme the admin sets globally.<br>
+        <span class="tiny">Recommended if you want consistency with your team.</span>
+      </div>
+      <form method="post">
+        <input type="hidden" name="theme_id" value="0">
+        <button type="submit" class="mt-submit"
+                style="background:#6366f1;"
+                {% if not user_theme_id %}disabled{% endif %}>
+          {% if not user_theme_id %}✓ Using System Default{% else %}Reset to Default{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {# ── User-pickable theme cards ───────────────────────── #}
+  {% for t in themes %}
+  <div class="mt-card {% if user_theme_id == t.id %}current{% endif %}">
+
+    <div class="mt-header" style="background:{{ t.sidebar_color or '#0f6f8f' }};
+                                    color:{{ t.sidebar_text or '#ffffff' }};">
+      {{ t.name }}
+      {% if user_theme_id == t.id %}<span class="mt-current-badge">Current</span>{% endif %}
+    </div>
+
+    <div class="mt-swatch-strip">
+      <div style="background:{{ t.primary_color }};"></div>
+      <div style="background:{{ t.secondary_color }};"></div>
+      <div style="background:{{ t.accent_color }};"></div>
+      <div style="background:{{ t.bg_color }};"></div>
+    </div>
+
+    <div class="mt-body"
+         style="background:{{ t.bg_color }};
+                color:{{ t.text_color or '#173042' }};
+                font-family:{{ t.font_family or 'Inter, sans-serif' }};">
+      <div class="mt-name">{{ t.name }}</div>
+      <div class="mt-meta">
+        <code>{{ t.primary_color }}</code> ·
+        <code>{{ t.bg_color }}</code>
+        {% if t.is_active %}· <span style="color:#16a34a; font-weight:700;">global default</span>{% endif %}
+        <br>
+        <span class="tiny">{{ (t.font_family or 'Inter') | truncate(36, True) }}</span>
+      </div>
+
+      <div class="mt-pill-row">
+        <span class="mt-pill" style="background:{{ t.primary_color }}; color:#fff; border-color:{{ t.primary_color }};">PRIMARY</span>
+        <span class="mt-pill" style="background:{{ t.bg_color }}; color:{{ t.primary_color }}; border-color:{{ t.primary_color }};">OUTLINE</span>
+      </div>
+
+      <form method="post">
+        <input type="hidden" name="theme_id" value="{{ t.id }}">
+        <button type="submit" class="mt-submit"
+                style="background:{{ t.primary_color }};"
+                {% if user_theme_id == t.id %}disabled{% endif %}>
+          {% if user_theme_id == t.id %}✓ Currently Selected{% else %}Use This Theme{% endif %}
+        </button>
+      </form>
+    </div>
+
+  </div>
+  {% endfor %}
+
+</div>
+
+<p class="tiny" style="margin-top:1.25rem; color:#9ca3af;">
+  💡 Your preference overrides the global default set by HR admin. Pick <strong>System Default</strong> to follow company-wide theme changes automatically.
+</p>
+{% endblock %}

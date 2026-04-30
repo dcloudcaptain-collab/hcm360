@@ -1,0 +1,24 @@
+version: "3.9"
+
+# ================================================================
+# Standalone Attendance & Payroll Module
+# Shares hris_db with the main HCM360 app
+# Port  : 8095 (host) → 5001 (container)
+# Usage : docker compose up -d
+# ================================================================
+
+services:
+  payroll_web:
+    build: .
+    container_name: payroll_web
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql://hris_admin:hris_secure_pw@host.docker.internal:5440/hris_db
+      PAYROLL_SECRET_KEY: payroll-standalone-secret
+      PAYROLL_PORT: "5001"
+    volumes:
+      - .:/app
+    ports:
+      - "8095:5001"

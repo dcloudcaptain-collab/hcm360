@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block page_title %}CSC Form 212 — {{ employee_name }}{% endblock %}
+{% block content %}
+<style>@media print { .sidebar,.topbar,.no-print{display:none!important;} .main{margin:0!important;padding:0!important;} .layout{display:block!important;} }</style>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;" class="no-print">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Service Record (CSC Form 212) — {{ employee_name }}</h2>
+  <div style="display:flex;gap:.5rem;">
+    <form method="post" action="/dms/service-record/{{ employee_id }}/generate" style="display:inline;">
+      <button type="submit" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:.875rem;font-weight:600;cursor:pointer;">Generate / Refresh</button>
+    </form>
+    <button onclick="window.print()" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;background:none;cursor:pointer;">Print</button>
+    <a href="/dms/employee/{{ employee_id }}" style="font-size:.85rem;color:var(--primary,#4f46e5);padding:7px 0;">← 201 File</a>
+  </div>
+</div>
+
+{% if record %}
+{% set snap = record.snapshot_data %}
+<div class="card" style="padding:1.25rem;">
+  <div style="text-align:center;margin-bottom:1rem;">
+    <div style="font-size:.8rem;color:#6b7280;">Republic of the Philippines</div>
+    <div style="font-size:1rem;font-weight:700;">SERVICE RECORD</div>
+    <div style="font-size:.75rem;color:#9ca3af;">Generated: {{ record.generated_at.strftime('%B %d, %Y') if record.generated_at else '—' }}</div>
+  </div>
+
+  {# Personal Info #}
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:1rem;font-size:.85rem;">
+    <div><span style="color:#6b7280;">Name:</span> <strong>{{ snap.employee.last_name }}, {{ snap.employee.first_name }} {{ snap.employee.middle_name or '' }}</strong></div>
+    <div><span style="color:#6b7280;">Employee No:</span> {{ snap.employee.employee_no }}</div>
+    <div><span style="color:#6b7280;">Date of Birth:</span> {{ snap.employee.date_of_birth or '—' }}</div>
+    <div><span style="color:#6b7280;">Department:</span> {{ snap.employee.department_name or '—' }}</div>
+    <div><span style="color:#6b7280;">Position:</span> {{ snap.employee.position_title or '—' }}</div>
+    <div><span style="color:#6b7280;">SG:</span> {{ snap.employee.salary_grade or '—' }}</div>
+  </div>
+
+  {# Work History #}
+  {% if snap.work_history %}
+  <h3 style="font-size:.9rem;font-weight:700;margin:1rem 0 .5rem;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:.3rem;">Employment History</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);font-size:.7rem;text-transform:uppercase;color:#6b7280;">
+      <th style="padding:6px 8px;text-align:left;">From</th><th style="padding:6px 8px;text-align:left;">To</th>
+      <th style="padding:6px 8px;text-align:left;">Position</th><th style="padding:6px 8px;text-align:left;">Organization</th>
+    </tr></thead>
+    <tbody>
+      {% for wh in snap.work_history %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:5px 8px;">{{ wh.date_from or '—' }}</td>
+        <td style="padding:5px 8px;">{{ wh.date_to or 'Present' }}</td>
+        <td style="padding:5px 8px;">{{ wh.position_title or '—' }}</td>
+        <td style="padding:5px 8px;">{{ wh.company_name or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {# Education #}
+  {% if snap.education %}
+  <h3 style="font-size:.9rem;font-weight:700;margin:1rem 0 .5rem;border-bottom:1px solid rgba(0,0,0,.08);padding-bottom:.3rem;">Educational Background</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);font-size:.7rem;text-transform:uppercase;color:#6b7280;">
+      <th style="padding:6px 8px;text-align:left;">Level</th><th style="padding:6px 8px;text-align:left;">School</th>
+      <th style="padding:6px 8px;text-align:left;">Course</th><th style="padding:6px 8px;text-align:center;">Year</th>
+    </tr></thead>
+    <tbody>
+      {% for ed in snap.education %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:5px 8px;">{{ ed.education_level or '—' }}</td>
+        <td style="padding:5px 8px;">{{ ed.school_name or '—' }}</td>
+        <td style="padding:5px 8px;">{{ ed.course or '—' }}</td>
+        <td style="padding:5px 8px;text-align:center;">{{ ed.year_graduated or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No service record generated yet. Click "Generate / Refresh" to create one.
+</div>
+{% endif %}
+{% endblock %}

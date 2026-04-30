@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  hris_db:
+    image: postgres:15
+    container_name: hris_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hris_db
+      POSTGRES_USER: hris_admin
+      POSTGRES_PASSWORD: hris_secure_pw
+    ports:
+      - "5440:5432"
+    volumes:
+      - hris_db_data:/var/lib/postgresql/data
+      - hris_uploads:/uploads
+      - ./db:/docker-entrypoint-initdb.d/sql:ro
+      - ./docker/init_db.sh:/docker-entrypoint-initdb.d/init_db.sh:ro
+    command: >
+      postgres
+        -c shared_buffers=256MB
+        -c max_connections=200
+        -c log_min_duration_statement=1000
+        -c autovacuum=on
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hris_admin -d hris_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  hris_web:
+    build: .
+    image: hcm360-hris_web:v1.0
+    container_name: hris_web
+    restart: unless-stopped
+    depends_on:
+      hris_db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://hris_admin:hris_secure_pw@hris_db:5432/hris_db
+      SECRET_KEY: changeme-hris-prod
+      UPLOAD_FOLDER: /uploads
+      ENABLE_AI: "true"
+      ENABLE_ATTENDANCE: "true"
+      ENABLE_LEAVE: "true"
+      ENABLE_PAYROLL: "true"
+      ENABLE_ANALYTICS: "true"
+      ENABLE_RSP: "true"
+      ENABLE_PM: "true"
+      ENABLE_LD: "true"
+      ENABLE_RR: "true"
+      ENABLE_DMS: "true"
+      ENABLE_DISCIPLINE: "true"
+      ENABLE_HEALTH: "true"
+      ENABLE_ORGCHART: "true"
+    volumes:
+      - .:/app
+      - hris_uploads:/uploads
+    ports:
+      - "8093:5000"
+
+  payroll_web:
+    build: ./payroll
+    image: hcm360-payroll_web:v1.0
+    container_name: payroll_web
+    restart: unless-stopped
+    depends_on:
+      hris_db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://hris_admin:hris_secure_pw@hris_db:5432/hris_db
+      PAYROLL_SECRET_KEY: payroll-standalone-secret
+      PAYROLL_PORT: "5001"
+    volumes:
+      - ./payroll:/app
+    ports:
+      - "8095:5001"
+
+volumes:
+  hris_db_data:
+    name: hcm360_hris_db_data
+  hris_uploads:
+    name: hcm360_hris_uploads

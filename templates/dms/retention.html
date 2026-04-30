@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block page_title %}Retention Policies{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Document Retention Alerts</h2>
+  <a href="/dms/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+{% if alerts %}
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for a in alerts %}
+  <div class="card" style="padding:1rem;border-left:4px solid {% if a.days_remaining <= 0 %}#dc2626{% elif a.days_remaining <= 30 %}#d97706{% else %}#2563eb{% endif %};">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:.95rem;font-weight:700;">{{ a.document_name }}</div>
+        <div style="font-size:.8rem;color:#6b7280;">{{ a.employee_name }} · {{ a.document_type }} · Retention until: {{ a.retention_until.strftime('%b %d, %Y') if a.retention_until else '—' }}</div>
+      </div>
+      <span style="font-size:.85rem;font-weight:700;color:{% if a.days_remaining <= 0 %}#dc2626{% elif a.days_remaining <= 30 %}#d97706{% else %}#2563eb{% endif %};">
+        {% if a.days_remaining <= 0 %}OVERDUE{% else %}{{ a.days_remaining }}d{% endif %}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No documents approaching retention deadline.</div>
+{% endif %}
+{% endblock %}

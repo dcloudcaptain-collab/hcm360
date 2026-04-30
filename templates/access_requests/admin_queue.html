@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block page_title %}Access Requests{% endblock %}
+
+{% block content %}
+<style>
+  .ar-head { display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap; }
+  .ar-stats { display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem; }
+  .ar-stat  {
+     background:#fff;border:1px solid #e5e7eb;border-radius:10px;
+     padding:.7rem 1rem;min-width:120px;
+  }
+  .ar-stat .lbl { font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em; }
+  .ar-stat .val { font-size:1.5rem;font-weight:800;color:#111827; }
+  .ar-stat.pending .val { color:#d97706; }
+  .ar-stat.granted .val { color:#16a34a; }
+  .ar-stat.denied  .val { color:#dc2626; }
+
+  .ar-filters { display:flex;gap:.35rem;margin-bottom:1rem;flex-wrap:wrap; }
+  .ar-chip {
+     padding:5px 11px;border-radius:6px;font-size:.78rem;font-weight:600;
+     color:#374151;text-decoration:none;background:#fff;border:1px solid #e5e7eb;
+  }
+  .ar-chip.active { background:#4f46e5;color:#fff;border-color:#4f46e5; }
+
+  .ar-table { width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden; }
+  .ar-table th, .ar-table td { padding:.65rem .8rem;text-align:left;font-size:.85rem;border-bottom:1px solid #f3f4f6;vertical-align:top; }
+  .ar-table th { background:#f9fafb;font-weight:700;color:#4b5563;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em; }
+  .ar-table tr.highlight { background:#fef9c3; }
+
+  .s-chip {
+     display:inline-block;padding:2px 8px;border-radius:999px;
+     font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  }
+  .s-PENDING   { background:#fef9c3;color:#854d0e; }
+  .s-GRANTED   { background:#dcfce7;color:#166534; }
+  .s-DENIED    { background:#fee2e2;color:#991b1b; }
+  .s-CANCELLED { background:#e5e7eb;color:#374151; }
+
+  .ar-path { font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+             background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:.8rem; }
+
+  .btn { display:inline-flex;align-items:center;padding:5px 11px;border-radius:6px;
+         font-size:.76rem;font-weight:600;text-decoration:none;cursor:pointer;border:none;font-family:inherit; }
+  .btn-grant { background:#16a34a;color:#fff; }
+  .btn-deny  { background:#fff;color:#b91c1c;border:1.5px solid #fecaca; }
+</style>
+
+<div class="ar-head">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">🔐 Access Requests</h2>
+    <div style="font-size:.85rem;color:#6b7280;">
+      Review users asking for page access. Granting creates a
+      user-level override in the access matrix automatically.
+    </div>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.88rem;
+                background:{% if cat=='error' %}#fee2e2{% else %}#dcfce7{% endif %};
+                color:{% if cat=='error' %}#991b1b{% else %}#166534{% endif %};">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="ar-stats">
+  <div class="ar-stat pending" data-hint="New requests awaiting review."><div class="lbl">Pending</div><div class="val">{{ stats.pending }}</div></div>
+  <div class="ar-stat granted" data-hint="Approved requests — requesters can now access the page."><div class="lbl">Granted</div><div class="val">{{ stats.granted }}</div></div>
+  <div class="ar-stat denied" data-hint="Denied requests — requesters were notified."><div class="lbl">Denied</div><div class="val">{{ stats.denied }}</div></div>
+</div>
+
+<div class="ar-filters" data-hint="Filter by status.">
+  <a href="{{ url_for('access_requests.admin_queue') }}"
+     class="ar-chip {% if not status_filter %}active{% endif %}">All</a>
+  {% for s in ['PENDING','GRANTED','DENIED','CANCELLED'] %}
+  <a href="{{ url_for('access_requests.admin_queue') }}?status={{ s }}"
+     class="ar-chip {% if status_filter == s %}active{% endif %}">{{ s|title }}</a>
+  {% endfor %}
+</div>
+
+{% if requests %}
+<table class="ar-table">
+  <thead>
+    <tr>
+      <th>Requester</th>
+      <th>Page / Path</th>
+      <th>Reason</th>
+      <th>Status</th>
+      <th>Submitted</th>
+      <th style="text-align:right;">Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in requests %}
+    <tr class="{% if highlight_id == r.id %}highlight{% endif %}">
+      <td>
+        <strong>{{ r.requester_name }}</strong><br>
+        <span style="font-size:.7rem;color:#9ca3af;">{{ r.requester_role or '—' }}</span>
+      </td>
+      <td>
+        <span class="ar-path">{{ r.requested_path }}</span>
+        {% if r.page_title %}<br><span style="font-size:.72rem;color:#6b7280;">{{ r.page_title }}</span>{% endif %}
+      </td>
+      <td style="max-width:340px;">
+        {% if r.reason %}
+          <span style="font-size:.82rem;color:#374151;">"{{ r.reason }}"</span>
+        {% else %}
+          <span style="color:#9ca3af;font-size:.78rem;font-style:italic;">No reason provided</span>
+        {% endif %}
+        {% if r.reviewer_name %}
+          <div style="margin-top:.3rem;font-size:.72rem;color:#6b7280;">
+            Reviewed by <strong>{{ r.reviewer_name }}</strong>
+            {% if r.review_notes %} — "{{ r.review_notes }}"{% endif %}
+          </div>
+        {% endif %}
+      </td>
+      <td>
+        <span class="s-chip s-{{ r.status }}">{{ r.status }}</span>
+      </td>
+      <td style="font-size:.75rem;color:#6b7280;white-space:nowrap;">
+        {{ r.created_at.strftime('%b %d, %Y<br>%I:%M %p') | safe }}
+      </td>
+      <td style="text-align:right;">
+        {% if r.status == 'PENDING' %}
+        <div style="display:inline-flex;gap:.3rem;">
+          <form method="post" action="{{ url_for('access_requests.grant', req_id=r.id) }}"
+                style="display:inline;" onsubmit="return confirm('Grant access to {{ r.requester_name }} for {{ r.requested_path }}?');">
+            <button type="submit" class="btn btn-grant"
+                    data-hint="Creates a user-level page-access override and notifies the requester.">✓ Grant</button>
+          </form>
+          <button type="button" class="btn btn-deny"
+                  onclick="openDeny({{ r.id }}, '{{ r.requester_name|e }}', '{{ r.requested_path|e }}')"
+                  data-hint="Mark as denied. Optionally add a note explaining why.">✕ Deny</button>
+        </div>
+        {% else %}
+        <span style="font-size:.72rem;color:#9ca3af;">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div style="background:#fff;border:2px dashed #e5e7eb;border-radius:11px;padding:2.5rem;text-align:center;color:#6b7280;">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">🔐</div>
+  <div style="font-weight:600;margin-bottom:.3rem;">No access requests.</div>
+  <div style="font-size:.85rem;">Users will appear here when they hit a 403 page and request access.</div>
+</div>
+{% endif %}
+
+
+<!-- Deny modal -->
+<div id="denyModal" style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:1.25rem 1.5rem;max-width:440px;width:90%;">
+    <h3 style="margin:0 0 .5rem;font-size:1rem;">Deny access request</h3>
+    <p style="margin:0 0 .8rem;font-size:.85rem;color:#6b7280;">
+      Denying <strong id="denyWho">…</strong> for <code id="denyPath">…</code>.
+      Add an optional note (will be shown to the requester).
+    </p>
+    <form id="denyForm" method="post">
+      <textarea name="notes" rows="2" placeholder="e.g., This page is restricted to HR only."
+                style="width:100%;padding:.6rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-family:inherit;font-size:.88rem;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.8rem;">
+        <button type="button" onclick="closeDeny()"
+                style="padding:7px 14px;border:1.5px solid #d1d5db;background:#fff;border-radius:7px;font-weight:600;cursor:pointer;">Cancel</button>
+        <button type="submit"
+                style="padding:7px 14px;background:#dc2626;color:#fff;border:none;border-radius:7px;font-weight:600;cursor:pointer;">Deny</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openDeny(id, who, path){
+    const m = document.getElementById('denyModal');
+    document.getElementById('denyWho').textContent = who;
+    document.getElementById('denyPath').textContent = path;
+    document.getElementById('denyForm').action =
+      '/admin/access-requests/' + id + '/deny';
+    m.style.display = 'flex';
+  }
+  function closeDeny(){ document.getElementById('denyModal').style.display = 'none'; }
+</script>
+{% endblock %}

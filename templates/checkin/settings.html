@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% block page_title %}Check-In Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+  .set-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:1rem; }
+  .set-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.1rem 1.2rem; }
+  .set-card h3 { margin:0 0 .8rem; font-size:.95rem; display:flex; align-items:center; gap:.35rem; color:#111827; }
+  .set-card .row { display:flex; align-items:center; justify-content:space-between; padding:.45rem 0;
+       border-bottom:1px solid #f3f4f6; font-size:.9rem; }
+  .set-card .row:last-child { border-bottom:none; }
+  .set-card label { font-size:.78rem; text-transform:uppercase; color:#6b7280; letter-spacing:.04em; display:block; margin-bottom:.25rem; }
+  .set-card input[type="number"], .set-card input[type="text"], .set-card select {
+    width:100%; padding:.5rem .65rem; border:1.5px solid #d1d5db; border-radius:7px; font-size:.9rem;
+  }
+  .toggle { position:relative; display:inline-block; width:44px; height:24px; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .slider { position:absolute; cursor:pointer; inset:0; background:#d1d5db; border-radius:24px; transition:.15s; }
+  .slider:before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .toggle input:checked + .slider { background:#4f46e5; }
+  .toggle input:checked + .slider:before { transform:translateX(20px); }
+
+  .kpi { display:flex; align-items:baseline; gap:.4rem; }
+  .kpi .num { font-size:1.8rem; font-weight:800; color:#111827; }
+  .kpi .lbl { color:#6b7280; font-size:.85rem; }
+
+  .save-bar { position:sticky; bottom:1rem; background:#111827; color:#fff; border-radius:10px;
+       padding:.7rem 1rem; display:flex; align-items:center; justify-content:space-between;
+       box-shadow:0 4px 12px rgba(0,0,0,.15); margin-top:1.25rem; }
+  .save-bar button { padding:8px 22px; border-radius:8px; background:#4f46e5; color:#fff; border:none;
+       font-weight:700; cursor:pointer; }
+  .save-flash { background:#f0fdf4; border:1px solid #86efac; color:#166534; padding:.7rem 1rem; border-radius:9px;
+       font-size:.88rem; margin-top:.8rem; display:none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">⚙️ Face / Geotag Check-In Settings</h2>
+    <div style="font-size:.85rem;color:#6b7280;">Configure verification requirements, geofence, and allowed devices</div>
+  </div>
+  <a href="/checkin/" style="padding:7px 14px;background:#fff;color:#4f46e5;border:1.5px solid #4f46e5;border-radius:7px;text-decoration:none;font-size:.85rem;font-weight:600;">→ Try Check-In</a>
+</div>
+
+<!-- KPIs -->
+<div class="set-grid" style="margin-bottom:1.25rem;">
+  <div class="set-card">
+    <h3>👥 Enrollment Progress</h3>
+    <div class="kpi">
+      <span class="num">{{ summary.enrolled }}</span>
+      <span class="lbl">/ {{ summary.total_employees }} active employees</span>
+    </div>
+    <div style="height:8px;background:#f3f4f6;border-radius:999px;margin-top:.6rem;overflow:hidden;">
+      <div style="height:100%;background:linear-gradient(to right,#4f46e5,#22c55e);width:{{ summary.pct }}%;"></div>
+    </div>
+    <div style="font-size:.78rem;color:#6b7280;margin-top:.35rem;">{{ '%.1f'|format(summary.pct) }}% enrolled</div>
+  </div>
+</div>
+
+<form id="settingsForm">
+  <div class="set-grid">
+
+    <!-- Verification -->
+    <div class="set-card">
+      <h3>🔐 Verification Requirements</h3>
+      <div class="row">
+        <span>Require face recognition</span>
+        <label class="toggle"><input type="checkbox" name="require_face" {% if settings.require_face %}checked{% endif %}/><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <span>Require geolocation</span>
+        <label class="toggle"><input type="checkbox" name="require_geotag" {% if settings.require_geotag %}checked{% endif %}/><span class="slider"></span></label>
+      </div>
+      <div class="row">
+        <span>Capture photo snapshot</span>
+        <label class="toggle"><input type="checkbox" name="capture_photo" {% if settings.capture_photo %}checked{% endif %}/><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <!-- Face threshold -->
+    <div class="set-card">
+      <h3>🎯 Face Match Threshold</h3>
+      <label for="face_threshold">Max Euclidean distance (lower = stricter)</label>
+      <input type="number" step="0.01" min="0.2" max="1.0" name="face_threshold" value="{{ '%.2f'|format(settings.face_threshold|float) }}" />
+      <div style="font-size:.78rem;color:#6b7280;margin-top:.35rem;">
+        Recommended: <strong>0.50</strong> (balanced). Use 0.40 for stricter, 0.60 for lenient.
+      </div>
+    </div>
+
+    <!-- Geofence -->
+    <div class="set-card">
+      <h3>📍 Geofence</h3>
+      <label for="geofence_lat">Latitude (office centre)</label>
+      <input type="text" name="geofence_lat" value="{{ settings.geofence_lat or '' }}" placeholder="e.g., 14.4477" />
+      <label for="geofence_lng" style="margin-top:.5rem;">Longitude (office centre)</label>
+      <input type="text" name="geofence_lng" value="{{ settings.geofence_lng or '' }}" placeholder="e.g., 120.4872" />
+      <label for="geofence_radius_m" style="margin-top:.5rem;">Radius (metres)</label>
+      <input type="number" name="geofence_radius_m" value="{{ settings.geofence_radius_m or 200 }}" min="20" max="5000" />
+      <div style="font-size:.78rem;color:#6b7280;margin-top:.35rem;">
+        Leave lat/lng blank to disable geofence.
+      </div>
+    </div>
+
+    <!-- Devices -->
+    <div class="set-card">
+      <h3>💻 Allowed Devices</h3>
+      <label for="allowed_device_kinds">Allowed kinds (comma-separated)</label>
+      <input type="text" name="allowed_device_kinds" value="{{ settings.allowed_device_kinds }}" placeholder="laptop,desktop,mobile" />
+      <label for="preferred_camera" style="margin-top:.6rem;">Preferred camera</label>
+      <select name="preferred_camera">
+        {% for v, lbl in [('any','Any — user chooses'), ('laptop','Laptop built-in'), ('front','Front-facing (mobile)'), ('back','Back-facing (mobile)')] %}
+        <option value="{{ v }}" {% if settings.preferred_camera == v %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Activity types -->
+    <div class="set-card">
+      <h3>🏁 Activity Types</h3>
+      <label for="activity_types">Comma-separated list</label>
+      <input type="text" name="activity_types" value="{{ settings.activity_types }}" />
+      <div style="font-size:.78rem;color:#6b7280;margin-top:.35rem;">
+        e.g., <code>regular,flag_raising,flag_lowering,training</code>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="save-bar">
+    <span style="font-size:.88rem;opacity:.85;">Changes take effect immediately on next check-in.</span>
+    <button type="submit">💾 Save Settings</button>
+  </div>
+  <div id="saveFlash" class="save-flash"></div>
+</form>
+
+<script>
+  document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {};
+    new FormData(e.target).forEach((v, k) => data[k] = v);
+    // Checkboxes: only present when checked. Add missing ones as false.
+    ['require_face', 'require_geotag', 'capture_photo'].forEach(k => {
+      if (!(k in data)) data[k] = false;
+    });
+    // Empty strings for lat/lng → null
+    if (data.geofence_lat === '') data.geofence_lat = null;
+    if (data.geofence_lng === '') data.geofence_lng = null;
+
+    const resp = await fetch('/admin/checkin-settings/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const j = await resp.json();
+    const flash = document.getElementById('saveFlash');
+    flash.textContent = j.message || (j.ok ? 'Saved.' : 'Failed.');
+    flash.style.display = 'block';
+    flash.style.background = j.ok ? '#f0fdf4' : '#fef2f2';
+    flash.style.borderColor = j.ok ? '#86efac' : '#fecaca';
+    flash.style.color = j.ok ? '#166534' : '#991b1b';
+    setTimeout(() => { flash.style.display = 'none'; }, 4500);
+  });
+</script>
+{% endblock %}

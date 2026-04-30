@@ -1,0 +1,730 @@
+{% extends 'base.html' %}
+{% block page_title %}Access Matrix{% endblock %}
+
+{% block content %}
+
+{# ── Styles ───────────────────────────────────────────────────────── #}
+<style>
+/* toggle switch */
+.sw { position:relative; display:inline-flex; align-items:center; gap:.5rem; cursor:pointer; user-select:none; }
+.sw input { position:absolute; opacity:0; width:0; height:0; }
+.sw-track {
+  width:42px; height:22px; border-radius:11px;
+  background:#d1d5db; transition:background .2s; flex-shrink:0;
+}
+.sw input:checked ~ .sw-track { background:var(--primary,#4f46e5); }
+.sw-track::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:16px; height:16px; border-radius:50%; background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s;
+}
+.sw input:checked ~ .sw-track::after { transform:translateX(20px); }
+.sw-pill {
+  font-size:.68rem; font-weight:700; padding:1px 7px;
+  border-radius:4px; min-width:26px; text-align:center;
+}
+.sw input:checked ~ .sw-pill  { background:#dcfce7; color:#166534; }
+.sw input:not(:checked) ~ .sw-pill { background:#fee2e2; color:#991b1b; }
+
+/* larger page-level toggle */
+.sw-lg .sw-track { width:48px; height:24px; border-radius:12px; }
+.sw-lg .sw-track::after { width:18px; height:18px; }
+.sw-lg input:checked ~ .sw-track::after { transform:translateX(24px); }
+.sw-lg .sw-pill { font-size:.72rem; padding:2px 9px; }
+
+/* pending (staged but unsaved) */
+.sw-pending .sw-track { outline:2px solid #f59e0b; outline-offset:1px; }
+
+/* action type badges */
+.badge-print    { background:rgba(124,58,237,.1);  color:#6d28d9; }
+.badge-export   { background:rgba(37,99,235,.1);   color:#1d4ed8; }
+.badge-approve  { background:rgba(5,150,105,.1);   color:#047857; }
+.badge-override,
+.badge-adjust   { background:rgba(217,119,6,.1);   color:#92400e; }
+.badge-create   { background:rgba(16,185,129,.1);  color:#065f46; }
+.badge-edit     { background:rgba(99,102,241,.1);  color:#4338ca; }
+.badge-delete   { background:rgba(220,38,38,.1);   color:#991b1b; }
+.badge-toggle,
+.badge-view     { background:rgba(0,0,0,.06);      color:#374151; }
+.badge-action   { font-size:.65rem; font-weight:700; padding:2px 7px; border-radius:4px; white-space:nowrap; }
+
+/* ── Sticky save bar ─────────────────────────────────────────────── */
+#saveBar {
+  display:none;
+  position:sticky; bottom:1.25rem; z-index:100;
+  margin-top:1rem;
+  background:#1e1b4b; color:#fff;
+  border-radius:10px;
+  padding:.75rem 1.25rem;
+  align-items:center; gap:1rem;
+  box-shadow:0 4px 24px rgba(0,0,0,.25);
+}
+#saveBar.visible { display:flex; }
+#saveBar .bar-msg { flex:1; font-size:.875rem; }
+#saveBar .bar-msg strong { color:#a5b4fc; }
+#btnSave {
+  padding:8px 22px; font-size:.875rem; font-weight:700;
+  background:var(--primary,#4f46e5); color:#fff;
+  border:none; border-radius:6px; cursor:pointer;
+  display:flex; align-items:center; gap:.5rem;
+  transition:opacity .15s;
+}
+#btnSave:disabled { opacity:.5; cursor:not-allowed; }
+#btnDiscard {
+  padding:8px 16px; font-size:.875rem; font-weight:600;
+  background:rgba(255,255,255,.1); color:#e5e7eb;
+  border:none; border-radius:6px; cursor:pointer;
+}
+#btnDiscard:hover { background:rgba(255,255,255,.18); }
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+#toast {
+  position:fixed; bottom:1.5rem; right:1.5rem; z-index:999;
+  padding:.75rem 1.25rem; border-radius:8px;
+  font-size:.875rem; font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.18);
+  opacity:0; transform:translateY(8px);
+  transition:opacity .25s, transform .25s;
+  pointer-events:none;
+}
+#toast.show { opacity:1; transform:translateY(0); }
+#toast.success { background:#ecfdf5; color:#065f46; border:1px solid #6ee7b7; }
+#toast.error   { background:#fef2f2; color:#991b1b; border:1px solid #fca5a5; }
+</style>
+
+{# ── Page header ─────────────────────────────────────────────────── #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Access Matrix</h2>
+    <p style="margin:.25rem 0 0;font-size:.825rem;color:#6b7280;">
+      Configure page visibility and action permissions per role or individual user.
+      Toggle switches to stage changes, then click <strong>Save Changes</strong> to apply.
+    </p>
+  </div>
+  <a href="/admin/modification-access" style="font-size:.825rem;color:var(--primary,#4f46e5);">Modification Access →</a>
+</div>
+
+{# ── Selector form ────────────────────────────────────────────────── #}
+<form method="get" id="selectorForm"
+      style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;margin-bottom:1.5rem;">
+
+  {# Role / User tab switch #}
+  <div style="display:flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden;">
+    <button type="submit" name="grantee_type" value="ROLE"
+            onclick="return guardNav()"
+            style="padding:7px 18px;font-size:.875rem;font-weight:600;border:none;cursor:pointer;
+              background:{% if grantee_type=='ROLE' %}var(--primary,#4f46e5);color:#fff{% else %}#fff;color:#374151{% endif %};">
+      By Role
+    </button>
+    <button type="submit" name="grantee_type" value="USER"
+            onclick="return guardNav()"
+            style="padding:7px 18px;font-size:.875rem;font-weight:600;border:none;cursor:pointer;border-left:1px solid #d1d5db;
+              background:{% if grantee_type=='USER' %}var(--primary,#4f46e5);color:#fff{% else %}#fff;color:#374151{% endif %};">
+      By User
+    </button>
+  </div>
+
+  {% if grantee_type == 'ROLE' %}
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Role</label>
+    <div style="display:flex;gap:.35rem;align-items:center;">
+      <select name="role" onchange="if(guardNav()) document.getElementById('selectorForm').submit()"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 12px;font-size:.875rem;font-weight:600;">
+        {% for r in roles %}
+        <option value="{{ r }}" {% if r == grantee_role %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" onclick="document.getElementById('createRoleModal').style.display='flex'"
+              title="Create new role"
+              style="width:34px;height:34px;border:1px solid #d1d5db;border-radius:6px;background:#fff;
+                     font-size:1.1rem;font-weight:700;color:var(--primary,#4f46e5);cursor:pointer;
+                     display:flex;align-items:center;justify-content:center;">+</button>
+    </div>
+  </div>
+  <input type="hidden" name="grantee_type" value="ROLE">
+
+  {% else %}
+  <div style="display:flex;flex-direction:column;gap:.25rem;min-width:280px;">
+    <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;">User</label>
+    <select name="user_id" onchange="if(guardNav()) document.getElementById('selectorForm').submit()"
+            style="border:1px solid #d1d5db;border-radius:6px;padding:6px 12px;font-size:.875rem;">
+      <option value="">— select a user —</option>
+      {% for u in users %}
+      <option value="{{ u.id }}" {% if u.id == grantee_uid %}selected{% endif %}>
+        {{ u.display_name }} ({{ u.role_code }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <input type="hidden" name="grantee_type" value="USER">
+  {% endif %}
+
+  {# Module dropdown #}
+  <div style="display:flex;flex-direction:column;gap:.25rem;min-width:220px;">
+    <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Module</label>
+    <select name="module" onchange="if(guardNav()) document.getElementById('selectorForm').submit()"
+            style="border:1px solid #d1d5db;border-radius:6px;padding:6px 12px;font-size:.875rem;
+                   min-width:220px;width:100%;">
+      {% for m in modules %}
+      <option value="{{ m.code }}" {% if m.code == module_code %}selected{% endif %}>{{ m.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+</form>
+
+{# ── Context banner ──────────────────────────────────────────────── #}
+<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;padding:.75rem 1rem;
+            background:rgba(99,102,241,.06);border-radius:8px;border:1px solid rgba(99,102,241,.15);
+            font-size:.875rem;">
+  Editing access for:
+  <strong style="color:var(--primary,#4f46e5);">
+    {% if grantee_type == 'ROLE' %}Role — {{ grantee_role }}
+    {% elif selected_user %}User — {{ selected_user.display_name }} ({{ selected_user.role_code }})
+    {% else %}<span style="color:#dc2626;">No user selected</span>{% endif %}
+  </strong>
+  &nbsp;in module&nbsp;
+  <strong>{{ modules | selectattr('code','equalto',module_code) | map(attribute='label') | first }}</strong>
+  {% if grantee_type == 'USER' and selected_user %}
+  <span style="margin-left:auto;font-size:.775rem;color:#6b7280;">User grants override role defaults.</span>
+  {% endif %}
+</div>
+
+{# ── Search box ──────────────────────────────────────────────────── #}
+<div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div style="position:relative;flex:1;min-width:320px;max-width:620px;">
+    <input id="matrixSearch" type="search"
+           placeholder="Search any page, feature, URL, action type, or data source across every module..."
+           oninput="onSearchInput(this.value)"
+           style="width:100%;padding:9px 38px 9px 36px;border:1.5px solid #d1d5db;border-radius:8px;
+                  font-size:.875rem;font-family:inherit;">
+    <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;">🔍</span>
+    <button type="button" id="clearSearchBtn" onclick="clearSearch()"
+            style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);
+                   background:transparent;border:none;color:#9ca3af;cursor:pointer;font-size:1rem;padding:4px 8px;"
+            title="Clear search">✕</button>
+  </div>
+  <span id="matrixCount" style="font-size:.775rem;color:#6b7280;"></span>
+</div>
+
+{# Search results — shown whenever the query is non-empty. Replaces the
+   per-module cards so results are unified across pages, features, and sources. #}
+<div id="searchResults" class="card" style="display:none;margin-bottom:1rem;padding:.5rem 0;overflow:hidden;">
+  <div id="searchResultsList" style="max-height:640px;overflow-y:auto;"></div>
+</div>
+
+{# ── No user selected (USER tab only) ───────────────────────────── #}
+{% if grantee_type == 'USER' and not grantee_uid %}
+<div class="card" style="padding:2.5rem;text-align:center;color:#9ca3af;">
+  Select a user above to configure their individual access overrides.
+</div>
+
+{% elif not detail %}
+<div class="card" style="padding:2.5rem;text-align:center;color:#9ca3af;">
+  No pages registered for this module yet.
+</div>
+
+{% else %}
+
+{% if is_data_source_view %}
+<div class="banner banner-info" style="padding:.75rem 1rem;background:rgba(99,102,241,.08);
+     border:1px solid rgba(99,102,241,.18);border-radius:8px;margin-bottom:1rem;font-size:.85rem;color:#3730a3;">
+  <strong>📊 Report Data Sources:</strong>
+  Toggle which sources this {% if grantee_type=='ROLE' %}role{% else %}user{% endif %} can see on
+  <code>/reports/builder</code> and query via ARIA. User-level grants override role defaults.
+</div>
+{% endif %}
+
+{# ── Page / Feature cards ─────────────────────────────────────────── #}
+{% for page in detail %}
+<section class="card" style="margin-bottom:1rem;padding:0;overflow:hidden;">
+
+  {# ── Page-level row ────────────────────────────────────────────── #}
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:.875rem 1.25rem;background:rgba(0,0,0,.025);
+              {% if page.features %}border-bottom:1px solid rgba(0,0,0,.06);{% endif %}">
+
+    <div>
+      <div style="font-weight:700;font-size:.9rem;">
+        {% if is_data_source_view %}📊 {% endif %}{{ page.title }}
+      </div>
+      <code style="font-size:.72rem;color:#9ca3af;">
+        {% if is_data_source_view %}{{ page.nav_label }} · {{ page.module }}{% else %}{{ page.path }}{% endif %}
+      </code>
+      {% if is_data_source_view and page.description %}
+      <div style="font-size:.75rem;color:#6b7280;margin-top:.15rem;">{{ page.description }}</div>
+      {% endif %}
+    </div>
+
+    <label class="sw sw-lg"
+           data-type="{% if is_data_source_view %}data_source{% else %}page{% endif %}"
+           data-id="{{ page.page_id }}"
+           data-original="{% if page.can_access %}1{% else %}0{% endif %}"
+           onchange="stageChange(this)">
+      <input type="checkbox" {% if page.can_access %}checked{% endif %}>
+      <div class="sw-track"></div>
+      <span class="sw-pill">{% if page.can_access %}ON{% else %}OFF{% endif %}</span>
+    </label>
+  </div>
+
+  {# ── Feature / action rows ─────────────────────────────────────── #}
+  {% if page.features %}
+  <div>
+    {% for f in page.features %}
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                padding:.5rem 1.25rem .5rem 2.5rem;
+                border-bottom:{% if not loop.last %}1px solid rgba(0,0,0,.04){% else %}none{% endif %};
+                background:{% if loop.index is odd %}rgba(0,0,0,.01){% else %}transparent{% endif %};">
+
+      <div style="display:flex;align-items:center;gap:.625rem;">
+        <span class="badge-action badge-{{ f.action_type | lower if f.action_type else 'view' }}">
+          {{ f.action_type or 'VIEW' }}
+        </span>
+        <span style="font-size:.845rem;color:#374151;">{{ f.name }}</span>
+      </div>
+
+      <label class="sw"
+             data-type="feature"
+             data-id="{{ f.id }}"
+             data-feature-id="{{ f.id }}"
+             data-original="{% if f.granted %}1{% else %}0{% endif %}"
+             onchange="stageChange(this)">
+        <input type="checkbox" {% if f.granted %}checked{% endif %}>
+        <div class="sw-track"></div>
+        <span class="sw-pill">{% if f.granted %}ON{% else %}OFF{% endif %}</span>
+      </label>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="padding:.625rem 1.25rem .625rem 2.5rem;font-size:.8rem;color:#d1d5db;font-style:italic;">
+    No configurable actions for this page.
+  </div>
+  {% endif %}
+
+</section>
+{% endfor %}
+
+{# ── Sticky save bar ─────────────────────────────────────────────── #}
+<div id="saveBar">
+  <div class="bar-msg">
+    <strong id="pendingCount">0</strong> unsaved change(s) — click Save to apply.
+  </div>
+  <button id="btnDiscard" type="button" onclick="discardChanges()">Discard</button>
+  <button id="btnSave"    type="button" onclick="saveAllChanges()">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="flex-shrink:0">
+      <path d="M17.293 2.293a1 1 0 011.414 1.414l-10 10a1 1 0 01-1.414 0l-5-5a1 1 0 011.414-1.414L8 11.586l9.293-9.293z"/>
+    </svg>
+    Save Changes
+  </button>
+</div>
+
+{% endif %}
+
+{# ── Legend ──────────────────────────────────────────────────────── #}
+<div style="display:flex;flex-wrap:wrap;gap:.625rem;margin-top:.5rem;align-items:center;font-size:.775rem;">
+  <span style="color:#6b7280;font-weight:600;">Action types:</span>
+  {% for t in ['PRINT','EXPORT','APPROVE','OVERRIDE','ADJUST','CREATE','EDIT','DELETE','TOGGLE','VIEW'] %}
+  <span class="badge-action badge-{{ t | lower }}">{{ t }}</span>
+  {% endfor %}
+</div>
+<p style="margin:.5rem 0 0;font-size:.775rem;color:#9ca3af;">
+  SUPER_ADMIN always has full access.
+  {% if grantee_type == 'USER' %}User-level grants override the user's role defaults.{% endif %}
+</p>
+
+{# ── Toast element ───────────────────────────────────────────────── #}
+<div id="toast"></div>
+
+{# ── JavaScript ──────────────────────────────────────────────────── #}
+<script>
+const GRANTEE = {
+  type:    "{{ grantee_type }}",
+  role:    "{{ grantee_role or '' }}",
+  user_id: "{{ grantee_uid or '' }}"
+};
+
+// Map of "type:id" → {type, id, can_access, labelEl}
+const pendingChanges = new Map();
+
+/* ── Stage a change when a toggle is flipped ─────────────────────── */
+function stageChange(labelEl) {
+  const type       = labelEl.dataset.type;
+  const id         = parseInt(labelEl.dataset.id, 10);
+  const original   = labelEl.dataset.original === '1';
+  const cb         = labelEl.querySelector('input[type=checkbox]');
+  const checked    = cb.checked;
+  const key        = type + ':' + id;
+
+  updatePill(labelEl, checked);
+
+  if (checked === original) {
+    // Reverted to original — remove from pending
+    pendingChanges.delete(key);
+    labelEl.classList.remove('sw-pending');
+  } else {
+    pendingChanges.set(key, { type, id, can_access: checked, labelEl });
+    labelEl.classList.add('sw-pending');
+  }
+
+  // If it's a page toggle, also cascade child feature switches visually
+  if (type === 'page') {
+    const section = labelEl.closest('section');
+    if (section) {
+      section.querySelectorAll('label.sw[data-type="feature"]').forEach(function(fl) {
+        const fcb = fl.querySelector('input[type=checkbox]');
+        if (fcb) {
+          fcb.checked = checked;
+          updatePill(fl, checked);
+          // Stage child changes too
+          const fOriginal = fl.dataset.original === '1';
+          const fKey = 'feature:' + fl.dataset.id;
+          if (checked === fOriginal) {
+            pendingChanges.delete(fKey);
+            fl.classList.remove('sw-pending');
+          } else {
+            pendingChanges.set(fKey, { type: 'feature', id: parseInt(fl.dataset.id, 10), can_access: checked, labelEl: fl });
+            fl.classList.add('sw-pending');
+          }
+        }
+      });
+    }
+  }
+
+  refreshBar();
+}
+
+/* ── Update pill text ─────────────────────────────────────────────── */
+function updatePill(labelEl, checked) {
+  if (!labelEl) return;
+  const pill = labelEl.querySelector('.sw-pill');
+  if (pill) pill.textContent = checked ? 'ON' : 'OFF';
+}
+
+/* ── Show / hide the save bar ────────────────────────────────────── */
+function refreshBar() {
+  const bar = document.getElementById('saveBar');
+  const count = document.getElementById('pendingCount');
+  if (!bar) return;
+  if (pendingChanges.size > 0) {
+    bar.classList.add('visible');
+    count.textContent = pendingChanges.size;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+/* ── Discard all staged changes ──────────────────────────────────── */
+function discardChanges() {
+  pendingChanges.forEach(function(change, key) {
+    const labelEl = change.labelEl;
+    const original = labelEl.dataset.original === '1';
+    const cb = labelEl.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = original;
+    updatePill(labelEl, original);
+    labelEl.classList.remove('sw-pending');
+  });
+  pendingChanges.clear();
+  refreshBar();
+}
+
+/* ── Save all staged changes ─────────────────────────────────────── */
+async function saveAllChanges() {
+  if (pendingChanges.size === 0) return;
+
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const changes = Array.from(pendingChanges.values());
+  let saved = 0;
+  let failed = 0;
+
+  for (const change of changes) {
+    try {
+      const resp = await fetch('/admin/access-matrix/toggle', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type:         change.type,
+          id:           change.id,
+          can_access:   change.can_access,
+          grantee_type: GRANTEE.type,
+          role:         GRANTEE.role    || null,
+          user_id:      GRANTEE.user_id || null,
+        }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        // Commit: update the original baseline so further toggles measure from new state
+        change.labelEl.dataset.original = change.can_access ? '1' : '0';
+        change.labelEl.classList.remove('sw-pending');
+        saved++;
+      } else {
+        // Revert this one
+        const original = change.labelEl.dataset.original === '1';
+        const cb = change.labelEl.querySelector('input[type=checkbox]');
+        if (cb) cb.checked = original;
+        updatePill(change.labelEl, original);
+        change.labelEl.classList.remove('sw-pending');
+        failed++;
+      }
+    } catch (e) {
+      failed++;
+    }
+  }
+
+  pendingChanges.clear();
+  refreshBar();
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="flex-shrink:0"><path d="M17.293 2.293a1 1 0 011.414 1.414l-10 10a1 1 0 01-1.414 0l-5-5a1 1 0 011.414-1.414L8 11.586l9.293-9.293z"/></svg> Save Changes';
+
+  if (failed === 0) {
+    showToast('All ' + saved + ' change(s) saved successfully.', 'success');
+  } else if (saved > 0) {
+    showToast(saved + ' saved, ' + failed + ' failed — check your connection.', 'error');
+  } else {
+    showToast('Save failed — please try again.', 'error');
+  }
+}
+
+/* ── Guard navigation when there are unsaved changes ─────────────── */
+function guardNav() {
+  if (pendingChanges.size === 0) return true;
+  return confirm('You have ' + pendingChanges.size + ' unsaved change(s). Discard and continue?');
+}
+
+/* ── Toast helper ─────────────────────────────────────────────────── */
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() { t.className = ''; }, 3500);
+}
+
+/* ── Matrix search — unified flexible search across all modules ───── */
+let _searchTimer = null;
+const _searchWrap   = () => document.getElementById('searchResults');
+const _searchList   = () => document.getElementById('searchResultsList');
+const _searchCount  = () => document.getElementById('matrixCount');
+const _clearBtn     = () => document.getElementById('clearSearchBtn');
+
+function setModuleCardsVisible(visible) {
+  document.querySelectorAll('section.card').forEach(s => {
+    if (s.id === 'searchResults') return;
+    s.style.display = visible ? '' : 'none';
+  });
+}
+
+function onSearchInput(query) {
+  const q = (query || '').trim();
+  _clearBtn().style.display = q ? 'block' : 'none';
+
+  if (_searchTimer) clearTimeout(_searchTimer);
+
+  if (!q) {
+    // Empty query → restore the per-module view
+    _searchWrap().style.display = 'none';
+    _searchList().innerHTML = '';
+    _searchCount().textContent = '';
+    setModuleCardsVisible(true);
+    return;
+  }
+
+  // Non-empty query → hide per-module cards + run global search
+  setModuleCardsVisible(false);
+  _searchWrap().style.display = 'block';
+  _searchList().innerHTML = '<div style="padding:1rem;color:#9ca3af;font-size:.82rem;">Searching…</div>';
+  _searchCount().textContent = 'Searching…';
+
+  _searchTimer = setTimeout(function(){ runSearch(q); }, 200);
+}
+
+function clearSearch() {
+  document.getElementById('matrixSearch').value = '';
+  onSearchInput('');
+  document.getElementById('matrixSearch').focus();
+}
+
+async function runSearch(q) {
+  try {
+    const params = new URLSearchParams({
+      q: q,
+      grantee_type: GRANTEE.type,
+    });
+    if (GRANTEE.role)    params.append('role', GRANTEE.role);
+    if (GRANTEE.user_id) params.append('user_id', GRANTEE.user_id);
+    const r = await fetch('/admin/access-matrix/search?' + params.toString());
+    const d = await r.json();
+    if (!d.ok) {
+      _searchList().innerHTML = '<div style="padding:1rem;color:#dc2626;">Search failed: ' + (d.message || 'unknown error') + '</div>';
+      _searchCount().textContent = '';
+      return;
+    }
+
+    const pages    = d.pages || [];
+    const features = d.features || [];
+    const sources  = d.data_sources || [];
+    const total    = pages.length + features.length + sources.length;
+    _searchCount().textContent = total + ' result' + (total === 1 ? '' : 's') + ' across all modules';
+
+    if (total === 0) {
+      _searchList().innerHTML = '<div style="padding:1.5rem;text-align:center;color:#9ca3af;">No matches found for <strong>' + escapeHtml(q) + '</strong>.</div>';
+      return;
+    }
+
+    let html = '';
+    if (pages.length) {
+      html += renderSearchHeader('📄 Pages', pages.length);
+      pages.forEach(p => {
+        html += renderResultRow('page', p.id, p.title,
+          p.path + ' · ' + (p.module_label || p.module),
+          p.granted, q);
+      });
+    }
+    if (features.length) {
+      html += renderSearchHeader('⚡ Features / Actions', features.length);
+      features.forEach(f => {
+        html += renderResultRow('feature', f.id,
+          (f.action_type ? `<span class="badge-action badge-${f.action_type.toLowerCase()}">${f.action_type}</span> ` : '') + f.name,
+          f.page_path + ' · ' + (f.module_label || f.module),
+          f.granted, q);
+      });
+    }
+    if (sources.length) {
+      html += renderSearchHeader('📊 Report Data Sources', sources.length);
+      sources.forEach(s => {
+        html += renderResultRow('data_source', s.id,
+          s.source_label,
+          s.source_code + ' · ' + s.module + (s.description ? ' · ' + s.description : ''),
+          s.granted, q);
+      });
+    }
+    _searchList().innerHTML = html;
+  } catch (e) {
+    _searchList().innerHTML = '<div style="padding:1rem;color:#dc2626;">Error: ' + e.message + '</div>';
+    _searchCount().textContent = '';
+  }
+}
+
+function renderSearchHeader(label, count) {
+  return `<div style="padding:.5rem 1rem;font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;font-weight:700;background:#f9fafb;border-bottom:1px solid rgba(0,0,0,.04);">${label} <span style="background:#e5e7eb;color:#374151;padding:1px 7px;border-radius:9px;margin-left:.3rem;">${count}</span></div>`;
+}
+
+function renderResultRow(type, id, titleHtml, subtitle, granted, q) {
+  const safeSubtitle = highlightMatch(subtitle, q);
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.6rem 1rem;border-bottom:1px solid rgba(0,0,0,.04);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:.87rem;color:#111827;line-height:1.3;">${titleHtml}</div>
+        <div style="font-size:.72rem;color:#6b7280;font-family:monospace;margin-top:.15rem;">${safeSubtitle}</div>
+      </div>
+      <label class="sw" style="flex-shrink:0;">
+        <input type="checkbox" ${granted ? 'checked' : ''} onchange="toggleGlobalRow(this, '${type}', ${id})">
+        <div class="sw-track"></div>
+        <span class="sw-pill">${granted ? 'ON' : 'OFF'}</span>
+      </label>
+    </div>`;
+}
+
+function highlightMatch(text, q) {
+  const safe = escapeHtml(text);
+  if (!q) return safe;
+  const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return safe.replace(re, '<mark style="background:#fef3c7;color:#92400e;padding:0 2px;border-radius:2px;">$1</mark>');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function toggleGlobalRow(input, type, id) {
+  const can = input.checked;
+  const pill = input.parentElement.querySelector('.sw-pill');
+  pill.textContent = can ? 'ON' : 'OFF';
+  try {
+    const r = await fetch('/admin/access-matrix/toggle', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        type: type, id: id, can_access: can,
+        grantee_type: GRANTEE.type,
+        role: GRANTEE.role || null,
+        user_id: GRANTEE.user_id || null,
+      }),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      input.checked = !can;
+      pill.textContent = !can ? 'ON' : 'OFF';
+      showToast('Save failed: ' + (j.message || ''), 'error');
+    } else {
+      showToast(can ? 'Granted.' : 'Revoked.', 'success');
+    }
+  } catch (e) {
+    input.checked = !can;
+    pill.textContent = !can ? 'ON' : 'OFF';
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// Ctrl/Cmd+K focuses the search
+document.addEventListener('keydown', function(e){
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    const el = document.getElementById('matrixSearch');
+    if (el) { el.focus(); el.select(); }
+  }
+});
+</script>
+
+{# ── Create Role Modal ─────────────────────────────────────────── #}
+<div id="createRoleModal" style="display:none;position:fixed;inset:0;z-index:1000;
+     background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:1.5rem 1.75rem;width:400px;max-width:92vw;
+              box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h3 style="margin:0;font-size:1.1rem;font-weight:700;">Create New Role</h3>
+      <button onclick="document.getElementById('createRoleModal').style.display='none'"
+              style="border:none;background:none;font-size:1.3rem;cursor:pointer;color:#6b7280;line-height:1;">&times;</button>
+    </div>
+    <form method="post" action="/admin/access-matrix/create-role">
+      <div style="margin-bottom:.85rem;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">
+          Role Code <span style="color:#dc2626;">*</span>
+        </label>
+        <input type="text" name="role_code" required maxlength="50" placeholder="e.g. DEPARTMENT_HEAD"
+               oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')"
+               style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;
+                      font-family:monospace;letter-spacing:.03em;box-sizing:border-box;">
+        <span style="font-size:.68rem;color:#9ca3af;">Uppercase letters, digits, and underscores only.</span>
+      </div>
+      <div style="margin-bottom:.85rem;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">
+          Display Name <span style="color:#dc2626;">*</span>
+        </label>
+        <input type="text" name="role_name" required maxlength="100" placeholder="e.g. Department Head"
+               style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:1.1rem;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">
+          Description
+        </label>
+        <input type="text" name="role_description" maxlength="255" placeholder="Optional description"
+               style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+        <button type="button" onclick="document.getElementById('createRoleModal').style.display='none'"
+                style="padding:8px 18px;font-size:.875rem;border:1px solid #d1d5db;border-radius:6px;
+                       background:#fff;color:#374151;cursor:pointer;">Cancel</button>
+        <button type="submit"
+                style="padding:8px 22px;font-size:.875rem;font-weight:700;border:none;border-radius:6px;
+                       background:var(--primary,#4f46e5);color:#fff;cursor:pointer;">Create Role</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

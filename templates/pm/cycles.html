@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page_title %}Performance Cycles{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Performance Cycles</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/pm/ratings" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Rating Report</a>
+    <a href="/pm/succession" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Succession</a>
+  </div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.85rem;">
+  {% for c in cycles %}
+  <div class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem;">
+          <span style="font-size:.95rem;font-weight:700;">{{ c.name }}</span>
+          <span style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if c.status == 'ACTIVE' %}#dcfce7{% elif c.status == 'COMPLETED' %}#dbeafe{% else %}#f1f5f9{% endif %};
+            color:{% if c.status == 'ACTIVE' %}#166534{% elif c.status == 'COMPLETED' %}#1e40af{% else %}#374151{% endif %};">
+            {{ c.status }}
+          </span>
+          {% if c.cycle_subtype %}
+          <span style="font-size:.68rem;font-weight:600;padding:1px 7px;border-radius:999px;
+                       background:rgba(99,102,241,.08);color:var(--primary,#4f46e5);">
+            {{ c.cycle_subtype.replace('_',' ') }}
+          </span>
+          {% endif %}
+        </div>
+        <div style="font-size:.8rem;color:#6b7280;">
+          {{ c.period_from.strftime('%b %d, %Y') if c.period_from else '' }}
+          — {{ c.period_to.strftime('%b %d, %Y') if c.period_to else '' }}
+          &nbsp;·&nbsp; {{ c.ipcr_count }} IPCRs &nbsp;·&nbsp; {{ c.opcr_count }} OPCRs
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;">
+        <a href="/pm/opcr?cycle_id={{ c.id }}"
+           style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;color:#374151;text-decoration:none;">
+          OPCR
+        </a>
+        <a href="/pm/ipcr?cycle_id={{ c.id }}"
+           style="padding:5px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;">
+          IPCR
+        </a>
+        <a href="/pm/ratings?cycle_id={{ c.id }}"
+           style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;color:#374151;text-decoration:none;">
+          Ratings
+        </a>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No performance cycles configured yet.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

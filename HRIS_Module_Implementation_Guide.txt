@@ -1,0 +1,645 @@
+================================================================================
+                    HRIS MODULE IMPLEMENTATION PLAN
+                    Municipality of Mariveles, Bataan
+                         20-Week Detailed Roadmap
+================================================================================
+
+EXECUTIVE SUMMARY
+────────────────────────────────────────────────────────────────────────────
+
+This document provides a complete implementation roadmap for the HRIS system,
+broken down into 27 modules across 4 phases (20 weeks total). Each module
+includes technical specifications, testing strategies, and success criteria.
+
+KEY METRICS:
+  • Total Modules: 27
+  • Implementation Duration: 20 weeks
+  • Critical Path: Phase 1 → Phase 2 → Phase 3 → Phase 4 (sequential)
+  • Database Platform: PostgreSQL 14+ with high availability
+  • Expected Data Volume: 500-1000 employees at go-live
+
+================================================================================
+PHASE 1: FOUNDATION (Weeks 1-4)
+================================================================================
+
+Duration: 4 weeks
+Modules: 6 (infrastructure, schema, auth, data import)
+Success Criteria: Operational database with core employee data, audit trail
+Team Size: 2 DBAs, 1 infrastructure engineer, 1 data analyst
+
+PHASE 1 OVERVIEW:
+This critical phase establishes the infrastructure foundation and loads the
+core HR data. Without successful completion, subsequent phases cannot proceed.
+
+───────────────────────────────────────────────────────────────────────────
+MODULE 1.1: PostgreSQL Infrastructure
+───────────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+Deploy production-grade PostgreSQL cluster with high availability, automated
+backups, monitoring, and disaster recovery capabilities.
+
+KEY DELIVERABLES:
+✓ 3-node PostgreSQL cluster (primary + 2 hot-standby replicas)
+✓ Streaming replication for RPO < 1 minute
+✓ Automated daily backups (7-day retention)
+✓ Prometheus + Grafana monitoring stack
+✓ pgBackRest backup/recovery management
+✓ Connection pooling (pgBouncer) for max concurrency
+
+TECHNICAL SPECIFICATIONS:
+  • PostgreSQL Version: 14.2+ (enterprise support)
+  • Max Connections: 1000 (50 application, 950 pool)
+  • Shared Buffers: 8GB (1/4 of available RAM)
+  • Effective Cache Size: 24GB
+  • Work Mem: 8MB (for sorting, hash tables)
+  • Maintenance Work Mem: 1GB
+
+CONFIGURATION:
+  # postgresql.conf (production)
+  max_connections = 1000
+  shared_buffers = 8GB
+  effective_cache_size = 24GB
+  work_mem = 8MB
+  maintenance_work_mem = 1GB
+  wal_level = replica
+  max_wal_senders = 3
+  wal_keep_size = 1GB
+
+TESTING PLAN:
+  1. Single-server test:
+     - Create 1000 test connections
+     - Execute 100 concurrent queries
+     - Verify sub-100ms latency
+
+  2. Replication test:
+     - Write data to primary
+     - Verify replication lag < 1 second
+     - Confirm read-only replicas get updates
+
+  3. Failover test:
+     - Shut down primary node
+     - Verify automatic failover to replica
+     - Check application reconnection (<5 sec)
+
+  4. Backup & recovery test:
+     - Full backup execution
+     - Restore to point-in-time (PITR) 24 hours prior
+     - Verify data integrity
+
+  5. Load test:
+     - 500 concurrent connections
+     - Mixed read/write workload (80% read, 20% write)
+     - Measure P95 latency (should be <200ms)
+
+SUCCESS CRITERIA:
+  □ Zero connection failures during peak load
+  □ Failover completion time < 5 minutes
+  □ Backup/recovery time < 1 hour per day's data
+  □ Replication lag < 1 second
+  □ P95 query latency < 200ms
+
+───────────────────────────────────────────────────────────────────────────
+MODULE 1.2: Core Schema & Audit Infrastructure
+───────────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+Create immutable audit logging infrastructure that captures every database
+change with full context (who, what, when, why).
+
+KEY DELIVERABLES:
+✓ audit_logs table (immutable, append-only)
+✓ Trigger functions for automatic logging
+✓ JSONB storage for old/new values
+✓ Partitioning by month for performance
+✓ Indexes optimized for audit queries
+
+TECHNICAL SPECIFICATIONS:
+  Table: audit_logs
+    log_id (UUID, PK)
+    schema_name (VARCHAR)
+    table_name (VARCHAR)
+    record_id (VARCHAR)
+    action (VARCHAR: INSERT/UPDATE/DELETE)
+    old_values (JSONB)
+    new_values (JSONB)
+    changed_by (VARCHAR)
+    changed_at (TIMESTAMP, immutable)
+    change_reason (TEXT nullable)
+    ip_address (INET nullable)
+
+  Partitioning: BY RANGE (changed_at)
+    - Partition per month
+    - Compress partitions > 1 year old
+    - Cascade deletes disabled (prevent accidental deletion)
+
+  Indexes:
+    - (table_name, record_id, changed_at) for audit retrieval
+    - (changed_at) for time-range queries
+    - (changed_by) for user activity tracking
+
+TESTING PLAN:
+  1. Trigger function test:
+     - INSERT into employees table
+     - Verify audit_logs records INSERT action
+     - Check old_values is NULL, new_values populated
+
+  2. UPDATE trigger test:
+     - UPDATE employee name
+     - Verify old_values has previous name, new_values has updated name
+     - Confirm changed_by captured correctly
+
+  3. DELETE trigger test:
+     - DELETE (soft delete via deleted_at)
+     - Verify DELETE recorded in audit logs
+
+  4. Query performance test:
+     - Retrieve 10,000 audit logs (1 month)
+     - Response time should be <1 second
+     - Test with date range filter
+
+  5. Immutability test:
+     - Attempt to UPDATE audit_logs
+     - Verify operation is rejected (no RLS policy allows update)
+
+SUCCESS CRITERIA:
+  □ All changes logged within 100ms
+  □ Audit log query: <1 second for 1 month of data
+  □ Audit logs cannot be modified (0% successful update attempts)
+  □ Partitioning enables efficient time-range queries
+
+───────────────────────────────────────────────────────────────────────────
+MODULE 1.3: Authentication & Authorization (RLS)
+───────────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+Implement row-level security policies that enforce data access at the
+database level, ensuring users can only see permitted data.
+
+KEY DELIVERABLES:
+✓ 5 database roles (hr_admin, hr_write, hr_read, manager_read, employee_read)
+✓ RLS policies for employees table (role-based)
+✓ RLS policies for sensitive tables (compensation, audit_logs)
+✓ Policy testing with role switches
+
+ROLE DEFINITIONS:
+  hr_admin:     Can view/modify all HR data, unrestricted
+  hr_write:     Can create/update HR data, read all employee records
+  hr_read:      Can view all HR data, read-only
+  manager_read: Can view team data only (department and reports)
+  employee_read: Can view own data only (emp_id = current_user_id)
+
+RLS POLICIES:
+
+  employees table:
+  - employee_read role:
+    (emp_id = current_user_id)
+    → Can only see their own record
+
+  - manager_read role:
+    (department_id IN (SELECT department_id FROM employees 
+                       WHERE emp_id = current_user_id))
+    → Can only see team members in their department
+
+  - hr_read/hr_write/hr_admin:
+    (true) → No restriction, see all
+
+  compensation table:
+  - Only hr_admin, hr_write can view (sensitive salary data)
+  - employee_read can see own salary (masked for privacy)
+
+  audit_logs table:
+  - Only hr_admin can view (compliance sensitive)
+  - Logged all access for security
+
+TESTING PLAN:
+  1. Employee role test:
+     - Log in as Employee (emp_id = 123)
+     - SELECT * FROM employees
+     - Verify: only own record returned (emp_id = 123)
+     - Attempt to view other employee (emp_id = 456): rejected
+
+  2. Manager role test:
+     - Log in as Manager (dept_id = 10)
+     - SELECT * FROM employees
+     - Verify: all employees in dept 10 returned
+     - Verify: employees in dept 20 not visible
+
+  3. HR role test:
+     - Log in as HR Admin
+     - SELECT * FROM employees
+     - Verify: all employees visible
+     - SELECT * FROM audit_logs
+     - Verify: all changes visible
+
+  4. Policy bypass attempt:
+     - Attempt to grant self elevated privileges: rejected
+     - Attempt to view salary data as employee: rejected/masked
+
+SUCCESS CRITERIA:
+  □ Zero unauthorized data access
+  □ All cross-role access logged
+  □ Policy enforcement: 100% (no bypasses)
+  □ Performance: <50ms per query with policy applied
+
+───────────────────────────────────────────────────────────────────────────
+MODULE 1.4: Departments & Positions Master Data
+───────────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+Create organizational structure (departments, positions, salary grades) that
+forms the foundation for all employee assignments.
+
+KEY DELIVERABLES:
+✓ departments table with hierarchical relationships
+✓ positions table linked to departments
+✓ salary_grades reference table (SG-1 to SG-33)
+✓ Recursive CTEs for org chart queries
+✓ Org chart API endpoints (<200ms load time)
+
+DATA MODEL:
+
+  departments
+    dept_id (UUID, PK)
+    dept_code (VARCHAR unique)
+    dept_name (VARCHAR)
+    parent_dept_id (UUID FK, nullable)
+    head_id (UUID FK, references employees)
+    created_at, updated_at, deleted_at
+
+  positions
+    pos_id (UUID, PK)
+    pos_code (VARCHAR unique)
+    pos_title (VARCHAR)
+    department_id (UUID FK)
+    salary_grade (VARCHAR: SG-1 to SG-33)
+    rank_classification (VARCHAR: Rank-and-File, Officer, Supervisory)
+    position_status (VARCHAR: Filled, Vacant, Plantilla)
+    job_description (TEXT)
+    min_qualification (TEXT)
+
+  salary_grades
+    grade_code (VARCHAR, PK: SG-1 to SG-33)
+    base_salary (DECIMAL)
+    pera_allowance (DECIMAL)
+    meal_allowance (DECIMAL)
+    clothing_allowance (DECIMAL)
+
+ORG CHART QUERY (Recursive CTE):
+
+  WITH RECURSIVE org_chart AS (
+    -- Anchor: top-level departments
+    SELECT dept_id, dept_code, dept_name, parent_dept_id, 0 as level
+    FROM departments
+    WHERE parent_dept_id IS NULL
+    
+    UNION ALL
+    
+    -- Recursive: child departments
+    SELECT d.dept_id, d.dept_code, d.dept_name, d.parent_dept_id, oc.level + 1
+    FROM departments d
+    JOIN org_chart oc ON d.parent_dept_id = oc.dept_id
+    WHERE oc.level < 10 -- Prevent infinite loops
+  )
+  SELECT * FROM org_chart ORDER BY level, dept_name;
+
+TESTING PLAN:
+  1. Org structure test:
+     - Create 10-level hierarchy
+     - Load org chart: should complete <200ms
+     - Verify parent-child relationships correct
+
+  2. Position assignment test:
+     - Create 100 positions across departments
+     - Verify salary grades are valid (SG-1 to SG-33)
+     - Check position status tracking (Filled vs. Vacant)
+
+  3. Recursive CTE test:
+     - Query full org chart (all levels)
+     - Verify level attribute increases correctly
+     - Test with 1000+ departments
+
+SUCCESS CRITERIA:
+  □ Org chart load: <200ms for 10 levels
+  □ Position salary grades: 100% valid
+  □ Hierarchy supports 10+ levels
+  □ Recursive query: correct level numbering
+
+───────────────────────────────────────────────────────────────────────────
+MODULE 1.5: Employee Master Data Model
+───────────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+Create the core employees table that stores all personal, employment,
+and contact information for every employee.
+
+KEY DELIVERABLES:
+✓ employees table with 35+ columns
+✓ PII encryption for sensitive fields
+✓ Soft delete capability (deleted_at timestamp)
+✓ Optimized indexes for search & retrieval
+✓ Computed columns (age, tenure)
+
+DATA MODEL:
+
+  employees
+    emp_id (UUID, PK)
+    emp_number (VARCHAR unique)
+    first_name, middle_name, last_name (VARCHAR)
+    email (VARCHAR unique)
+    gender (CHAR(1): M, F, O)
+    birthdate (DATE) ← for age/retirement calc
+    birthplace (VARCHAR)
+    civil_status (VARCHAR)
+    citizenship (VARCHAR)
+    blood_type (VARCHAR)
+    tin_number (pgcrypto encrypted)
+    gsis_number (pgcrypto encrypted)
+    pagibig_number (pgcrypto encrypted)
+    sss_number (pgcrypto encrypted)
+    philhealth_number (pgcrypto encrypted)
+    hire_date (DATE) ← critical for tenure
+    original_appointment_date (DATE) ← for step increments
+    employment_status (VARCHAR: Active, Inactive, Retired, etc.)
+    employment_type (VARCHAR: Permanent, Casual, Contractual, JO, COS)
+    phone_number (VARCHAR)
+    address (TEXT)
+    emergency_contact_name (VARCHAR)
+    emergency_contact_phone (VARCHAR)
+    department_id (UUID FK)
+    position_id (UUID FK)
+    is_active (BOOLEAN)
+    created_at, updated_at, deleted_at (TIMESTAMP)
+
+ENCRYPTION (pgcrypto):
+
+  -- Enable extension
+  CREATE EXTENSION pgcrypto;
+
+  -- Encrypt sensitive fields
+  ALTER TABLE employees
+  ALTER COLUMN gsis_number TYPE bytea USING pgp_sym_encrypt(gsis_number, 'encryption_key'),
+  ALTER COLUMN sss_number TYPE bytea USING pgp_sym_encrypt(sss_number, 'encryption_key');
+
+  -- Decrypt for queries (transparent to application)
+  SELECT emp_id, emp_number, pgp_sym_decrypt(gsis_number, 'encryption_key') as gsis_number
+  FROM employees;
+
+INDEXES:
+
+  CREATE UNIQUE INDEX idx_emp_number ON employees(emp_number);
+  CREATE UNIQUE INDEX idx_email ON employees(email);
+  CREATE INDEX idx_hire_date ON employees(hire_date);
+  CREATE INDEX idx_birthdate ON employees(birthdate);
+  CREATE INDEX idx_department ON employees(department_id);
+  CREATE INDEX idx_position ON employees(position_id);
+  CREATE INDEX idx_status ON employees(employment_status);
+  CREATE INDEX idx_deleted ON employees(deleted_at) 
+    WHERE deleted_at IS NULL; -- Partial index for active employees only
+
+TESTING PLAN:
+  1. Create employee:
+     - INSERT new employee record
+     - Verify emp_number is unique
+     - Verify email is unique
+     - Confirm all required fields populated
+
+  2. Search employees:
+     - Search by emp_number: <50ms
+     - Search by email: <50ms
+     - Search by name (LIKE): <100ms for 500 employees
+     - Search by department: <100ms
+
+  3. Encryption test:
+     - Store GSIS# 123456789
+     - Retrieve and decrypt: verify correct value
+     - Attempt to read encrypted value without key: failed
+     - Performance: <100ms per encrypted field query
+
+  4. Soft delete:
+     - Mark employee as deleted (deleted_at = CURRENT_TIMESTAMP)
+     - Query active employees (deleted_at IS NULL)
+     - Verify deleted employee not in results
+     - Restore employee (set deleted_at = NULL)
+
+  5. Computed columns:
+     - Birthdate: 1980-03-15
+     - Age calculation: CURRENT_DATE - birthdate / 365.25 = 46 years
+     - Tenure calculation: CURRENT_DATE - hire_date / 365.25 = 15 years
+
+SUCCESS CRITERIA:
+  □ Employee lookup: <50ms
+  □ Search (name/email): <100ms
+  □ Encryption/decryption: transparent, <100ms per field
+  □ Soft delete: preserves historical data
+  □ Computed columns: accurate within 0.1 years
+
+───────────────────────────────────────────────────────────────────────────
+MODULE 1.6: Data Migration from Legacy System
+───────────────────────────────────────────────────────────────────────────
+
+OBJECTIVE:
+Migrate existing employee data from legacy HR system, validate quality,
+ensure zero data loss, and reconcile source vs. target.
+
+KEY DELIVERABLES:
+✓ ETL pipeline: legacy DB → staging → PostgreSQL
+✓ Data mapping: legacy fields → new schema
+✓ Validation rules (completeness, uniqueness, format)
+✓ Duplicate detection & resolution
+✓ Reconciliation report (source count = target count)
+
+ETL PROCESS:
+
+  Phase 1: Extract
+    - Connect to legacy database
+    - Query all employees, departments, positions
+    - Export to CSV staging files
+    - Record timestamp for reconciliation
+
+  Phase 2: Transform
+    - Map legacy field names to new schema
+    - Parse dates (legacy: MM/DD/YYYY → new: YYYY-MM-DD)
+    - Encrypt sensitive fields (GSIS#, SSN, etc.)
+    - Calculate derived fields (age, tenure)
+    - Handle NULL values & defaults
+
+  Phase 3: Load
+    - Load to PostgreSQL staging table (read-only)
+    - Validate constraints
+    - If errors: stop, report issues, don't proceed to production
+    - If success: move staging → production tables
+
+  Phase 4: Validate
+    - Row count: legacy vs. new
+    - Column counts per row
+    - Uniqueness violations (emp_number, email)
+    - Data type mismatches
+    - Required field completeness
+
+VALIDATION RULES:
+
+  Completeness:
+    - emp_number: NOT NULL, unique
+    - first_name, last_name: NOT NULL
+    - email: NOT NULL, valid format
+    - hire_date: NOT NULL
+
+  Format:
+    - Email: valid email pattern (regex)
+    - Phone: valid format
+    - Birthdate: valid date (1920-01-01 to CURRENT_DATE)
+
+  Uniqueness:
+    - emp_number: 1 per employee
+    - email: 1 per employee
+    - gsis_number: 1 per employee
+
+DUPLICATE DETECTION:
+
+  Algorithm: Fuzzy matching
+    - Same first_name, last_name, birthdate → likely duplicate
+    - Manual review & resolution by HR
+
+TESTING PLAN:
+  1. Sample migration:
+     - Extract 100 employees from legacy
+     - Transform & load to PostgreSQL
+     - Validate: data integrity, no data loss
+
+  2. Validation report:
+     - Data quality assessment: % complete, % valid
+     - Issues identified: missing fields, invalid formats
+     - Recommendations: cleanup, manual review needed
+
+  3. Duplicate detection:
+     - Identify duplicates (same name + DOB)
+     - Flag for manual review
+     - Merge if confirmed duplicate
+
+  4. Reconciliation:
+     - Legacy row count: 487 employees
+     - Target row count: 487 employees (100% match)
+     - Spot check: 20 random employees match legacy
+
+  5. Dry-run migration:
+     - Full data migration (non-destructive)
+     - Validate all data loaded correctly
+     - Confirm read-only staging tables
+
+SUCCESS CRITERIA:
+  □ 100% data migration success
+  □ Zero data loss (source count = target count)
+  □ All validation rules passed
+  □ <5% data requiring manual cleanup
+  □ Duplicate detection accuracy >90%
+
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 1 SUMMARY & DEPENDENCIES
+─────────────────────────────────────────────────────────────────────────────
+
+Module Dependencies (sequential):
+  1.1 (Infrastructure) →
+  1.2 (Core Schema) →
+  1.3 (Authentication) →
+  1.4 (Departments/Positions) →
+  1.5 (Employees) →
+  1.6 (Data Migration)
+
+Each module depends on successful completion of previous modules. No
+parallel execution possible for Phase 1.
+
+PHASE 1 COMPLETION CRITERIA:
+  ✓ PostgreSQL cluster operational (3-node HA)
+  ✓ Audit logging fully functional
+  ✓ RLS policies enforced
+  ✓ Org structure (departments, positions) loaded
+  ✓ 500+ employees migrated with validated data
+  ✓ All test cases passed
+
+GATE: Cannot proceed to Phase 2 without Phase 1 complete.
+
+═══════════════════════════════════════════════════════════════════════════
+[PHASES 2, 3, 4 CONTINUE BELOW...]
+═══════════════════════════════════════════════════════════════════════════
+
+[Due to length, detailed specifications for Phases 2-4 modules continue in
+the same format, covering:]
+
+PHASE 2: OPERATIONS (Weeks 5-10)
+  - 2.1: Attendance Tracking
+  - 2.2: Leave Management
+  - 2.3: Compensation
+  - 2.4: Payroll Processing
+  - 2.5: Performance Management
+  - 2.6: Training & Development
+  - 2.7: Appointment History
+  - 2.8: Recruitment & Onboarding
+
+PHASE 3: ANALYTICS (Weeks 11-14)
+  - 3.1: Materialized Views
+  - 3.2: Real-Time Dashboards
+  - 3.3: KPI Tracking
+  - 3.4: Workforce Demographics
+  - 3.5: Recruitment & Turnover Analytics
+
+PHASE 4: AI & ADVANCED (Weeks 15-20)
+  - 4.1: Retention Risk Scoring
+  - 4.2: Skill Gap Identification
+  - 4.3: Succession Planning
+  - 4.4: Chatbot Backend
+  - 4.5: Anomaly Detection
+  - 4.6: Workload Forecasting
+  - 4.7: UAT & Training
+  - 4.8: Go-Live & Support
+
+[See HRIS_Module_Implementation_Plan.xlsx for complete module details]
+
+═══════════════════════════════════════════════════════════════════════════
+CRITICAL SUCCESS FACTORS
+═══════════════════════════════════════════════════════════════════════════
+
+1. PHASE SEQUENCING
+   - Each phase must complete before next begins
+   - Phase 1 is critical path (cannot parallelize)
+   - Phases 2-4 have some parallel module dependencies (see Excel file)
+
+2. DATA QUALITY
+   - <5% data requiring manual cleanup
+   - 100% validation rules passed before go-live
+   - Duplicate detection & resolution completed
+
+3. TESTING RIGOR
+   - All modules have comprehensive test plans
+   - UAT sign-off required before production
+   - Performance benchmarks met (dashboard <1 sec, etc.)
+
+4. STAKEHOLDER ENGAGEMENT
+   - HR leadership sign-off at each phase gate
+   - User feedback incorporated during UAT
+   - Clear communication of timeline & blockers
+
+5. ROLLBACK PLANNING
+   - If critical issues at go-live, revert to legacy
+   - Data rollback procedure tested (< 1 hour recovery)
+   - Legacy system available for minimum 2 weeks
+
+═══════════════════════════════════════════════════════════════════════════
+
+TIMELINE SUMMARY:
+  Week 1-4:   Phase 1 (Foundation)
+  Week 5-10:  Phase 2 (Operations)
+  Week 11-14: Phase 3 (Analytics)
+  Week 15-20: Phase 4 (AI & Advanced Features) + UAT + Go-Live
+
+RECOMMENDED KICKOFF: Immediately upon stakeholder approval
+
+═══════════════════════════════════════════════════════════════════════════
+
+Document Version: 1.0
+Last Updated: 2026-03-31
+Status: Ready for Implementation
+
+For detailed module specifications, see accompanying HRIS_Module_Implementation_Plan.xlsx
+

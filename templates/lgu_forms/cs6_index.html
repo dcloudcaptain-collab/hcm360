@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block page_title %}CS Form No. 6 Leave{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>📄 CS Form No. 6 — Leave Applications</h2>
+    <div class="sub">CSC-compliant leave application (revised 2020)</div>
+  </div>
+  <a href="/leave/cs-form-6/new" class="btn btn-primary">+ New Application</a>
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr>
+      <th>Filed</th>
+      <th>Employee</th>
+      <th>Leave Type</th>
+      <th>From</th>
+      <th>To</th>
+      <th>Days</th>
+      <th>Commutation</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.date_of_filing.strftime('%b %d, %Y') if r.date_of_filing else '—' }}</td>
+      <td>
+        <div style="font-weight:600;">{{ r.full_name }}</div>
+        <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div>
+      </td>
+      <td><span style="font-size:.75rem;padding:2px 8px;background:#f1f5f9;border-radius:5px;">{{ r.leave_code }}</span> {{ r.leave_type_name }}</td>
+      <td>{{ r.date_from.strftime('%b %d, %Y') }}</td>
+      <td>{{ r.date_to.strftime('%b %d, %Y') }}</td>
+      <td style="text-align:right;font-weight:600;">{{ r.days }}</td>
+      <td style="font-size:.78rem;color:#6b7280;">{{ 'Requested' if r.commutation == 'REQUESTED' else 'Not requested' }}</td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td><a href="/leave/cs-form-6/{{ r.id }}" class="btn-xs btn-ghost" style="background:#fff;color:#4f46e5;border:1px solid #4f46e5;">View</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;margin-bottom:.5rem;">📄</div>
+  <div style="font-weight:600;">No CS Form No. 6 applications yet.</div>
+  <a href="/leave/cs-form-6/new" class="btn btn-primary" style="margin-top:.8rem;">File your first application</a>
+</div>
+{% endif %}
+{% endblock %}

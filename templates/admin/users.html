@@ -1,0 +1,332 @@
+{% extends 'base.html' %}
+{% block page_title %}User Management{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .sub { font-size:.85rem; color:#6b7280; }
+  .role-banner { padding:.6rem 1rem; background:#fef3c7; border:1px solid #fde68a;
+      color:#92400e; border-radius:9px; font-size:.85rem; margin-bottom:1rem; }
+
+  table.udt { width:100%; border-collapse:collapse; font-size:.88rem; background:#fff;
+      border:1px solid #e5e7eb; border-radius:11px; overflow:hidden; }
+  table.udt thead th { text-align:left; padding:.6rem .9rem; background:#f9fafb; color:#6b7280;
+      font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;
+      border-bottom:1.5px solid #e5e7eb; }
+  table.udt tbody td { padding:.5rem .9rem; border-bottom:1px solid #f1f5f9;
+      vertical-align:middle; }
+  table.udt tbody tr:hover td { background:#fcfcfd; }
+
+  .u-name { font-weight:600; color:#111827; }
+  .u-sub  { font-size:.75rem; color:#6b7280; font-family:monospace; }
+
+  .role-chip { display:inline-block; padding:3px 10px; border-radius:999px;
+      font-size:.72rem; font-weight:700; white-space:nowrap; }
+  .role-SUPER_ADMIN { background:#7c3aed; color:#fff; }
+  .role-HR_ADMIN    { background:#4f46e5; color:#fff; }
+  .role-EXECUTIVE   { background:#0891b2; color:#fff; }
+  .role-MANAGER     { background:#2563eb; color:#fff; }
+  .role-EMPLOYEE    { background:#e5e7eb; color:#374151; }
+  .role-default     { background:#f3f4f6; color:#6b7280; }
+
+  .status-badge { display:inline-block; padding:2px 10px; border-radius:999px;
+      font-size:.72rem; font-weight:700; }
+  .s-active   { background:#dcfce7; color:#166534; }
+  .s-inactive { background:#fee2e2; color:#991b1b; }
+
+  /* ── Inline-edit cell ─────────────────────────────────── */
+  .edit-input, .edit-select {
+    width:100%; padding:5px 8px; border:1.5px solid #4f46e5; border-radius:6px;
+    font-size:.85rem; font-family:inherit; background:#fff;
+  }
+  .edit-input:focus, .edit-select:focus { outline:none;
+      box-shadow:0 0 0 3px rgba(79,70,229,.18); }
+  .cell-editable { cursor:text; }
+  .cell-editable:hover {
+    background:#f9fafb; outline:1px dashed #d1d5db;
+    border-radius:4px;
+  }
+  .row-actions { white-space:nowrap; }
+  .btn-xs {
+    padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px;
+    border:none; cursor:pointer; font-family:inherit;
+  }
+  .btn-save   { background:#16a34a; color:#fff; }
+  .btn-cancel { background:#fff; color:#6b7280; border:1px solid #d1d5db; }
+  .btn-edit   { background:#fff; color:#4f46e5; border:1px solid #4f46e5; }
+  .btn-save:disabled { opacity:.55; cursor:wait; }
+
+  /* Row highlight when dirty */
+  tr.dirty td { background:#fffbeb !important; }
+  tr.saving td { opacity:.5; }
+
+  /* toast */
+  .toast { position:fixed; bottom:1rem; right:1rem; background:#111827; color:#fff;
+      padding:.6rem 1rem; border-radius:8px; font-size:.85rem; box-shadow:0 6px 20px rgba(0,0,0,.2);
+      z-index:100005; opacity:0; transform:translateY(8px); transition:.2s; }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast.err  { background:#991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>👥 User Management</h2>
+    <div class="sub">
+      {{ users|length }} user{{ 's' if users|length != 1 else '' }} ·
+      {% if can_edit %}
+      <span data-hint="Click any Name, Email or Role cell to edit inline. Save/Cancel buttons appear once you make changes.">Inline-edit enabled (SUPER_ADMIN)</span>
+      {% else %}
+      Read-only view — SUPER_ADMIN required to edit
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if not can_edit %}
+<div class="role-banner">
+  ⚠️ Inline editing is restricted to SUPER_ADMIN. Your current role is
+  <code>{{ session.role_code or 'unknown' }}</code>.
+</div>
+{% endif %}
+
+<table class="udt">
+  <thead>
+    <tr>
+      <th style="width:60px;">ID</th>
+      <th>User</th>
+      <th>Email</th>
+      <th style="width:160px;">Role</th>
+      <th style="width:130px;">Linked Employee</th>
+      <th style="width:110px;">Status</th>
+      <th style="width:140px;">Last Login</th>
+      {% if can_edit %}<th style="width:200px;text-align:right;">Actions</th>{% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr data-user-id="{{ u.id }}" data-original='{{ {"display_name":u.display_name,"email":u.email,"role_code":u.role_code,"is_active":u.is_active}|tojson }}'>
+      <td style="font-family:monospace;color:#6b7280;">{{ u.id }}</td>
+
+      {# Name + username #}
+      <td>
+        <div class="u-name {% if can_edit %}cell-editable{% endif %}"
+             {% if can_edit %}data-field="display_name" data-hint="Click to edit"{% endif %}>
+          {{ u.display_name or '—' }}
+        </div>
+        <div class="u-sub">{{ u.username }}</div>
+      </td>
+
+      {# Email #}
+      <td>
+        <span class="{% if can_edit %}cell-editable{% endif %}"
+              {% if can_edit %}data-field="email" data-hint="Click to edit"{% endif %}
+              style="font-size:.83rem;">
+          {{ u.email or '—' }}
+        </span>
+      </td>
+
+      {# Role — always dropdown when editable, chip when read-only #}
+      <td class="role-cell">
+        {% if can_edit %}
+        <select class="edit-select role-dropdown" data-field="role_code">
+          {% for r in roles %}
+          <option value="{{ r.code }}" {% if r.code == u.role_code %}selected{% endif %}
+                  data-hint="{{ r.name }}">
+            {{ r.name }} ({{ r.code }})
+          </option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <span class="role-chip role-{{ u.role_code }}">{{ u.role_code }}</span>
+        {% endif %}
+      </td>
+
+      {# Linked employee #}
+      <td style="font-size:.82rem;color:#374151;">
+        {% if u.employee_id %}
+        {{ u.linked_employee_name or '—' }}<br>
+        <span class="u-sub">{{ u.employee_no }}</span>
+        {% else %}
+        <span style="color:#9ca3af;">—</span>
+        {% endif %}
+      </td>
+
+      {# Active toggle #}
+      <td>
+        {% if can_edit %}
+        <label style="display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;">
+          <input type="checkbox" class="active-toggle" data-field="is_active"
+                 {% if u.is_active %}checked{% endif %}
+                 style="accent-color:#16a34a;" />
+          <span class="status-badge {{ 's-active' if u.is_active else 's-inactive' }}">
+            {{ 'Active' if u.is_active else 'Inactive' }}
+          </span>
+        </label>
+        {% else %}
+        <span class="status-badge {{ 's-active' if u.is_active else 's-inactive' }}">
+          {{ 'Active' if u.is_active else 'Inactive' }}
+        </span>
+        {% endif %}
+      </td>
+
+      {# Last login #}
+      <td style="font-size:.78rem;color:#6b7280;">
+        {% if u.last_login_at %}{{ u.last_login_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+      </td>
+
+      {# Row actions #}
+      {% if can_edit %}
+      <td class="row-actions" style="text-align:right;">
+        <button type="button" class="btn-xs btn-save"   data-act="save" disabled>💾 Save</button>
+        <button type="button" class="btn-xs btn-cancel" data-act="cancel" disabled>Cancel</button>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div id="toast" class="toast"></div>
+
+{% if can_edit %}
+<script>
+(function(){
+  function $$(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
+
+  // Toast helper
+  const toast = document.getElementById('toast');
+  function flash(msg, err) {
+    toast.textContent = msg;
+    toast.classList.toggle('err', !!err);
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  // ── Click-to-edit text cells ───────────────────────────
+  document.addEventListener('click', function(e){
+    const el = e.target.closest('.cell-editable');
+    if (!el || el.querySelector('.edit-input')) return;
+    const field = el.dataset.field;
+    const orig = el.textContent.trim() === '—' ? '' : el.textContent.trim();
+    const input = document.createElement('input');
+    input.type = field === 'email' ? 'email' : 'text';
+    input.className = 'edit-input';
+    input.value = orig;
+    input.dataset.field = field;
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+
+    input.addEventListener('blur', function(){ finalize(input, el, orig); });
+    input.addEventListener('keydown', function(ev){
+      if (ev.key === 'Enter') input.blur();
+      else if (ev.key === 'Escape') { input.value = orig; input.blur(); }
+    });
+  });
+
+  function finalize(input, cell, orig){
+    const newVal = input.value.trim();
+    cell.textContent = newVal || '—';
+    if (newVal !== orig) markDirty(cell.closest('tr'));
+  }
+
+  // ── Role dropdown + active toggle change => mark dirty ─
+  $$('.role-dropdown, .active-toggle').forEach(el => {
+    el.addEventListener('change', function(){
+      markDirty(el.closest('tr'));
+      // Also update the badge live for active toggle
+      if (el.classList.contains('active-toggle')) {
+        const badge = el.closest('label').querySelector('.status-badge');
+        if (badge) {
+          badge.textContent = el.checked ? 'Active' : 'Inactive';
+          badge.classList.toggle('s-active', el.checked);
+          badge.classList.toggle('s-inactive', !el.checked);
+        }
+      }
+    });
+  });
+
+  function markDirty(tr){
+    tr.classList.add('dirty');
+    tr.querySelector('[data-act=save]').disabled = false;
+    tr.querySelector('[data-act=cancel]').disabled = false;
+  }
+
+  // ── Save / Cancel ──────────────────────────────────────
+  document.addEventListener('click', async function(e){
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const tr = btn.closest('tr');
+    if (btn.dataset.act === 'cancel') {
+      location.reload();
+      return;
+    }
+
+    // SAVE
+    const original = JSON.parse(tr.dataset.original || '{}');
+    const payload = {};
+    // Name
+    const nameCell = tr.querySelector('[data-field=display_name]');
+    const nameVal = (nameCell.querySelector('input')?.value ?? nameCell.textContent).trim();
+    if (nameVal !== (original.display_name || '').trim())
+      payload.display_name = nameVal;
+    // Email
+    const emailCell = tr.querySelector('[data-field=email]');
+    const emailVal = (emailCell.querySelector('input')?.value ?? emailCell.textContent).trim();
+    if (emailVal !== (original.email || '').trim())
+      payload.email = emailVal;
+    // Role
+    const roleSel = tr.querySelector('select[data-field=role_code]');
+    if (roleSel && roleSel.value !== original.role_code) payload.role_code = roleSel.value;
+    // Active
+    const activeCb = tr.querySelector('[data-field=is_active]');
+    if (activeCb && activeCb.checked !== !!original.is_active)
+      payload.is_active = activeCb.checked;
+
+    if (Object.keys(payload).length === 0) {
+      flash('No changes to save.');
+      tr.classList.remove('dirty');
+      btn.disabled = true;
+      tr.querySelector('[data-act=cancel]').disabled = true;
+      return;
+    }
+
+    tr.classList.add('saving');
+    btn.disabled = true;
+    try {
+      const r = await fetch(`/admin/users/${tr.dataset.userId}/save`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const j = await r.json();
+      tr.classList.remove('saving');
+      if (j.ok) {
+        flash('✓ Saved.');
+        tr.classList.remove('dirty');
+        tr.dataset.original = JSON.stringify({
+          display_name: j.user.display_name,
+          email: j.user.email,
+          role_code: j.user.role_code,
+          is_active: j.user.is_active,
+        });
+        tr.querySelector('[data-act=cancel]').disabled = true;
+      } else {
+        flash('✗ ' + (j.message || 'Save failed'), true);
+        btn.disabled = false;
+        tr.querySelector('[data-act=cancel]').disabled = false;
+      }
+    } catch (ex) {
+      tr.classList.remove('saving');
+      flash('✗ ' + ex.message, true);
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

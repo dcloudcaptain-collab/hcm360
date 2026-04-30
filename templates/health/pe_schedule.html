@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block page_title %}Annual Physical Exam{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Annual Physical Exam Schedules</h2>
+  <a href="/health/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for s in schedules %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:.95rem;font-weight:700;">{{ s.title }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">
+        {{ s.scheduled_from.strftime('%b %d') if s.scheduled_from else '—' }} — {{ s.scheduled_to.strftime('%b %d, %Y') if s.scheduled_to else '—' }}
+        {% if s.provider_name %} · {{ s.provider_name }}{% endif %}
+        {% if s.venue %} · {{ s.venue }}{% endif %}
+      </div>
+      <div style="font-size:.78rem;color:#9ca3af;margin-top:.15rem;">{{ s.examined_count }}/{{ s.result_count }} examined</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+        background:{% if s.status == 'COMPLETED' %}#dcfce7{% elif s.status == 'IN_PROGRESS' %}#dbeafe{% elif s.status == 'SCHEDULED' %}#fef9c3{% else %}#fee2e2{% endif %};
+        color:{% if s.status == 'COMPLETED' %}#166534{% elif s.status == 'IN_PROGRESS' %}#1e40af{% elif s.status == 'SCHEDULED' %}#854d0e{% else %}#991b1b{% endif %};">{{ s.status }}</span>
+      <a href="/health/pe/{{ s.id }}" style="padding:5px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;">Results</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No PE schedules found.</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ group.name }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee-picker.css') }}">
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between;
+               flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .sub { font-size:.85rem; color:#6b7280; }
+  .btn { display:inline-flex; align-items:center; padding:8px 16px; border-radius:8px;
+         font-size:.85rem; font-weight:600; text-decoration:none; cursor:pointer;
+         border:none; font-family:inherit; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .btn-xs { padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px; }
+
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:11px;
+          padding:1.1rem 1.25rem; margin-bottom:1rem; }
+  .card h3 { margin:0 0 .7rem; font-size:.95rem; }
+
+  .vis-badge { display:inline-block; padding:2px 8px; border-radius:5px;
+               font-size:.68rem; font-weight:700; }
+  .v-PUBLIC  { background:#dbeafe; color:#1d4ed8; }
+  .v-DEPT    { background:#fef3c7; color:#92400e; }
+  .v-PRIVATE { background:#e5e7eb; color:#374151; }
+
+  table.mem { width:100%; border-collapse:collapse; font-size:.87rem; }
+  table.mem th { text-align:left; padding:.5rem .75rem; background:#f9fafb;
+     color:#6b7280; font-size:.7rem; text-transform:uppercase;
+     letter-spacing:.05em; border-bottom:1.5px solid #e5e7eb; }
+  table.mem td { padding:.5rem .75rem; border-bottom:1px solid #f1f5f9; }
+  table.mem tbody tr:hover td { background:#f9fafb; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  @media (max-width:860px) { .grid-2 { grid-template-columns:1fr; } }
+</style>
+<script src="{{ url_for('static', filename='js/employee-picker.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>👥 {{ group.name }}</h2>
+    <div class="sub">
+      <span class="vis-badge v-{{ group.visibility }}">{{ group.visibility }}</span>
+      {% if group.code %}· <code>{{ group.code }}</code>{% endif %}
+      · {{ members|length }} member{{ 's' if members|length != 1 else '' }}
+      · created by {{ group.created_by_name or '—' }}
+      {% if group.department %}· scoped to {{ group.department }}{% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('employee_picker.groups_list') }}" class="btn btn-ghost">← All groups</a>
+</div>
+
+{% if group.description %}
+<div class="card">
+  <div style="font-size:.88rem;color:#374151;">{{ group.description }}</div>
+</div>
+{% endif %}
+
+<div class="grid-2">
+  {# ── Add members ─────────────────────────────────────── #}
+  <div class="card">
+    <h3>➕ Add members</h3>
+    <div id="addPicker"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:.6rem;">
+      <button type="button" class="btn btn-primary" onclick="addSelected()">Add selected</button>
+    </div>
+  </div>
+
+  {# ── Current members ─────────────────────────────────── #}
+  <div class="card">
+    <h3>Current members ({{ members|length }})</h3>
+    {% if members %}
+    <table class="mem">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th style="width:140px;">Department</th>
+          <th style="width:50px;"></th>
+        </tr>
+      </thead>
+      <tbody id="memberRows">
+        {% for m in members %}
+        <tr data-emp-id="{{ m.id }}">
+          <td>
+            <div style="font-weight:600;">{{ m.name }}</div>
+            <div style="font-size:.72rem;color:#6b7280;font-family:monospace;">{{ m.employee_no }}</div>
+          </td>
+          <td style="font-size:.82rem;color:#374151;">{{ m.department or '—' }}</td>
+          <td style="text-align:right;">
+            <button type="button" class="btn btn-ghost btn-xs"
+                    onclick="removeMember({{ m.id }})" title="Remove">✕</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#9ca3af;font-size:.85rem;margin:0;">No members yet. Use the picker on the left to add some.</p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+const GROUP_ID = {{ group.id }};
+let picker = null;
+
+document.addEventListener('DOMContentLoaded', function(){
+  picker = new EmployeePicker(document.getElementById('addPicker'), {
+    mode: 'multi',
+    inputName: 'group_add_ids[]',
+    allowDepartments: true,
+    allowGroups: true,  // nested groups allowed for bulk-import
+  });
+});
+
+async function addSelected(){
+  const ids = picker.getSelectedIds();
+  if (!ids.length) { alert('Pick at least one employee.'); return; }
+  const r = await fetch('/admin/employee-groups/' + GROUP_ID + '/members/add', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({employee_ids: ids}),
+  });
+  const d = await r.json();
+  if (!d.ok) { alert('Failed: ' + (d.message || 'unknown')); return; }
+  location.reload();
+}
+
+async function removeMember(empId){
+  if (!confirm('Remove this employee from the group?')) return;
+  const r = await fetch(`/admin/employee-groups/${GROUP_ID}/members/${empId}/remove`,
+                        {method: 'POST'});
+  const d = await r.json();
+  if (!d.ok) { alert('Failed'); return; }
+  const row = document.querySelector(`tr[data-emp-id="${empId}"]`);
+  if (row) row.remove();
+}
+</script>
+{% endblock %}

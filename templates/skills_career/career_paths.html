@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block page_title %}Career Paths{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Career Path Explorer</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Discover possible career progressions within the organization.</p>
+  </div>
+  <a href="/skills" style="font-size:.82rem;color:var(--primary,#4f46e5);">&larr; Back to Skills Dashboard</a>
+</div>
+
+{# Add Career Path Form #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Add Career Path</strong>
+  <form method="post" action="/skills/career-paths/new" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:end;">
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">From Position ID</label>
+      <input name="from_position_id" type="number" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:120px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">To Position ID</label>
+      <input name="to_position_id" type="number" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:120px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Path Type</label>
+      <select name="path_type" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;">
+        <option value="PROMOTION">Promotion</option>
+        <option value="LATERAL">Lateral</option>
+        <option value="STRETCH">Stretch</option>
+      </select>
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Avg Years</label>
+      <input name="avg_years" type="number" step="0.5" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:80px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Required Skills</label>
+      <input name="required_skills" placeholder="Comma-separated" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:200px;">
+    </div>
+    <button type="submit" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:var(--primary,#4f46e5);color:#fff;">Add Path</button>
+  </form>
+</div>
+
+{# Career Path Cards #}
+{% if paths %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;">
+  {% for p in paths %}
+  <div class="card" style="padding:1rem;border-left:4px solid {% if p.path_type=='PROMOTION' %}#16a34a{% elif p.path_type=='LATERAL' %}#2563eb{% else %}#d97706{% endif %};">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:.5rem;">
+      <div>
+        <div style="font-size:.72rem;color:#9ca3af;text-transform:uppercase;">From</div>
+        <div style="font-size:.88rem;font-weight:600;">{{ p.from_position_title or 'Position #' ~ p.from_position_id }}</div>
+      </div>
+      <div style="font-size:1.2rem;color:#9ca3af;padding:0 .75rem;">&rarr;</div>
+      <div style="text-align:right;">
+        <div style="font-size:.72rem;color:#9ca3af;text-transform:uppercase;">To</div>
+        <div style="font-size:.88rem;font-weight:600;">{{ p.to_position_title or 'Position #' ~ p.to_position_id }}</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:.5rem;">
+      <span style="font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:4px;background:{% if p.path_type=='PROMOTION' %}#dcfce7;color:#166534{% elif p.path_type=='LATERAL' %}#dbeafe;color:#1d4ed8{% else %}#fef9c3;color:#854d0e{% endif %};">{{ p.path_type }}</span>
+      {% if p.avg_years %}
+      <span style="font-size:.78rem;color:#6b7280;">~{{ p.avg_years }} years</span>
+      {% endif %}
+    </div>
+    {% if p.required_skills %}
+    <div style="font-size:.75rem;color:#6b7280;">
+      <span style="font-weight:600;">Required skills:</span>
+      {% for skill in p.required_skills.split(',') %}
+      <span style="display:inline-block;margin:2px;padding:1px 6px;border-radius:4px;background:#f1f5f9;font-size:.7rem;">{{ skill|trim }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No career paths defined yet. Use the form above to create one.
+</div>
+{% endif %}
+
+{% endblock %}

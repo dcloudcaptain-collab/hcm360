@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block page_title %}Exit Interview{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>👋 Exit Interview</h2>
+    <div class="sub">Feedback from departing employees · supports RA 10173 confidentiality</div>
+  </div>
+  <a href="/offboarding/clearance" class="btn btn-ghost">→ Clearance (CS Form 7)</a>
+</div>
+
+{% if not is_admin %}
+<form method="POST" id="exitForm">
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Departure Details</h3>
+    <div class="grid-2">
+      <div class="f-group">
+        <label>Last Working Day *</label>
+        <input type="date" name="last_working_day" required />
+      </div>
+      <div class="f-group">
+        <label>Resignation Date</label>
+        <input type="date" name="resignation_date" />
+      </div>
+      <div class="f-group">
+        <label>Reason for Leaving *</label>
+        <select name="reason_for_leaving" required>
+          <option value="">— Select —</option>
+          {% for r in reasons %}
+          <option value="{{ r }}">{{ r.replace('_',' ').title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label>Future Plans</label>
+        <input type="text" name="future_plans" placeholder="Joining XYZ Corp, going back to school, etc." />
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Your Ratings (1 = poor · 5 = excellent)</h3>
+    <div class="grid-2">
+      {% for f, lbl in [('overall_rating','Overall Experience'),
+                        ('manager_rating','Your Manager'),
+                        ('compensation_rating','Compensation & Benefits'),
+                        ('culture_rating','Company Culture')] %}
+      <div class="f-group">
+        <label>{{ lbl }}</label>
+        <div style="display:flex;gap:.3rem;">
+          {% for v in range(1,6) %}
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;border:1.5px solid #d1d5db;border-radius:8px;padding:.4rem;cursor:pointer;font-weight:600;">
+            <input type="radio" name="{{ f }}" value="{{ v }}" style="display:none;" onclick="this.closest('div').querySelectorAll('label').forEach(l=>l.style.background=''); this.closest('label').style.background='#ede9fe';" />
+            {{ v }} ⭐
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Your Feedback</h3>
+    <div class="f-group" style="margin-bottom:.8rem;">
+      <label>What did you enjoy most?</label>
+      <textarea name="best_aspects"></textarea>
+    </div>
+    <div class="f-group" style="margin-bottom:.8rem;">
+      <label>What could be improved?</label>
+      <textarea name="improvement_areas"></textarea>
+    </div>
+    <div class="f-group" style="margin-bottom:.8rem;">
+      <label>Additional comments</label>
+      <textarea name="additional_comments"></textarea>
+    </div>
+    <div class="grid-2">
+      <div class="f-group">
+        <label>Would you recommend us as an employer?</label>
+        <select name="would_recommend">
+          <option value="">— Select —</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+      <div class="f-group">
+        <label>Would you rejoin in the future?</label>
+        <select name="would_rejoin">
+          <option value="">— Select —</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+    <button type="submit" name="submit" value="false" class="btn btn-ghost">💾 Save Draft</button>
+    <button type="submit" name="submit" value="true" class="btn btn-primary">📨 Submit</button>
+  </div>
+</form>
+
+{% else %}
+{# Admin: list submitted exit interviews #}
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr>
+      <th>Last Day</th>
+      <th>Employee</th>
+      <th>Department</th>
+      <th>Reason</th>
+      <th>Rating</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>{{ r.last_working_day.strftime('%b %d, %Y') }}</td>
+      <td><div style="font-weight:600;">{{ r.full_name }}</div>
+        <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div></td>
+      <td>{{ r.department_name or '—' }}</td>
+      <td>{{ (r.reason_for_leaving or '').replace('_',' ').title() }}</td>
+      <td>{{ '⭐' * (r.overall_rating or 0) }}</td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td><a href="/offboarding/exit-interview/{{ r.id }}" class="btn-xs btn-ghost" style="color:#4f46e5;border:1px solid #4f46e5;">View</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">📭</div>
+  <div style="font-weight:600;">No exit interviews submitted yet.</div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

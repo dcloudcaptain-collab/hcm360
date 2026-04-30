@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block page_title %}Field Privacy Rules{% endblock %}
+{% block content %}
+<style>
+.privacy-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+.privacy-header h2{font-size:1.2rem;font-weight:700;margin:0;}
+.privacy-header p{font-size:.83rem;color:#6b7280;margin:.2rem 0 0;}
+.section-block{margin-bottom:1.5rem;}
+.section-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;padding:.5rem .75rem;background:#f9fafb;border:1px solid #e5e7eb;border-bottom:none;border-radius:6px 6px 0 0;}
+.privacy-table{width:100%;border-collapse:collapse;font-size:.82rem;border:1px solid #e5e7eb;border-radius:0 0 6px 6px;overflow:hidden;}
+.privacy-table th{background:#f1f5f9;text-align:center;padding:.5rem .75rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#64748b;border-bottom:1px solid #e5e7eb;white-space:nowrap;}
+.privacy-table th.field-col{text-align:left;width:200px;}
+.privacy-table td{padding:.45rem .75rem;border-top:1px solid #f3f4f6;vertical-align:middle;}
+.privacy-table td.field-label{font-weight:500;color:#374151;}
+.privacy-table td.field-code{font-size:.72rem;color:#9ca3af;margin-top:1px;}
+.vis-select{width:100%;border:1px solid #d1d5db;border-radius:5px;padding:4px 6px;font-size:.78rem;background:#fff;cursor:pointer;transition:border-color .15s;}
+.vis-select:focus{outline:none;border-color:#6366f1;}
+.vis-select[data-val="VISIBLE"]{border-color:#10b981;background:#f0fdf4;color:#065f46;}
+.vis-select[data-val="MASKED"] {border-color:#f59e0b;background:#fffbeb;color:#92400e;}
+.vis-select[data-val="HIDDEN"] {border-color:#ef4444;background:#fef2f2;color:#7f1d1d;}
+.saved-flash{display:none;font-size:.7rem;color:#10b981;margin-left:.3rem;}
+.legend{display:flex;gap:1rem;font-size:.78rem;margin-bottom:1rem;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:.35rem;}
+.legend-dot{width:10px;height:10px;border-radius:50%;}
+.dot-v{background:#10b981;}.dot-m{background:#f59e0b;}.dot-h{background:#ef4444;}
+.note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:.75rem 1rem;font-size:.82rem;color:#1e40af;margin-bottom:1.25rem;}
+</style>
+
+<div class="privacy-header">
+  <div>
+    <h2>Field Privacy Rules</h2>
+    <p>Configure which roles can see sensitive employee data fields (RA 10173 compliance).</p>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Note:</strong> SUPER_ADMIN and HR_ADMIN always see all fields regardless of rules below.
+  Rules apply to EMPLOYEE, MANAGER, and HR_STAFF roles. Changes take effect immediately.
+</div>
+
+<div class="legend">
+  <span class="legend-item"><span class="legend-dot dot-v"></span> VISIBLE — full value shown</span>
+  <span class="legend-item"><span class="legend-dot dot-m"></span> MASKED — value replaced with *** (own record: visible)</span>
+  <span class="legend-item"><span class="legend-dot dot-h"></span> HIDDEN — field not shown at all</span>
+</div>
+
+{% for section, fields in sensitive_fields.items() %}
+<div class="section-block">
+  <div class="section-title">{{ section | replace('_', ' ') | title }}</div>
+  <table class="privacy-table">
+    <thead>
+      <tr>
+        <th class="field-col">Field</th>
+        {% for role in display_roles %}
+        <th>{{ role | replace('_', ' ') }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for field in fields %}
+      <tr>
+        <td>
+          <div class="field-label">{{ field.label }}</div>
+          <div class="field-code">{{ field.name }}</div>
+        </td>
+        {% for role in display_roles %}
+        {% set rule = rules.get((section, field.name, role)) %}
+        {% set current_vis = rule.visibility if rule else 'VISIBLE' %}
+        <td style="text-align:center;">
+          {% if role in ('SUPER_ADMIN', 'HR_ADMIN') %}
+            <span style="font-size:.72rem;color:#9ca3af;font-style:italic;">Always visible</span>
+          {% else %}
+          <select class="vis-select" data-val="{{ current_vis }}"
+                  data-section="{{ section }}"
+                  data-field="{{ field.name }}"
+                  data-role="{{ role }}"
+                  onchange="saveRule(this)">
+            <option value="VISIBLE" {% if current_vis == 'VISIBLE' %}selected{% endif %}>VISIBLE</option>
+            <option value="MASKED"  {% if current_vis == 'MASKED'  %}selected{% endif %}>MASKED</option>
+            <option value="HIDDEN"  {% if current_vis == 'HIDDEN'  %}selected{% endif %}>HIDDEN</option>
+          </select>
+          <span class="saved-flash" id="flash-{{ section }}-{{ field.name }}-{{ role }}">Saved</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+<script>
+function saveRule(sel) {
+  const val = sel.value;
+  sel.setAttribute('data-val', val);
+  const flashId = `flash-${sel.dataset.section}-${sel.dataset.field}-${sel.dataset.role}`;
+  const flash = document.getElementById(flashId);
+  fetch('{{ url_for("admin.privacy_rules_save") }}', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      section:    sel.dataset.section,
+      field_name: sel.dataset.field,
+      role_code:  sel.dataset.role,
+      visibility: val,
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok && flash) {
+      flash.style.display = 'inline';
+      setTimeout(() => { flash.style.display = 'none'; }, 1800);
+    }
+  });
+}
+</script>
+{% endblock %}

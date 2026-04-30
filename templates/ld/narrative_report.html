@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block page_title %}Narrative Reports{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Narrative Report Forms (NRF)</h2>
+  <a href="/ld/programs" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Programs</a>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('DRAFT','Draft'),('SUBMITTED','Submitted'),('APPROVED','Approved'),('RETURNED','Returned')] %}
+  <a href="?status={{ s }}"
+     style="padding:6px 14px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{% if reports %}
+<div style="display:flex;flex-direction:column;gap:.85rem;">
+  {% for r in reports %}
+  <details class="card" style="padding:0;">
+    <summary style="padding:1rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;">
+          <span style="font-size:.95rem;font-weight:700;">{{ r.training_title or 'Untitled' }}</span>
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if r.status == 'APPROVED' %}#dcfce7{% elif r.status == 'SUBMITTED' %}#fef9c3{% elif r.status == 'RETURNED' %}#fee2e2{% else %}#f1f5f9{% endif %};
+            color:{% if r.status == 'APPROVED' %}#166534{% elif r.status == 'SUBMITTED' %}#854d0e{% elif r.status == 'RETURNED' %}#991b1b{% else %}#374151{% endif %};">
+            {{ r.status }}
+          </span>
+        </div>
+        <div style="font-size:.8rem;color:#6b7280;">
+          {{ r.employee_name }} &nbsp;·&nbsp; {{ r.training_dates or '—' }}
+          {% if r.venue %}&nbsp;·&nbsp; {{ r.venue }}{% endif %}
+          {% if r.evaluation_rating %}&nbsp;·&nbsp; Rating: {{ r.evaluation_rating }}/5{% endif %}
+        </div>
+      </div>
+      <span style="font-size:1rem;color:#9ca3af;transition:transform .2s;">›</span>
+    </summary>
+    <div style="padding:0 1rem 1rem;border-top:1px solid rgba(0,0,0,.06);">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:.75rem;">
+        {% if r.learning_objectives %}
+        <div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Learning Objectives</div>
+          <div style="font-size:.825rem;color:#374151;">{{ r.learning_objectives[:200] }}</div>
+        </div>
+        {% endif %}
+        {% if r.key_learnings %}
+        <div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Key Learnings</div>
+          <div style="font-size:.825rem;color:#374151;">{{ r.key_learnings[:200] }}</div>
+        </div>
+        {% endif %}
+        {% if r.application_plans %}
+        <div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Application Plans</div>
+          <div style="font-size:.825rem;color:#374151;">{{ r.application_plans[:200] }}</div>
+        </div>
+        {% endif %}
+        {% if r.recommendations %}
+        <div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Recommendations</div>
+          <div style="font-size:.825rem;color:#374151;">{{ r.recommendations[:200] }}</div>
+        </div>
+        {% endif %}
+      </div>
+      {% if r.submitted_at %}
+      <div style="margin-top:.6rem;font-size:.75rem;color:#9ca3af;">
+        Submitted: {{ r.submitted_at.strftime('%b %d, %Y %H:%M') }}
+        {% if r.approved_at %}&nbsp;·&nbsp; Approved: {{ r.approved_at.strftime('%b %d, %Y') }}{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No narrative reports found.</div>
+{% endif %}
+
+{% endblock %}

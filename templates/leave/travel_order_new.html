@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block page_title %}File Travel Order{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">✈️ File Travel Order</h2>
+  <a href="{{ url_for('leave.travel_orders') }}"
+     style="padding:6px 12px;font-size:.85rem;color:#6b7280;text-decoration:none;">← Back to list</a>
+</div>
+
+<div class="card" style="background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:1.25rem;">
+  <form method="post" action="{{ url_for('leave.travel_order_new') }}">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+      <div>
+        <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.3rem;">
+          Destination *
+        </label>
+        <input type="text" name="destination" required maxlength="200"
+               placeholder="e.g., Manila · Provincial Capitol"
+               style="width:100%;padding:.55rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.3rem;">
+          Transport Mode
+        </label>
+        <select name="transport_mode"
+                style="width:100%;padding:.55rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+          <option value="OFFICIAL_VEHICLE">Official Vehicle</option>
+          <option value="PRIVATE_VEHICLE">Private Vehicle</option>
+          <option value="PUBLIC_TRANSPORT">Public Transport</option>
+          <option value="AIR">Air</option>
+          <option value="SEA">Sea</option>
+          <option value="OTHER" selected>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+      <div>
+        <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.3rem;">
+          Date From *
+        </label>
+        <input type="date" name="date_from" required
+               style="width:100%;padding:.55rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+      </div>
+      <div>
+        <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.3rem;">
+          Date To *
+        </label>
+        <input type="date" name="date_to" required
+               style="width:100%;padding:.55rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+      </div>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.3rem;">
+        Purpose *
+      </label>
+      <textarea name="purpose" required rows="4"
+                placeholder="Describe the purpose of the travel — meetings attended, activities, beneficiaries…"
+                style="width:100%;padding:.55rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.9rem;resize:vertical;"></textarea>
+    </div>
+
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <a href="{{ url_for('leave.travel_orders') }}"
+         style="padding:8px 16px;background:#fff;color:#374151;border:1.5px solid #d1d5db;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;">
+        Cancel
+      </a>
+      <button type="submit"
+              style="padding:8px 18px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Submit Travel Order
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

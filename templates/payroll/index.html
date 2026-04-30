@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% block page_title %}Payroll Dashboard{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">💰 Payroll Dashboard</h2>
+  <a href="/payroll/runs/new"
+     style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border-radius:7px;font-size:.875rem;text-decoration:none;">
+    + New Run
+  </a>
+</div>
+
+{# ── End-to-End Processing Flow ───────────────────────────────────────
+   Gives HR a single-screen map of what happens in order, with direct
+   jump-links to every stage. Each step is numbered so the handoff
+   sequence is unambiguous. ──────────────────────────────────────── #}
+<section class="card payroll-flow" data-payroll-flow
+         data-hint="Step-by-step payroll pipeline. Follow 1 → 8 left-to-right; each card jumps to the module responsible for that stage."
+         style="padding:1rem 1.25rem;margin-bottom:1.25rem;background:linear-gradient(135deg,#eef2ff 0%,#f5f3ff 100%);border:1px solid #e0e7ff;">
+  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.9rem;">
+    <h3 style="margin:0;font-size:.95rem;font-weight:700;color:#3730a3;">🔄 End-to-End Payroll Processing</h3>
+    <span style="font-size:.72rem;color:#6b7280;font-style:italic;">Click any stage to jump there.</span>
+  </div>
+
+  {% set steps = [
+    (1, 'Pay Period',       'Open or configure the current cutoff period.',           '/admin/reference-data/pay_periods',        '📅', 'Reference Data → Pay Periods'),
+    (2, 'Timekeeping',      'Verify DTR, OT filings, and leave balances are final.',  '/attendance/dtr',                          '⏰', 'Attendance → DTR'),
+    (3, 'Loans & Deductions','Register active loans (SSS/Pag-IBIG/Company).',         '/payroll/loans',                           '💳', 'Loans'),
+    (4, 'Create Pay Run',   'Pick a period, generate payslips per employee.',         '/payroll/runs/new',                        '🚀', 'New Pay Run'),
+    (5, 'Review & Adjust',  'Review line items per employee; edit before locking.',   '/payroll/runs',                            '🔍', 'Pay Runs'),
+    (6, 'Government Reports','Export SSS R3, PhilHealth RF1, HDMF MCRF, BIR 1601-C.', '/reports/builder?group=payroll',           '📄', 'Reports'),
+    (7, 'Release Payslips', 'Notify employees; post to /me/payslips.',                '/payroll/register',                        '📬', 'Payroll Register'),
+    (8, 'Close Period',     'Lock the period; generate BIR 2316 at year-end.',        '/admin/reference-data/pay_periods',        '🔒', 'Lock Period'),
+  ] %}
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem;">
+    {% for n, title, desc, url, icon, cta in steps %}
+    <a href="{{ url }}"
+       data-hint="Step {{ n }}: {{ title }} — {{ desc }}"
+       style="display:block;padding:.75rem .9rem;background:#fff;border:1px solid rgba(99,102,241,.2);border-radius:8px;text-decoration:none;color:inherit;transition:all .15s;position:relative;"
+       onmouseover="this.style.borderColor='#4f46e5';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(79,70,229,.15)';"
+       onmouseout="this.style.borderColor='rgba(99,102,241,.2)';this.style.transform='';this.style.boxShadow='';">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#4f46e5;color:#fff;font-size:.72rem;font-weight:700;">{{ n }}</span>
+        <span style="font-size:1rem;">{{ icon }}</span>
+        <strong style="font-size:.85rem;color:#111827;">{{ title }}</strong>
+      </div>
+      <div style="font-size:.72rem;color:#6b7280;line-height:1.4;margin-bottom:.3rem;">{{ desc }}</div>
+      <div style="font-size:.68rem;color:#4f46e5;font-weight:600;">→ {{ cta }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if period %}
+<div class="card" style="padding:1rem;margin-bottom:1rem;display:flex;gap:2rem;flex-wrap:wrap;">
+  <div>
+    <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Current Period</div>
+    <div style="font-size:1rem;font-weight:700;margin-top:.2rem;">{{ period.date_from }} – {{ period.date_to }}</div>
+  </div>
+  <div>
+    <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Status</div>
+    <div style="margin-top:.2rem;">
+      <span style="padding:2px 10px;border-radius:4px;font-size:.8rem;font-weight:600;
+        background:{% if period.status == 'OPEN' %}#dcfce7;color:#16a34a
+        {% elif period.status == 'CLOSED' %}#f3f4f6;color:#6b7280
+        {% else %}#fef9c3;color:#b45309{% endif %};">
+        {{ period.status or '—' }}
+      </span>
+    </div>
+  </div>
+  <div>
+    <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Period Type</div>
+    <div style="font-size:1rem;font-weight:500;margin-top:.2rem;">{{ period.period_type or '—' }}</div>
+  </div>
+</div>
+{% endif %}
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:.85rem 1rem;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;">
+    <h3 style="margin:0;font-size:.95rem;font-weight:700;">Recent Pay Runs</h3>
+    <a href="/payroll/runs" style="font-size:.8rem;color:var(--primary,#4f46e5);text-decoration:none;">View all →</a>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Reference</th>
+        <th style="padding:10px 14px;text-align:left;">Period</th>
+        <th style="padding:10px 14px;text-align:center;">Status</th>
+        <th style="padding:10px 14px;text-align:right;">Employees</th>
+        <th style="padding:10px 14px;text-align:right;">Net Pay</th>
+        <th style="padding:10px 14px;text-align:center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-family:monospace;font-weight:600;">{{ r.reference_no or r.id }}</td>
+        <td style="padding:9px 14px;color:#6b7280;">{{ r.date_from }} – {{ r.date_to }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600;
+            background:{% if r.status == 'COMPLETED' %}#dcfce7;color:#16a34a
+            {% elif r.status == 'PROCESSING' %}#dbeafe;color:#1d4ed8
+            {% elif r.status == 'DRAFT' %}#f3f4f6;color:#6b7280
+            {% else %}#fef9c3;color:#b45309{% endif %};">
+            {{ r.status }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;text-align:right;">{{ r.employee_count or '—' }}</td>
+        <td style="padding:9px 14px;text-align:right;font-family:monospace;">
+          ₱ {{ '{:,.2f}'.format(r.total_net or 0) }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          <a href="/payroll/runs/{{ r.id }}" style="font-size:.8rem;color:var(--primary,#4f46e5);text-decoration:none;">View</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No pay runs yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+  <a href="/payroll/runs" class="card" style="flex:1;min-width:140px;padding:1rem;text-align:center;text-decoration:none;color:inherit;">
+    <div style="font-size:1.5rem;margin-bottom:.35rem;">📋</div>
+    <div style="font-weight:600;font-size:.9rem;">Pay Runs</div>
+  </a>
+  <a href="/payroll/register" class="card" style="flex:1;min-width:140px;padding:1rem;text-align:center;text-decoration:none;color:inherit;">
+    <div style="font-size:1.5rem;margin-bottom:.35rem;">📊</div>
+    <div style="font-weight:600;font-size:.9rem;">Payroll Register</div>
+  </a>
+  <a href="/payroll/loans" class="card" style="flex:1;min-width:140px;padding:1rem;text-align:center;text-decoration:none;color:inherit;">
+    <div style="font-size:1.5rem;margin-bottom:.35rem;">💳</div>
+    <div style="font-weight:600;font-size:.9rem;">Loans</div>
+  </a>
+</div>
+
+{% endblock %}

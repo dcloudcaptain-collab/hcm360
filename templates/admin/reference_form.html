@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block page_title %}Reference Form - {{ ref_key }}{% endblock %}
+{% block content %}
+<section class="card">
+  <form method="post" class="login-form">
+    {% for field in cfg.fields %}
+      <label>{{ field }}</label>
+      <input name="{{ field }}" value="{{ row[field] if row and row[field] is not none else '' }}">
+    {% endfor %}
+    <button type="submit">Save</button>
+  </form>
+</section>
+{% endblock %}

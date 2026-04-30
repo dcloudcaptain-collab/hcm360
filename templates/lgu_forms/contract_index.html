@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block page_title %}LGU Contracts{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📜 LGU Contracts</h2>
+       <div class="sub">Job Order · Local School Board · Barangay Health Worker · Nutritionist Scholar</div></div>
+  <a href="/lgu-contracts/new" class="btn btn-primary">+ New Contract</a>
+</div>
+
+<div class="kpi-grid">
+  {% for s in summary %}
+  <div class="kpi">
+    <div class="lbl">{{ s.type_code }} — {{ s.type_name }}</div>
+    <div style="display:flex;gap:.6rem;align-items:baseline;">
+      <div class="num">{{ s.active_count or 0 }}</div>
+      <div style="font-size:.78rem;color:#6b7280;">active</div>
+    </div>
+    <div style="font-size:.78rem;color:#6b7280;margin-top:.2rem;">
+      {{ s.pending_count or 0 }} pending · {{ s.approved_count or 0 }} approved
+      {% if s.monthly_cost %}<br>₱{{ '{:,.0f}'.format(s.monthly_cost) }}/mo{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="filters">
+  <a href="?" class="{{ 'active' if not status_filter and not type_filter else '' }}">All</a>
+  {% for t in types %}
+  <a href="?type={{ t.code }}" class="{{ 'active' if type_filter == t.code else '' }}">{{ t.code }}</a>
+  {% endfor %}
+  <span style="width:.5rem;"></span>
+  {% for s in ['DRAFT','PENDING','APPROVED','ACTIVE','EXPIRED','TERMINATED'] %}
+  <a href="?status={{ s }}" class="{{ 'active' if status_filter == s else '' }}">{{ s.title() }}</a>
+  {% endfor %}
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr><th>Contract No.</th><th>Type</th><th>Full Name</th><th>Position</th>
+        <th>Period</th><th>Rate</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td style="font-family:monospace;font-weight:600;">{{ r.contract_no }}</td>
+      <td><span style="padding:2px 8px;background:#ede9fe;color:#5b21b6;border-radius:5px;font-weight:700;font-size:.75rem;">{{ r.type_code }}</span></td>
+      <td>{{ r.full_name }}</td>
+      <td>{{ r.position_title or '—' }}<br>
+        <span style="font-size:.75rem;color:#6b7280;">{{ r.department_name or '' }}</span></td>
+      <td style="font-size:.8rem;">{{ r.date_from.strftime('%b %Y') }} → {{ r.date_to.strftime('%b %Y') }}</td>
+      <td style="font-family:monospace;">
+        {{ '₱{:,.2f}'.format(r.rate|float) if r.rate else '—' }}
+        {% if r.rate_type %}<div style="font-size:.7rem;color:#9ca3af;">{{ r.rate_type|lower }}</div>{% endif %}
+      </td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td><a href="/lgu-contracts/{{ r.id }}" class="btn-xs btn-ghost" style="color:#4f46e5;border:1px solid #4f46e5;">Open</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">📜</div><div style="font-weight:600;">No contracts yet.</div>
+</div>
+{% endif %}
+{% endblock %}

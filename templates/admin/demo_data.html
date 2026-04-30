@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block page_title %}Demo Scenario Manager{% endblock %}
+{% block content %}
+<style>
+.dm-header { margin-bottom:1.5rem; }
+.dm-header h2 { font-size:1.3rem; font-weight:700; margin:0 0 .25rem; }
+.dm-header p { color:#64748b; font-size:.9rem; margin:0; }
+
+.lock-banner {
+  background:#fef3c7; border:1px solid #f59e0b; border-radius:var(--radius);
+  padding:1rem 1.25rem; display:flex; align-items:center; gap:.75rem;
+  margin-bottom:1.5rem; font-size:.9rem; color:#92400e;
+}
+
+/* Status bar */
+.dm-status { display:flex; gap:.75rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+.dm-chip { background:var(--card); border:1px solid #e2e8f0; border-radius:999px; padding:.4rem 1rem; font-size:.82rem; display:flex; align-items:center; gap:.4rem; }
+.dm-chip b { color:var(--primary); }
+
+/* Profile cards */
+.dm-profiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.25rem; margin-bottom:2rem; }
+.dm-card {
+  background:var(--card); border:2px solid #e2e8f0; border-radius:var(--radius);
+  padding:1.5rem; display:flex; flex-direction:column; gap:.85rem;
+  transition:border-color .15s, box-shadow .15s; position:relative;
+}
+.dm-card:hover { border-color:var(--primary); box-shadow:0 4px 20px rgba(0,0,0,.08); }
+.dm-card.active { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,.15); }
+.dm-card-head { display:flex; align-items:center; gap:.75rem; }
+.dm-icon { width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0; }
+.dm-card-head h3 { font-size:1.1rem; font-weight:700; margin:0 0 .15rem; }
+.dm-badge { font-size:.72rem; padding:.2rem .6rem; border-radius:999px; font-weight:600; display:inline-block; }
+.dm-active-badge { position:absolute; top:12px; right:12px; font-size:.72rem; padding:3px 10px; border-radius:999px; background:#dcfce7; color:#166534; font-weight:700; }
+.dm-notes { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
+.dm-notes li { font-size:.82rem; color:#475569; display:flex; gap:.5rem; line-height:1.4; }
+.dm-notes li::before { content:"›"; color:var(--primary); font-weight:700; flex-shrink:0; }
+.dm-meta { font-size:.78rem; color:#94a3b8; }
+
+/* Buttons */
+.dm-btn { padding:.55rem 1.25rem; border:none; border-radius:8px; font-size:.875rem; font-weight:600; cursor:pointer; color:white; transition:opacity .15s; }
+.dm-btn:hover { opacity:.88; }
+.dm-btn-outline { background:#fff; color:#374151; border:1px solid #d1d5db; }
+.dm-btn-outline:hover { background:#f8fafc; }
+
+/* Sections */
+.dm-section { margin-bottom:2rem; }
+.dm-section-title { font-size:.85rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#64748b; margin-bottom:.75rem; }
+
+/* Danger zone */
+.dm-danger { background:#fff5f5; border:1px solid #fecaca; border-radius:var(--radius); padding:1.25rem; margin-top:.5rem; }
+.dm-danger h4 { margin:0 0 .25rem; font-size:.95rem; color:#991b1b; }
+.dm-danger p { margin:0 0 .75rem; font-size:.82rem; color:#b91c1c; }
+.dm-danger-actions { display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end; }
+.dm-danger-form { display:flex; flex-direction:column; gap:.4rem; }
+.dm-confirm { display:flex; align-items:center; gap:.4rem; font-size:.78rem; color:#991b1b; cursor:pointer; }
+</style>
+
+<div class="dm-header">
+  <h2>Demo Scenario Manager</h2>
+  <p>Load full-system demo scenarios across all HCM360 modules. SUPER_ADMIN only.</p>
+</div>
+
+{% if not allowed %}
+<div class="lock-banner">
+  <span style="font-size:1.4rem;">&#128274;</span>
+  <div>
+    <b>Access Restricted</b><br>
+    Demo Scenario Manager is only available for <code>capsanchez</code> and <code>superadmin</code> accounts.
+  </div>
+</div>
+{% else %}
+
+{# ── Status Bar ──────────────────────────────────────────────── #}
+<div class="dm-status">
+  <div class="dm-chip">
+    <span style="width:8px;height:8px;border-radius:50%;background:{% if active_profile %}#16a34a{% else %}#94a3b8{% endif %};display:inline-block;"></span>
+    {% if active_profile %}
+    Active: <b>{{ active_profile.name }}</b>
+    {% else %}
+    No profile active
+    {% endif %}
+  </div>
+  {% for label, count in counts.items() %}
+  <div class="dm-chip">{{ label }}: <b>{{ count }}</b></div>
+  {% endfor %}
+</div>
+
+{# ── Profile Cards ───────────────────────────────────────────── #}
+<div class="dm-section">
+  <div class="dm-section-title">Demo Scenarios</div>
+  <div class="dm-profiles">
+    {% for p in profiles %}
+    <div class="dm-card {% if p.is_active %}active{% endif %}">
+      {% if p.is_active %}
+      <span class="dm-active-badge">ACTIVE</span>
+      {% endif %}
+
+      <div class="dm-card-head">
+        <div class="dm-icon" style="background:{{ p.color }}15;">{{ p.icon }}</div>
+        <div>
+          <h3>{{ p.name }}</h3>
+          <span class="dm-badge" style="background:{{ p.color }}15;color:{{ p.color }};">
+            {{ p.employee_count }} employees
+          </span>
+        </div>
+      </div>
+
+      <p style="font-size:.85rem;color:#64748b;margin:0;">{{ p.description }}</p>
+
+      <ul class="dm-notes">
+        {% for note in p.scenario_notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+
+      {% if p.loaded_at %}
+      <div class="dm-meta">
+        Loaded: {{ p.loaded_at.strftime('%b %d, %Y %H:%M') }}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/admin/demo-data/activate/{{ p.code }}" style="margin-top:auto;">
+        {% if p.is_active %}
+        <button type="submit" class="dm-btn" style="background:#16a34a;">
+          Reload {{ p.name }}
+        </button>
+        {% else %}
+        <button type="submit" class="dm-btn" style="background:{{ p.color }};">
+          Activate {{ p.name }}
+        </button>
+        {% endif %}
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ── Data Management ─────────────────────────────────────────── #}
+<div class="dm-section">
+  <div class="dm-section-title">Data Management</div>
+
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+    {# Reset to base #}
+    <form method="post" action="/admin/demo-data/reset">
+      <button type="submit" class="dm-btn dm-btn-outline" onclick="return confirm('Reset to base 20 employees? All module data will be cleared.');">
+        Reset to Base (20 Employees)
+      </button>
+    </form>
+  </div>
+
+  {# Truncate — nuclear option #}
+  <div class="dm-danger">
+    <h4>Truncate All Transactional Data</h4>
+    <p>
+      Deletes ALL employees, users (except capsanchez &amp; superadmin), and every transactional record across all modules.
+      Preserves only application configuration, reference tables, and admin accounts.
+    </p>
+    <div class="dm-danger-actions">
+      <form method="post" action="/admin/demo-data/truncate" class="dm-danger-form">
+        <label class="dm-confirm">
+          <input type="checkbox" name="confirm" value="yes" id="confirmTruncate"
+                 onchange="document.getElementById('btnTruncate').disabled = !this.checked;">
+          I understand this will delete ALL data except app config
+        </label>
+        <button type="submit" id="btnTruncate" class="dm-btn" style="background:#dc2626;" disabled>
+          Truncate Everything
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

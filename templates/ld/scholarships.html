@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block page_title %}Scholarships{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Scholarships & Study Grants</h2>
+  <a href="/ld/programs" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Programs</a>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('ACTIVE','Active'),('ON_BOND','On Bond'),('COMPLETED','Completed'),('CANCELLED','Cancelled')] %}
+  <a href="?status={{ s }}"
+     style="padding:6px 14px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.85rem;">
+  {% for s in scholarships %}
+  <div class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+          <span style="font-size:.95rem;font-weight:700;">{{ s.employee_name }}</span>
+          <span style="font-size:.68rem;font-weight:600;padding:2px 7px;border-radius:999px;
+            background:{% if s.grant_type == 'CSC_SPONSORED' %}#dcfce7{% elif s.grant_type == 'FOREIGN' %}#dbeafe{% else %}#f1f5f9{% endif %};
+            color:{% if s.grant_type == 'CSC_SPONSORED' %}#166534{% elif s.grant_type == 'FOREIGN' %}#1e40af{% else %}#374151{% endif %};">
+            {{ s.grant_type.replace('_',' ') }}
+          </span>
+        </div>
+        <div style="font-size:.9rem;font-weight:600;color:#374151;">{{ s.program_name }}</div>
+        <div style="font-size:.8rem;color:#6b7280;margin-top:.15rem;">
+          {{ s.institution or '' }}{% if s.course %} — {{ s.course }}{% endif %}
+        </div>
+        <div style="font-size:.78rem;color:#9ca3af;margin-top:.25rem;">
+          {{ s.start_date.strftime('%b %Y') if s.start_date else '—' }}
+          {% if s.end_date %} — {{ s.end_date.strftime('%b %Y') }}{% endif %}
+          {% if s.bond_required_months %}&nbsp;·&nbsp; Bond: {{ s.bond_required_months }} months{% endif %}
+          {% if s.return_of_service_date %}&nbsp;·&nbsp; ROS: {{ s.return_of_service_date.strftime('%b %d, %Y') }}{% endif %}
+        </div>
+      </div>
+      <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;flex-shrink:0;
+        background:{% if s.status == 'ACTIVE' %}#dcfce7{% elif s.status == 'ON_BOND' %}#fef9c3{% elif s.status == 'COMPLETED' %}#dbeafe{% else %}#fee2e2{% endif %};
+        color:{% if s.status == 'ACTIVE' %}#166534{% elif s.status == 'ON_BOND' %}#854d0e{% elif s.status == 'COMPLETED' %}#1e40af{% else %}#991b1b{% endif %};">
+        {{ s.status.replace('_',' ') }}
+      </span>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No scholarships found.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block page_title %}Exit Interview #{{ r.id }}{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>👋 Exit Interview — {{ r.full_name }}</h2>
+    <div class="sub">{{ r.department_name }} · Last day: {{ r.last_working_day.strftime('%b %d, %Y') }}</div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <a href="/offboarding/exit-interview" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+<div class="print-form">
+  <div class="header">
+    <div style="font-size:.72rem;color:#6b7280;">HCM360 — Exit Interview Report</div>
+    <h1>EXIT INTERVIEW</h1>
+  </div>
+
+  <div class="sec-title">Employee</div>
+  <div class="kv">
+    <span>Name</span><span>{{ r.full_name }}</span>
+    <span>Employee No.</span><span>{{ r.employee_no }}</span>
+    <span>Department</span><span>{{ r.department_name or '—' }}</span>
+    <span>Position</span><span>{{ r.position_title or '—' }}</span>
+    <span>Last Working Day</span><span>{{ r.last_working_day.strftime('%B %d, %Y') }}</span>
+    <span>Resignation Date</span><span>{{ r.resignation_date.strftime('%B %d, %Y') if r.resignation_date else '—' }}</span>
+  </div>
+
+  <div class="sec-title">Reason &amp; Future</div>
+  <div class="kv">
+    <span>Reason for Leaving</span><span>{{ (r.reason_for_leaving or '').replace('_',' ').title() }}</span>
+    <span>Future Plans</span><span>{{ r.future_plans or '—' }}</span>
+    <span>Would recommend?</span><span>{{ 'Yes' if r.would_recommend else 'No' if r.would_recommend is false else '—' }}</span>
+    <span>Would rejoin?</span><span>{{ 'Yes' if r.would_rejoin else 'No' if r.would_rejoin is false else '—' }}</span>
+  </div>
+
+  <div class="sec-title">Ratings</div>
+  <div class="kv">
+    <span>Overall Experience</span><span>{{ '⭐' * (r.overall_rating or 0) }} ({{ r.overall_rating or '—' }}/5)</span>
+    <span>Manager</span><span>{{ '⭐' * (r.manager_rating or 0) }} ({{ r.manager_rating or '—' }}/5)</span>
+    <span>Compensation</span><span>{{ '⭐' * (r.compensation_rating or 0) }} ({{ r.compensation_rating or '—' }}/5)</span>
+    <span>Culture</span><span>{{ '⭐' * (r.culture_rating or 0) }} ({{ r.culture_rating or '—' }}/5)</span>
+  </div>
+
+  <div class="sec-title">Feedback</div>
+  <div style="font-size:.88rem;line-height:1.6;">
+    <p><strong>Best aspects:</strong><br>{{ r.best_aspects or '—' }}</p>
+    <p><strong>Areas for improvement:</strong><br>{{ r.improvement_areas or '—' }}</p>
+    <p><strong>Additional comments:</strong><br>{{ r.additional_comments or '—' }}</p>
+  </div>
+</div>
+{% endblock %}

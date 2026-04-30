@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block page_title %}Attendance Calendar{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Attendance Calendar</h2>
+</div>
+
+<form method="get" class="card" style="padding:.75rem 1rem;display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1rem;">
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Employee</label>
+    <select name="employee_id" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+      <option value="">Select...</option>
+      {% for e in employees %}
+      <option value="{{ e.id }}" {% if employee_id and employee_id|string == e.id|string %}selected{% endif %}>{{ e.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Month</label>
+    <select name="month" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+      {% for m in range(1, 13) %}
+      <option value="{{ m }}" {% if month == m %}selected{% endif %}>{{ ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m] }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Year</label>
+    <input type="number" name="year" value="{{ year }}" min="2024" max="2030" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:80px;">
+  </div>
+  <button type="submit" class="btn btn-sm">View</button>
+</form>
+
+{% if data %}
+<div class="card">
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;">
+    {% for day_name in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    <div style="font-size:.7rem;font-weight:700;color:#6b7280;padding:6px;">{{ day_name }}</div>
+    {% endfor %}
+
+    {# Offset for first day of month #}
+    {% set first_day = data[0].work_date if data else none %}
+    {% if first_day %}
+      {% set weekday = first_day.weekday() %}
+      {% for _ in range(weekday) %}
+      <div></div>
+      {% endfor %}
+    {% endif %}
+
+    {% for d in data %}
+    {% set bg = '#dcfce7' if d.status == 'PRESENT' else '#fef9c3' if d.status == 'LATE' else '#fee2e2' if d.status == 'ABSENT' else '#dbeafe' if d.is_holiday else '#f1f5f9' %}
+    {% set color = '#166534' if d.status == 'PRESENT' else '#854d0e' if d.status == 'LATE' else '#991b1b' if d.status == 'ABSENT' else '#1e40af' if d.is_holiday else '#6b7280' %}
+    <div style="background:{{ bg }};border-radius:6px;padding:6px 4px;min-height:60px;">
+      <div style="font-size:.75rem;font-weight:700;color:{{ color }};">{{ d.work_date.day }}</div>
+      <div style="font-size:.65rem;color:{{ color }};margin-top:2px;">{{ d.status[:3] }}</div>
+      {% if d.hours_worked %}
+      <div style="font-size:.6rem;color:#6b7280;">{{ '%.1f'|format(d.hours_worked) }}h</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% elif employee_id %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:3rem;">
+  No attendance data for this month.
+</div>
+{% else %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:3rem;">
+  Select an employee to view their calendar.
+</div>
+{% endif %}
+
+{% endblock %}

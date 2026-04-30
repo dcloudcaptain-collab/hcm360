@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block page_title %}My Compensation{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Compensation & Benefits</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Your payroll, allowances, and loan summary.</p>
+  </div>
+  <a href="/me" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Back to Portal</a>
+</div>
+
+{# Latest Payslip #}
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.75rem;">Latest Payslip</div>
+  {% if comp.latest_payslip %}
+  {% set ps = comp.latest_payslip %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;">
+    <div>
+      <div style="font-size:.75rem;color:#6b7280;">Basic Pay</div>
+      <div style="font-size:1.1rem;font-weight:700;font-family:monospace;">₱{{ '{:,.2f}'.format(ps.basic_pay or 0) }}</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;color:#6b7280;">Gross Pay</div>
+      <div style="font-size:1.1rem;font-weight:700;font-family:monospace;">₱{{ '{:,.2f}'.format(ps.gross_pay or 0) }}</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;color:#6b7280;">Deductions</div>
+      <div style="font-size:1.1rem;font-weight:700;font-family:monospace;color:#dc2626;">₱{{ '{:,.2f}'.format(ps.total_deductions or 0) }}</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;color:#6b7280;">Net Pay</div>
+      <div style="font-size:1.3rem;font-weight:800;font-family:monospace;color:#16a34a;">₱{{ '{:,.2f}'.format(ps.net_pay or 0) }}</div>
+    </div>
+  </div>
+  <div style="font-size:.78rem;color:#9ca3af;margin-top:.75rem;">Period: {{ ps.date_from }} – {{ ps.date_to }} · Payment: {{ ps.payment_date }}</div>
+  <a href="/me/payslips" style="font-size:.8rem;color:var(--primary,#4f46e5);margin-top:.5rem;display:inline-block;">View All Payslips →</a>
+  {% else %}
+  <div style="color:#9ca3af;font-size:.9rem;">No completed payslip records found.</div>
+  {% endif %}
+</div>
+
+{# Allowances #}
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.75rem;">Active Allowances</div>
+  {% if comp.allowances %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Allowance</th>
+        <th style="padding:6px 8px;text-align:right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in comp.allowances %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;">{{ a.allowance_name }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(a.amount or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="color:#9ca3af;font-size:.9rem;">No active allowances.</div>
+  {% endif %}
+</div>
+
+{# Loans #}
+<div class="card" style="padding:1.25rem;">
+  <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.75rem;">Active Loans</div>
+  {% if comp.loans %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Loan Type</th>
+        <th style="padding:6px 8px;text-align:right;">Principal</th>
+        <th style="padding:6px 8px;text-align:right;">Balance</th>
+        <th style="padding:6px 8px;text-align:right;">Monthly</th>
+        <th style="padding:6px 8px;text-align:center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in comp.loans %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ l.loan_name }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(l.principal_amount or 0) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;color:#d97706;">₱{{ '{:,.2f}'.format(l.outstanding_balance or 0) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(l.monthly_deduction or 0) }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#dcfce7;color:#166534;">{{ l.loan_status }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="color:#9ca3af;font-size:.9rem;">No active loans.</div>
+  {% endif %}
+</div>
+{% endblock %}

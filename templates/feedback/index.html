@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block page_title %}Feedback Dashboard{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Continuous Feedback</h2>
+  <a href="{{ url_for('feedback.request_form') }}"
+     style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border-radius:7px;font-size:.85rem;font-weight:600;text-decoration:none;">
+    + Request Feedback
+  </a>
+</div>
+
+<!-- Stats Cards -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1.5rem;">
+  <a href="{{ url_for('feedback.given') }}" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Feedback Given</div>
+    <div style="font-size:1.6rem;font-weight:800;color:var(--primary,#4f46e5);">{{ stats.total_given }}</div>
+  </a>
+  <a href="{{ url_for('feedback.received') }}" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Feedback Received</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#059669;">{{ stats.total_received }}</div>
+  </a>
+  <a href="{{ url_for('feedback.received') }}" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Avg Rating</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#d97706;">
+      {{ stats.avg_rating }}
+      <span style="font-size:.85rem;color:#9ca3af;">/ 5</span>
+    </div>
+  </a>
+  <a href="#pending" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Pending Requests</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#dc2626;">{{ stats.pending_requests }}</div>
+  </a>
+</div>
+
+<!-- Pending Requests -->
+<div id="pending" style="margin-bottom:1.5rem;">
+  <h3 style="font-size:1rem;font-weight:700;margin-bottom:.6rem;">Pending Requests</h3>
+  {% if pending %}
+  <div style="display:flex;flex-direction:column;gap:.5rem;">
+    {% for req in pending %}
+    <div class="card" style="padding:.85rem 1rem;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:.85rem;font-weight:600;">{{ req.requester_name or 'Unknown' }} requested feedback on {{ req.subject_name or 'Unknown' }}</div>
+        <div style="font-size:.78rem;color:#6b7280;">
+          <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.68rem;font-weight:600;
+            background:{% if req.feedback_type == 'PEER' %}#dbeafe{% elif req.feedback_type == 'UPWARD' %}#fef3c7{% else %}#f3e8ff{% endif %};
+            color:{% if req.feedback_type == 'PEER' %}#1e40af{% elif req.feedback_type == 'UPWARD' %}#92400e{% else %}#6b21a8{% endif %};">
+            {{ req.feedback_type }}
+          </span>
+          {% if req.due_date %}
+          &nbsp;&middot;&nbsp; Due {{ req.due_date.strftime('%b %d, %Y') if req.due_date else '' }}
+          {% endif %}
+        </div>
+        {% if req.message %}
+        <div style="font-size:.78rem;color:#9ca3af;margin-top:.2rem;">{{ req.message[:100] }}{% if req.message|length > 100 %}...{% endif %}</div>
+        {% endif %}
+      </div>
+      <a href="{{ url_for('feedback.respond_form', request_id=req.id) }}"
+         style="padding:5px 14px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;white-space:nowrap;">
+        Respond
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:1.5rem;text-align:center;color:#9ca3af;font-size:.85rem;">No pending feedback requests.</div>
+  {% endif %}
+</div>
+
+<!-- Recent Feedback Received -->
+<div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+    <h3 style="font-size:1rem;font-weight:700;margin:0;">Recent Feedback Received</h3>
+    <a href="{{ url_for('feedback.received') }}" style="font-size:.8rem;color:var(--primary,#4f46e5);text-decoration:none;">View all &rarr;</a>
+  </div>
+  {% if received %}
+  <div style="display:flex;flex-direction:column;gap:.5rem;">
+    {% for fb in received %}
+    <div class="card" style="padding:.85rem 1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="font-size:.85rem;font-weight:600;">{{ fb.author_name }}</span>
+          <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.68rem;font-weight:600;
+            background:{% if fb.feedback_type == 'PEER' %}#dbeafe{% elif fb.feedback_type == 'UPWARD' %}#fef3c7{% else %}#f3e8ff{% endif %};
+            color:{% if fb.feedback_type == 'PEER' %}#1e40af{% elif fb.feedback_type == 'UPWARD' %}#92400e{% else %}#6b21a8{% endif %};">
+            {{ fb.feedback_type }}
+          </span>
+        </div>
+        <div style="font-size:.8rem;color:#d97706;">
+          {% for i in range(1, 6) %}
+            {% if fb.rating and i <= fb.rating %}&#9733;{% else %}&#9734;{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% if fb.strengths %}
+      <div style="font-size:.8rem;color:#374151;"><strong>Strengths:</strong> {{ fb.strengths[:120] }}{% if fb.strengths|length > 120 %}...{% endif %}</div>
+      {% endif %}
+      {% if fb.improvements %}
+      <div style="font-size:.8rem;color:#374151;"><strong>Improvements:</strong> {{ fb.improvements[:120] }}{% if fb.improvements|length > 120 %}...{% endif %}</div>
+      {% endif %}
+      <div style="font-size:.72rem;color:#9ca3af;margin-top:.25rem;">{{ fb.created_at.strftime('%b %d, %Y') if fb.created_at else '' }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:1.5rem;text-align:center;color:#9ca3af;font-size:.85rem;">No feedback received yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

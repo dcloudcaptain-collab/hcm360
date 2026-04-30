@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block page_title %}Holidays{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Holiday Calendar — {{ year }}</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/attendance/holidays?year={{ year - 1 }}" class="btn btn-sm btn-outline">{{ year - 1 }}</a>
+    <a href="/attendance/holidays?year={{ year + 1 }}" class="btn btn-sm btn-outline">{{ year + 1 }}</a>
+  </div>
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Date</th>
+        <th style="padding:10px 14px;text-align:left;">Name</th>
+        <th style="padding:10px 14px;">Type</th>
+        <th style="padding:10px 14px;">Pay Multiplier</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in holidays %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-family:monospace;font-weight:500;">{{ h.holiday_date }}</td>
+        <td style="padding:9px 14px;font-weight:500;">{{ h.name }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span class="badge {% if h.type_code == 'REGULAR' %}badge-danger{% elif 'SPECIAL' in (h.type_code or '') %}badge-warning{% else %}badge-default{% endif %}">
+            {{ h.type_name }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;font-weight:600;">{{ '%.2f'|format(h.pay_multiplier) }}x</td>
+        <td style="padding:9px 14px;">
+          <form method="post" action="/attendance/holidays/{{ h.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete this holiday?');">
+            <button type="submit" class="btn-sm btn-outline" style="font-size:.7rem;padding:2px 6px;color:#dc2626;">Del</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" style="padding:2rem;text-align:center;color:#9ca3af;">No holidays for {{ year }}.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="card">
+  <h3 style="margin:0 0 1rem;font-size:1rem;font-weight:600;">Add Holiday</h3>
+  <form method="post" action="/attendance/holidays/new" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Date</label>
+      <input type="date" name="holiday_date" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Name</label>
+      <input type="text" name="name" required placeholder="Holiday name" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:240px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Type</label>
+      <select name="holiday_type_id" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        {% for ht in holiday_types %}
+        <option value="{{ ht.id }}">{{ ht.name }} ({{ '%.2f'|format(ht.pay_multiplier) }}x)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-sm">Add Holiday</button>
+  </form>
+</div>
+
+{% endblock %}

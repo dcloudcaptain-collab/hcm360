@@ -1,0 +1,31 @@
+{#
+  Global reusable employee picker.
+
+  USAGE:
+    {# At top of page (once per template) #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/employee-picker.css') }}">
+    <script src="{{ url_for('static', filename='js/employee-picker.js') }}"></script>
+
+    {# Wherever you want the picker to appear #}
+    {% with picker_id='myPicker', input_name='target_employee_ids[]', mode='multi' %}
+      {% include '_components/employee_picker.html' %}
+    {% endwith %}
+
+    {# Then in a <script> block, wire it up: #}
+    <script>
+      const myPicker = new EmployeePicker(
+        document.getElementById('myPicker'),
+        { mode: 'multi', inputName: 'target_employee_ids[]',
+          allowDepartments: true, allowGroups: true }
+      );
+    </script>
+
+  Required context vars:
+    picker_id   (str)  — DOM id to use for the root element
+  Optional:
+    input_name  (str)  — passed as data-input-name (the JS code uses its own opt)
+    mode        (str)  — 'multi' (default) or 'single'
+#}
+<div id="{{ picker_id | default('employeePicker') }}"
+     data-input-name="{{ input_name | default('employee_ids[]') }}"
+     data-picker-mode="{{ mode | default('multi') }}"></div>

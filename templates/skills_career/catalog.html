@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block page_title %}Skill Catalog{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Skill Catalog</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">All defined skills grouped by category.</p>
+  </div>
+  <a href="/skills" style="font-size:.82rem;color:var(--primary,#4f46e5);">&larr; Back to Skills Dashboard</a>
+</div>
+
+{% set ns = namespace(current_cat='') %}
+{% for s in skills %}
+  {% if s.category_name != ns.current_cat %}
+    {% if ns.current_cat != '' %}</div></div>{% endif %}
+    {% set ns.current_cat = s.category_name %}
+    <div class="card" style="padding:1rem;margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{{ s.category_color or '#6b7280' }};"></span>
+        <strong style="font-size:.95rem;">{{ s.category_name }}</strong>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.75rem;">
+  {% endif %}
+
+  <div style="padding:.75rem;border:1px solid #e5e7eb;border-radius:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:.35rem;">
+      <div style="font-size:.88rem;font-weight:600;">{{ s.name }}</div>
+      <span style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:4px;background:{% if s.skill_type=='TECHNICAL' %}#dbeafe;color:#1d4ed8{% else %}#fce7f3;color:#be185d{% endif %};">{{ s.skill_type }}</span>
+    </div>
+    {% if s.description %}<div style="font-size:.78rem;color:#6b7280;margin-bottom:.35rem;">{{ s.description }}</div>{% endif %}
+    <div style="font-size:.72rem;color:#9ca3af;">
+      Proficiency scale: 1 (Beginner) &rarr; 5 (Expert)
+    </div>
+  </div>
+
+{% endfor %}
+{% if skills %}</div></div>{% endif %}
+
+{% if not skills %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No skills defined yet.
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block page_title %}Reminder Engine{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Reminder & Notification Engine</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Manage automated reminders, triggers, and escalations.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <form method="post" action="/admin/reminders/run-all" style="display:inline;">
+      <button style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;background:var(--primary,#4f46e5);color:#fff;border:none;cursor:pointer;">Run All Rules Now</button>
+    </form>
+    <form method="post" action="/admin/reminders/escalate" style="display:inline;">
+      <button style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;background:#d97706;color:#fff;border:none;cursor:pointer;">Run Escalations</button>
+    </form>
+  </div>
+</div>
+
+{# Stats #}
+{% if stats %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.75rem;margin-bottom:1.25rem;">
+  {% for label, key, color in [
+    ('Active Rules','active_rules','#4f46e5'), ('Fired Today','fired_today','#2563eb'),
+    ('Pending','pending','#d97706'), ('Escalated','escalated','#dc2626'),
+    ('Resolved','resolved','#16a34a'), ('Total Fired','total_fired','#6b7280')
+  ] %}
+  <div class="card" style="padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;color:{{ color }};">{{ stats[key] or 0 }}</div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Active Rules #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Reminder Rules</strong>
+  {% if rules %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Rule</th>
+        <th style="padding:6px 8px;">Category</th>
+        <th style="padding:6px 8px;">Trigger</th>
+        <th style="padding:6px 8px;">Frequency</th>
+        <th style="padding:6px 8px;">Lead</th>
+        <th style="padding:6px 8px;">Escalation</th>
+        <th style="padding:6px 8px;">Fired Today</th>
+        <th style="padding:6px 8px;">Pending</th>
+        <th style="padding:6px 8px;">Status</th>
+        <th style="padding:6px 8px;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rules %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;">
+          <div style="font-weight:600;">{{ r.name }}</div>
+          <div style="font-size:.7rem;color:#9ca3af;font-family:monospace;">{{ r.code }}</div>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          {% set cat_colors = {'COMPLIANCE':'#dc2626','MILESTONE':'#7c3aed','PERFORMANCE':'#2563eb','OPERATIONAL':'#d97706'} %}
+          <span style="font-size:.68rem;font-weight:600;padding:2px 7px;border-radius:4px;background:{{ cat_colors.get(r.category,'#6b7280') }}15;color:{{ cat_colors.get(r.category,'#6b7280') }};">{{ r.category }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;">{{ r.trigger_type }}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;">{{ r.frequency }}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;">{{ r.lead_days }}d</td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;">
+          {% if r.escalation_days %}{{ r.escalation_days }}d → {{ r.escalation_to }}{% else %}—{% endif %}
+        </td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;">{{ r.fired_today or 0 }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;color:{% if r.pending_count %}#d97706{% else %}#16a34a{% endif %};">{{ r.pending_count or 0 }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:{% if r.is_active %}#dcfce7;color:#166534{% else %}#fee2e2;color:#991b1b{% endif %};">{% if r.is_active %}Active{% else %}Off{% endif %}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          <form method="post" action="/admin/reminders/toggle/{{ r.id }}" style="display:inline;">
+            <button style="font-size:.72rem;padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer;">
+              {% if r.is_active %}Disable{% else %}Enable{% endif %}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="color:#9ca3af;font-size:.85rem;">No reminder rules configured.</div>
+  {% endif %}
+</div>
+
+{# Recent Reminders Log #}
+<div class="card" style="padding:1rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Recent Reminders (Last 30)</strong>
+  {% if recent %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Rule</th>
+        <th style="padding:6px 8px;">Category</th>
+        <th style="padding:6px 8px;text-align:left;">Employee</th>
+        <th style="padding:6px 8px;text-align:left;">Title</th>
+        <th style="padding:6px 8px;">Due</th>
+        <th style="padding:6px 8px;">Priority</th>
+        <th style="padding:6px 8px;">Status</th>
+        <th style="padding:6px 8px;">Fired</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rl in recent %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-size:.78rem;">{{ rl.rule_code }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.65rem;font-weight:600;padding:1px 5px;border-radius:3px;background:#f1f5f9;color:#64748b;">{{ rl.category }}</span>
+        </td>
+        <td style="padding:6px 8px;font-size:.82rem;">{{ rl.employee_name or '—' }}</td>
+        <td style="padding:6px 8px;font-size:.82rem;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ rl.title }}</td>
+        <td style="padding:6px 8px;text-align:center;font-family:monospace;font-size:.78rem;">{{ rl.due_date or '—' }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.68rem;font-weight:600;padding:2px 6px;border-radius:3px;
+            background:{% if rl.priority=='URGENT' %}#fef2f2;color:#991b1b{% elif rl.priority=='HIGH' %}#fffbeb;color:#92400e{% else %}#f1f5f9;color:#64748b{% endif %};">{{ rl.priority }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.68rem;font-weight:600;padding:2px 6px;border-radius:3px;
+            background:{% if rl.status=='ESCALATED' %}#fef2f2;color:#991b1b{% elif rl.status=='RESOLVED' %}#dcfce7;color:#166534{% else %}#fef9c3;color:#854d0e{% endif %};">{{ rl.status }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;font-size:.75rem;color:#9ca3af;">{{ rl.fired_at.strftime('%b %d %H:%M') if rl.fired_at else '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="color:#9ca3af;font-size:.85rem;">No reminders fired yet. Click "Run All Rules Now" to evaluate.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

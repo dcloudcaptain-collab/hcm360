@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block page_title %}Attendance / DTR{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Daily Time Records</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/attendance/calendar" style="font-size:.85rem;color:var(--primary,#4f46e5);">Calendar View</a>
+    <a href="/attendance/dtr/export?{{ request.query_string.decode() }}"
+       style="font-size:.85rem;color:var(--primary,#4f46e5);">Export CSV</a>
+  </div>
+</div>
+
+{# Filters #}
+<form method="get" class="card" style="padding:.75rem 1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;margin-bottom:1rem;">
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Date</label>
+    <input type="date" name="date" value="{{ filters.date or '' }}"
+           style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Department</label>
+    <select name="department_id" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if filters.department_id|string == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Status</label>
+    <select name="status" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+      <option value="">All</option>
+      <option value="PRESENT" {% if filters.status=='PRESENT' %}selected{% endif %}>Present</option>
+      <option value="LATE"    {% if filters.status=='LATE' %}selected{% endif %}>Late</option>
+      <option value="ABSENT"  {% if filters.status=='ABSENT' %}selected{% endif %}>Absent</option>
+    </select>
+  </div>
+  <button type="submit" style="padding:6px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+  <a href="/attendance/dtr" style="padding:6px 12px;font-size:.875rem;color:#6b7280;">Reset</a>
+</form>
+
+{# Summary bar #}
+{% if summary %}
+<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+  <a href="/attendance/dtr?status=PRESENT&date={{ filters.date or '' }}"
+     style="flex:1;min-width:120px;padding:.75rem 1rem;border-radius:8px;background:#dcfce7;text-decoration:none;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#166534;">{{ summary.present }}</div>
+    <div style="font-size:.75rem;color:#166534;">Present</div>
+  </a>
+  <a href="/attendance/dtr?status=LATE&date={{ filters.date or '' }}"
+     style="flex:1;min-width:120px;padding:.75rem 1rem;border-radius:8px;background:#fef9c3;text-decoration:none;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#854d0e;">{{ summary.late }}</div>
+    <div style="font-size:.75rem;color:#854d0e;">Late</div>
+  </a>
+  <a href="/attendance/dtr?status=ABSENT&date={{ filters.date or '' }}"
+     style="flex:1;min-width:120px;padding:.75rem 1rem;border-radius:8px;background:#fee2e2;text-decoration:none;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#991b1b;">{{ summary.absent }}</div>
+    <div style="font-size:.75rem;color:#991b1b;">Absent</div>
+  </a>
+  <div style="flex:1;min-width:120px;padding:.75rem 1rem;border-radius:8px;background:rgba(99,102,241,.08);text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:var(--primary,#4f46e5);">{{ summary.total }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total</div>
+  </div>
+</div>
+{% endif %}
+
+{# DTR Table #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;">Department</th>
+        <th style="padding:10px 14px;">Date</th>
+        <th style="padding:10px 14px;">Time In</th>
+        <th style="padding:10px 14px;">Time Out</th>
+        <th style="padding:10px 14px;">Hours</th>
+        <th style="padding:10px 14px;">Late</th>
+        <th style="padding:10px 14px;">OT</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if loop.index is odd %}background:rgba(0,0,0,.015);{% endif %}">
+        <td style="padding:9px 14px;font-weight:500;">
+          <a href="/employees/{{ r.employee_id }}" style="color:inherit;text-decoration:none;hover:underline;">
+            {{ r.full_name }}
+          </a>
+          <div style="font-size:.72rem;color:#9ca3af;">{{ r.employee_no }}</div>
+        </td>
+        <td style="padding:9px 14px;color:#6b7280;text-align:center;">{{ r.department or '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.work_date }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.time_in.strftime('%H:%M') if r.time_in else '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.time_out.strftime('%H:%M') if r.time_out else '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ '%.1f'|format(r.worked_hours) if r.worked_hours else '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;color:{% if r.late_minutes and r.late_minutes > 0 %}#d97706{% else %}#9ca3af{% endif %};">
+          {{ r.late_minutes if r.late_minutes and r.late_minutes > 0 else '—' }}m
+        </td>
+        <td style="padding:9px 14px;text-align:center;color:{% if r.ot_hours and r.ot_hours > 0 %}#4f46e5{% else %}#9ca3af{% endif %};">
+          {{ '%.1f'|format(r.ot_hours) if r.ot_hours and r.ot_hours > 0 else '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          {% if r.is_absent %}<span style="color:#dc2626;font-weight:600;font-size:.75rem;">ABSENT</span>
+          {% elif r.is_late %}<span style="color:#d97706;font-weight:600;font-size:.75rem;">LATE</span>
+          {% elif r.is_holiday %}<span style="color:#7c3aed;font-weight:600;font-size:.75rem;">HOLIDAY</span>
+          {% elif r.is_present %}<span style="color:#16a34a;font-weight:600;font-size:.75rem;">PRESENT</span>
+          {% else %}<span style="color:#9ca3af;font-size:.75rem;">—</span>{% endif %}
+        </td>
+        <td style="padding:9px 14px;">
+          <a href="/attendance/dtr/{{ r.employee_id }}/{{ r.work_date }}"
+             style="font-size:.75rem;color:var(--primary,#4f46e5);">Detail</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" style="padding:2rem;text-align:center;color:#9ca3af;">No records found for the selected filters.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{# Pagination #}
+{% if total > per_page %}
+<div style="display:flex;gap:.5rem;justify-content:center;margin-top:1rem;font-size:.875rem;">
+  {% if page > 1 %}
+  <a href="?{{ request.query_string.decode() }}&page={{ page - 1 }}" style="padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;color:#374151;text-decoration:none;">Prev</a>
+  {% endif %}
+  <span style="padding:4px 12px;color:#6b7280;">Page {{ page }} of {{ (total // per_page) + 1 }}</span>
+  {% if page * per_page < total %}
+  <a href="?{{ request.query_string.decode() }}&page={{ page + 1 }}" style="padding:4px 12px;border:1px solid #d1d5db;border-radius:6px;color:#374151;text-decoration:none;">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block page_title %}Onboarding Management{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Onboarding Management</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Track new hires through the onboarding lifecycle.</p>
+  </div>
+</div>
+
+{# ── Stats Cards ─────────────────────────────────────────────────── #}
+{% if stats %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.75rem;margin-bottom:1.25rem;">
+  {% for label, key, color in [
+    ('Active','active','#4f46e5'), ('Requirements','in_requirements','#d97706'),
+    ('Welcome','in_welcome','#2563eb'), ('Transition','in_transition','#7c3aed'),
+    ('Sign-off','in_signoff','#ea580c'), ('Ready','ready','#16a34a'),
+    ('Activated','activated','#065f46')
+  ] %}
+  <div class="card" style="padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;color:{{ color }};">{{ stats[key] or 0 }}</div>
+    <div style="font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Create New ──────────────────────────────────────────────────── #}
+{% if session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <form method="post" action="/onboarding/create" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;">
+    <div style="flex:1;min-width:200px;">
+      <label style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.25rem;">New Hire Employee</label>
+      <select name="employee_id" required style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 12px;font-size:.875rem;">
+        <option value="">— Select employee —</option>
+        {% for u in g.users %}
+        <option value="{{ u.id }}">{{ u.display_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" style="padding:8px 20px;font-size:.875rem;font-weight:700;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;cursor:pointer;">Start Onboarding</button>
+  </form>
+</div>
+{% endif %}
+
+{# ── Onboarding List ─────────────────────────────────────────────── #}
+{% if onboardings %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#f8fafc;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+        <th style="padding:10px 12px;text-align:left;">Employee</th>
+        <th style="padding:10px 12px;">Department</th>
+        <th style="padding:10px 12px;">Stage</th>
+        <th style="padding:10px 12px;">Progress</th>
+        <th style="padding:10px 12px;">Buddy</th>
+        <th style="padding:10px 12px;">Target</th>
+        <th style="padding:10px 12px;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ob in onboardings %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:10px 12px;">
+          <div style="font-weight:600;">{{ ob.employee_name }}</div>
+          <div style="font-size:.75rem;color:#9ca3af;">{{ ob.employee_no }}</div>
+        </td>
+        <td style="padding:10px 12px;text-align:center;font-size:.8rem;">{{ ob.department_name or '—' }}</td>
+        <td style="padding:10px 12px;text-align:center;">
+          {% set stage_colors = {'REQUIREMENTS':'#d97706','WELCOME':'#2563eb','TRANSITION':'#7c3aed','SIGNOFF':'#ea580c','READY':'#16a34a','ACTIVATED':'#065f46'} %}
+          <span style="font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px;
+            background:{{ stage_colors.get(ob.stage,'#6b7280') }}15;color:{{ stage_colors.get(ob.stage,'#6b7280') }};">
+            {{ ob.stage }}
+          </span>
+        </td>
+        <td style="padding:10px 12px;text-align:center;">
+          {% set pct = ((ob.items_done or 0) / (ob.items_total or 1) * 100)|int %}
+          <div style="width:80px;height:6px;background:#e5e7eb;border-radius:3px;margin:0 auto;">
+            <div style="width:{{ pct }}%;height:100%;background:var(--primary,#4f46e5);border-radius:3px;"></div>
+          </div>
+          <div style="font-size:.7rem;color:#6b7280;margin-top:2px;">{{ ob.items_done }}/{{ ob.items_total }}</div>
+        </td>
+        <td style="padding:10px 12px;text-align:center;font-size:.8rem;">{{ ob.buddy_name or '—' }}</td>
+        <td style="padding:10px 12px;text-align:center;font-size:.8rem;font-family:monospace;">{{ ob.target_date or '—' }}</td>
+        <td style="padding:10px 12px;text-align:center;">
+          <a href="/onboarding/{{ ob.id }}" style="font-size:.8rem;color:var(--primary,#4f46e5);font-weight:600;">View →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding:3rem;text-align:center;color:#9ca3af;">
+  No onboarding records found. Start one above.
+</div>
+{% endif %}
+
+{% endblock %}

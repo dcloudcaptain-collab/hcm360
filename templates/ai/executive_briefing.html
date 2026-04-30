@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block page_title %}ARIA — Executive Briefing{% endblock %}
+{% block content %}
+<style>
+  .aria-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 20px 24px; background: var(--card);
+    border-radius: var(--radius); margin-bottom: 20px;
+    border-left: 4px solid var(--accent);
+  }
+  .aria-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .aria-header h2 { margin: 0; font-size: 1.1rem; }
+  .aria-header p  { margin: 2px 0 0; font-size: 0.82rem; opacity: .7; }
+  .aria-actions   { margin-left: auto; display: flex; gap: 8px; }
+  .briefing-body  {
+    background: var(--card); border-radius: var(--radius);
+    padding: 28px 32px; line-height: 1.8; font-size: .93rem;
+    min-height: 200px;
+  }
+  .briefing-body h2 { font-size: 1.25rem; margin: 1.2rem 0 0.4rem; color: var(--primary); }
+  .briefing-body h3 { font-size: 1.05rem; margin: 1rem 0 0.3rem; color: var(--secondary); }
+  .briefing-body strong { color: var(--accent); font-weight: 700; }
+  .briefing-body ul { padding-left: 1.4rem; margin: 0.4rem 0; }
+  .briefing-body li { margin-bottom: 0.25rem; }
+  .briefing-body p  { margin: 0.5rem 0; }
+  .metric-strip   {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .metric-chip    {
+    background: var(--card); border-radius: 10px; padding: 14px 20px;
+    flex: 1; min-width: 130px; text-align: center;
+    border-top: 3px solid var(--accent);
+  }
+  .metric-chip .val  { font-size: 2rem; font-weight: 700; color: var(--primary); }
+  .metric-chip .lbl  { font-size: 0.74rem; opacity: .65; margin-top: 2px; }
+  .offline-banner {
+    background: var(--card); border-radius: var(--radius);
+    padding: 40px; text-align: center;
+    border: 2px dashed rgba(128,128,128,.3);
+  }
+  .offline-banner h3 { font-size: 1.2rem; margin-bottom: 10px; }
+  .offline-banner code {
+    background: rgba(128,128,128,.15); padding: 2px 8px;
+    border-radius: 4px; font-size: .85rem;
+  }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn-refresh {
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--accent); color: #fff; font-size: .83rem;
+  }
+  .btn-chat {
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    background: var(--primary); color: #fff; font-size: .83rem;
+  }
+</style>
+
+<!-- ARIA header bar -->
+<div class="aria-header">
+  <div class="aria-avatar">✦</div>
+  <div>
+    <h2>ARIA — Executive Intelligence</h2>
+    <p id="aria-subtitle">
+      {% if ai_available %}
+        AI briefing powered by Claude · {{ briefing.generation_ms }}ms
+      {% else %}
+        AI services offline
+      {% endif %}
+    </p>
+  </div>
+  <div class="aria-actions">
+    <a href="/ai/assistant"><button class="btn-chat">Open Chat Assistant</button></a>
+    {% if ai_available %}
+    <button class="btn-refresh" id="btn-refresh" onclick="refreshBriefing()">↻ Refresh</button>
+    {% endif %}
+  </div>
+</div>
+
+{% if ai_available and briefing %}
+  <!-- Live metric chips from DB snapshot -->
+  <div class="metric-strip">
+    <div class="metric-chip">
+      <div class="val">{{ briefing.metrics_snapshot.get('total_employees', '—') }}</div>
+      <div class="lbl">Total Employees</div>
+    </div>
+    <div class="metric-chip">
+      <div class="val">{{ briefing.metrics_snapshot.get('pending_workflows', '—') }}</div>
+      <div class="lbl">Pending Approvals</div>
+    </div>
+    <div class="metric-chip">
+      <div class="val" style="color: {{ 'var(--accent)' if briefing.metrics_snapshot.get('missing_docs', 0) > 0 else 'var(--primary)' }}">
+        {{ briefing.metrics_snapshot.get('missing_docs', '—') }}
+      </div>
+      <div class="lbl">Missing Documents</div>
+    </div>
+  </div>
+
+  <!-- Briefing text (markdown rendered by marked.js) -->
+  <div class="briefing-body" id="briefing-content"></div>
+  <script>
+    (function(){
+      var raw = {{ briefing.content | tojson }};
+      var el  = document.getElementById('briefing-content');
+      if (window.marked) { el.innerHTML = marked.parse(raw); }
+      else { el.textContent = raw; }
+    })();
+  </script>
+
+{% elif ai_available %}
+  <div class="offline-banner">
+    <h3>Generating your briefing…</h3>
+    <p>Please wait while ARIA gathers live HR data.</p>
+  </div>
+
+{% else %}
+  <div class="offline-banner">
+    <h3>✦ ARIA is not configured</h3>
+    <p>Add your Anthropic API key to activate the AI Executive Assistant.</p>
+    <br>
+    <p>Set the environment variable: <code>ANTHROPIC_API_KEY=sk-ant-...</code></p>
+    <p>Then restart the application.</p>
+    <br>
+    <a href="/ai/assistant"><button class="btn-chat" style="margin-right:8px">Preview Chat UI</button></a>
+  </div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+async function refreshBriefing() {
+  const btn = document.getElementById('btn-refresh');
+  const content = document.getElementById('briefing-content');
+  const subtitle = document.getElementById('aria-subtitle');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">↻</span> Generating…';
+  subtitle.textContent = 'Fetching live data…';
+  if (content) content.style.opacity = '0.4';
+
+  try {
+    const res = await fetch('/ai/api/briefing/refresh', { method: 'POST' });
+    const data = await res.json();
+    if (data.content && content) {
+      content.innerHTML = marked.parse(data.content);
+      content.style.opacity = '1';
+      subtitle.textContent = `AI briefing powered by Claude · ${data.generation_ms}ms`;
+    }
+  } catch(e) {
+    subtitle.textContent = 'Refresh failed. Check console.';
+    if (content) content.style.opacity = '1';
+  }
+  btn.disabled = false;
+  btn.innerHTML = '↻ Refresh';
+}
+</script>
+{% endblock %}

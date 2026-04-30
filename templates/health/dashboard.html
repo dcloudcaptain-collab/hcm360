@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block page_title %}Health & Safety Dashboard{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Health & Safety Dashboard — {{ year }}</h2>
+</div>
+
+<div class="grid two" style="gap:1.25rem;margin-bottom:1.25rem;">
+  {# PE Compliance #}
+  <section class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+      <h3 style="margin:0;font-size:.95rem;font-weight:700;">Annual PE Compliance</h3>
+      <a href="/health/pe" style="font-size:.78rem;color:var(--primary,#4f46e5);">View All →</a>
+    </div>
+    {% if compliance %}
+    {% for c in compliance %}
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
+      <span style="font-size:.82rem;min-width:120px;">{{ c.department_name }}</span>
+      <div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;border-radius:3px;background:{% if c.pct >= 80 %}#16a34a{% elif c.pct >= 50 %}#d97706{% else %}#dc2626{% endif %};width:{{ c.pct }}%;"></div>
+      </div>
+      <span style="font-size:.78rem;font-weight:700;min-width:40px;text-align:right;color:{% if c.pct >= 80 %}#16a34a{% elif c.pct >= 50 %}#d97706{% else %}#dc2626{% endif %};">{{ c.pct }}%</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#9ca3af;font-size:.85rem;text-align:center;">No PE data for {{ year }}.</p>
+    {% endif %}
+  </section>
+
+  {# Expiring Certificates #}
+  <section class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+      <h3 style="margin:0;font-size:.95rem;font-weight:700;">Expiring Certificates (60d)</h3>
+      <a href="/health/certificates" style="font-size:.78rem;color:var(--primary,#4f46e5);">View All →</a>
+    </div>
+    {% if expiring_certs %}
+    {% for c in expiring_certs[:8] %}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:.82rem;">
+      <div>
+        <span style="font-weight:500;">{{ c.employee_name }}</span>
+        <span style="color:#6b7280;"> — {{ c.certificate_type }}</span>
+      </div>
+      <span style="font-weight:700;color:{% if c.days_until_expiry <= 14 %}#dc2626{% elif c.days_until_expiry <= 30 %}#d97706{% else %}#2563eb{% endif %};">{{ c.days_until_expiry }}d</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color:#9ca3af;font-size:.85rem;text-align:center;">No certificates expiring soon.</p>
+    {% endif %}
+  </section>
+</div>
+
+{# Recent Incidents #}
+<section class="card" style="padding:1rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+    <h3 style="margin:0;font-size:.95rem;font-weight:700;">Recent Incidents</h3>
+    <a href="/health/incidents" style="font-size:.78rem;color:var(--primary,#4f46e5);">View All →</a>
+  </div>
+  {% if incidents %}
+  <div style="display:flex;flex-direction:column;gap:.5rem;">
+    {% for i in incidents %}
+    <a href="/health/incidents/{{ i.id }}" style="display:flex;align-items:center;justify-content:space-between;padding:.5rem;border-radius:6px;text-decoration:none;color:inherit;border:1px solid rgba(0,0,0,.06);
+      border-left:4px solid {% if i.severity == 'FATAL' %}#991b1b{% elif i.severity == 'MAJOR' %}#dc2626{% elif i.severity == 'MODERATE' %}#d97706{% else %}#16a34a{% endif %};">
+      <div>
+        <span style="font-size:.85rem;font-weight:600;">{{ i.incident_no }}</span>
+        <span style="font-size:.82rem;color:#6b7280;"> — {{ i.incident_type.replace('_',' ') }} at {{ i.location }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+          background:{% if i.severity == 'FATAL' %}#fee2e2{% elif i.severity == 'MAJOR' %}#fee2e2{% elif i.severity == 'MODERATE' %}#fef9c3{% else %}#dcfce7{% endif %};
+          color:{% if i.severity in ('FATAL','MAJOR') %}#991b1b{% elif i.severity == 'MODERATE' %}#854d0e{% else %}#166534{% endif %};">{{ i.severity }}</span>
+        <span style="font-size:.72rem;color:#9ca3af;">{{ i.incident_date.strftime('%b %d') if i.incident_date else '' }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:#9ca3af;font-size:.85rem;text-align:center;">No incidents recorded.</p>
+  {% endif %}
+</section>
+{% endblock %}

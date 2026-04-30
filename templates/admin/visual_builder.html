@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block page_title %}Visual Workflow Builder{% endblock %}
+{% block content %}
+<section class="card">
+  <h3>Workflow Canvas</h3>
+  <p class="small">Clean build version: visual builder is represented as a structured canvas preview backed by workflow metadata. This is ready for later drag-and-drop enhancement.</p>
+</section>
+{% for w in workflows %}
+<section class="card">
+  <h3>{{ w.workflow_name }} <span class="small">({{ w.module_code }})</span></h3>
+  <div class="canvas-row">
+    {% for s in steps if s.workflow_definition_id == w.id %}
+    <div class="canvas-step">
+      <strong>{{ s.step_order }}. {{ s.step_name }}</strong>
+      <div class="small">Role: {{ s.approver_role_code }}</div>
+      <div class="small">Gate: {{ s.is_gate }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

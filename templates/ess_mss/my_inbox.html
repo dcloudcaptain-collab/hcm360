@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block page_title %}My Inbox{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Action Inbox</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">
+      {{ counts.total or 0 }} pending · {{ counts.unread or 0 }} unread · {{ counts.urgent or 0 }} urgent
+    </p>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <form method="post" action="/me/inbox/mark-all-read" style="display:inline;">
+      <button style="padding:6px 14px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;background:#fff;cursor:pointer;">Mark All Read</button>
+    </form>
+    <a href="/tasks/new" style="font-size:.82rem;background:var(--primary,#4f46e5);color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;">+ New Task</a>
+    <a href="/me" style="font-size:.82rem;color:var(--primary,#4f46e5);padding:6px 0;">← Back to Portal</a>
+  </div>
+</div>
+
+{# Filter + search row — URL-driven #}
+<div style="display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;padding:.5rem .8rem;background:#fff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:1rem;font-size:.78rem;">
+  {% set f = filters or {} %}
+  {% set cur_status = f.get('status') %}
+  {% set cur_due = f.get('due') %}
+  <a href="/me/inbox" style="padding:4px 10px;border-radius:5px;text-decoration:none;font-weight:600;
+       {% if not cur_status and not cur_due %}background:#4f46e5;color:#fff;{% else %}color:#374151;{% endif %}">All</a>
+  {% for s,label in [('PENDING','Pending'),('IN_PROGRESS','In Progress'),('COMPLETED','Done'),('DISMISSED','Dismissed')] %}
+  <a href="/me/inbox?status={{ s }}" style="padding:4px 10px;border-radius:5px;text-decoration:none;font-weight:600;
+       {% if cur_status == s %}background:#4f46e5;color:#fff;{% else %}color:#374151;{% endif %}">{{ label }}</a>
+  {% endfor %}
+  <span style="color:#d1d5db;">|</span>
+  <a href="/me/inbox?due=overdue" style="padding:4px 10px;border-radius:5px;text-decoration:none;font-weight:600;
+       {% if cur_due=='overdue' %}background:#dc2626;color:#fff;{% else %}color:#dc2626;{% endif %}">⚠ Overdue</a>
+  <a href="/me/inbox?due=today" style="padding:4px 10px;border-radius:5px;text-decoration:none;font-weight:600;
+       {% if cur_due=='today' %}background:#4f46e5;color:#fff;{% else %}color:#374151;{% endif %}">Due Today</a>
+  <a href="/me/inbox?due=this_week" style="padding:4px 10px;border-radius:5px;text-decoration:none;font-weight:600;
+       {% if cur_due=='this_week' %}background:#4f46e5;color:#fff;{% else %}color:#374151;{% endif %}">This Week</a>
+
+  <span style="flex:1"></span>
+
+  <form method="get" style="display:inline-flex;gap:.35rem;align-items:center;">
+    {% if cur_status %}<input type="hidden" name="status" value="{{ cur_status }}">{% endif %}
+    <input type="search" name="q" value="{{ f.get('q') or '' }}" placeholder="Search title or description…"
+           style="padding:4px 8px;border:1.5px solid #d1d5db;border-radius:5px;font-size:.78rem;min-width:180px;">
+    <select name="priority" onchange="this.form.submit()"
+            style="padding:4px 8px;border:1.5px solid #d1d5db;border-radius:5px;font-size:.78rem;">
+      <option value="">Any priority</option>
+      {% for p in ['URGENT','HIGH','NORMAL','LOW'] %}
+      <option value="{{ p }}" {% if f.get('priority')==p %}selected{% endif %}>{{ p.title() }}</option>
+      {% endfor %}
+    </select>
+    <select name="sort" onchange="this.form.submit()"
+            style="padding:4px 8px;border:1.5px solid #d1d5db;border-radius:5px;font-size:.78rem;">
+      <option value="">Default sort</option>
+      <option value="due_asc"     {% if f.get('sort')=='due_asc' %}selected{% endif %}>Due soonest</option>
+      <option value="priority"    {% if f.get('sort')=='priority' %}selected{% endif %}>Priority</option>
+      <option value="created_desc"{% if f.get('sort')=='created_desc' %}selected{% endif %}>Newest</option>
+    </select>
+    <button type="submit" style="padding:4px 10px;background:#fff;border:1.5px solid #d1d5db;border-radius:5px;font-size:.78rem;cursor:pointer;">Apply</button>
+  </form>
+</div>
+
+{% if items %}
+<div class="card" style="padding:0;overflow:hidden;">
+  {% for item in items %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.05);
+    {% if not item.is_read %}background:rgba(99,102,241,.03);{% endif %}">
+    {# Unread dot #}
+    <div style="width:8px;flex-shrink:0;">
+      {% if not item.is_read %}<span style="display:block;width:8px;height:8px;border-radius:50%;background:#4f46e5;"></span>{% endif %}
+    </div>
+    {# Priority badge #}
+    <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;min-width:48px;text-align:center;
+      background:{% if item.priority=='URGENT' %}#fef2f2{% elif item.priority=='HIGH' %}#fffbeb{% else %}#f1f5f9{% endif %};
+      color:{% if item.priority=='URGENT' %}#991b1b{% elif item.priority=='HIGH' %}#92400e{% else %}#64748b{% endif %};">
+      {{ item.priority }}
+    </span>
+    {# Content #}
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:.88rem;font-weight:{% if not item.is_read %}600{% else %}400{% endif %};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        {{ item.title }}
+      </div>
+      {% if item.description %}
+      <div style="font-size:.75rem;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.description }}</div>
+      {% endif %}
+      <div style="font-size:.68rem;color:#9ca3af;margin-top:.15rem;">
+        {{ item.task_type }}
+        {% if item.due_date %} · Due {{ item.due_date }}{% endif %}
+        · {{ item.created_at.strftime('%b %d') if item.created_at else '' }}
+      </div>
+    </div>
+    {# Actions #}
+    <div style="display:flex;gap:.35rem;flex-shrink:0;">
+      {% if item.action_url %}
+      <a href="{{ item.action_url }}" style="padding:5px 12px;font-size:.78rem;font-weight:600;background:var(--primary,#4f46e5);color:#fff;border-radius:5px;text-decoration:none;">Go</a>
+      {% endif %}
+      <form method="post" action="/me/inbox/{{ item.id }}/complete" style="display:inline;">
+        <button title="Done" style="padding:5px 10px;font-size:.78rem;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">✓</button>
+      </form>
+      <form method="post" action="/me/inbox/{{ item.id }}/dismiss" style="display:inline;">
+        <button title="Dismiss" style="padding:5px 10px;font-size:.78rem;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;color:#9ca3af;">✕</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:3rem;text-align:center;color:#9ca3af;">
+  <div style="font-size:2rem;margin-bottom:.5rem;">✅</div>
+  <div style="font-size:1rem;font-weight:600;">All clear!</div>
+  <div style="font-size:.85rem;">No pending actions at this time.</div>
+</div>
+{% endif %}
+{% endblock %}

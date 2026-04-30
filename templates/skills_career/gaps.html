@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page_title %}Skill Gap Report{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Organization Skill Gap Report</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Employee skills versus role requirements analysis.</p>
+  </div>
+  <a href="/skills" style="font-size:.82rem;color:var(--primary,#4f46e5);">&larr; Back to Skills Dashboard</a>
+</div>
+
+{% if gaps %}
+<div class="card" style="padding:1rem;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Employee</th>
+        <th style="padding:6px 8px;text-align:left;">Skill</th>
+        <th style="padding:6px 8px;text-align:center;">Current</th>
+        <th style="padding:6px 8px;text-align:center;">Required</th>
+        <th style="padding:6px 8px;text-align:center;">Gap</th>
+        <th style="padding:6px 8px;text-align:center;">Priority</th>
+        <th style="padding:6px 8px;text-align:left;">Recommendation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for g in gaps %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ g.employee_name }}</td>
+        <td style="padding:6px 8px;">{{ g.skill_name }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-weight:700;">{{ g.current_level or 0 }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-weight:700;">{{ g.required_level }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          {% set gap_val = (g.gap or 0)|float %}
+          <span style="display:inline-block;padding:2px 10px;border-radius:4px;font-weight:700;font-size:.78rem;background:{% if gap_val >= 3 %}#fee2e2;color:#991b1b{% elif gap_val >= 2 %}#fef9c3;color:#854d0e{% elif gap_val >= 1 %}#fefce8;color:#a16207{% else %}#dcfce7;color:#166534{% endif %};">
+            {{ g.gap }}
+          </span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:4px;background:{% if g.priority=='CRITICAL' %}#fee2e2;color:#991b1b{% elif g.priority=='HIGH' %}#fef9c3;color:#854d0e{% else %}#dbeafe;color:#1d4ed8{% endif %};">{{ g.priority }}</span>
+        </td>
+        <td style="padding:6px 8px;font-size:.78rem;color:#6b7280;">{{ g.recommendation or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No skill gaps found. Run gap analysis from employee profiles to populate this report.
+</div>
+{% endif %}
+
+{% endblock %}

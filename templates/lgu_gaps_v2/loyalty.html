@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block page_title %}Loyalty Awards{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>🎖️ Loyalty Service Awards</h2>
+       <div class="sub">Auto-detect 10/15/20/25/30-year anniversaries and generate memos</div></div>
+  <button id="btnScan" class="btn btn-primary">🔍 Run Scan</button>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi blue" data-hint="Employees whose service anniversary is coming up in the next 180 days."><div class="lbl">Upcoming</div><div class="num">{{ summary.upcoming or 0 }}</div></div>
+  <div class="kpi amber" data-hint="Anniversary reached — generate a memo from the row action."><div class="lbl">Eligible Now</div><div class="num">{{ summary.eligible or 0 }}</div></div>
+  <div class="kpi green" data-hint="Awards formally conferred in the last 365 days."><div class="lbl">Awarded (YTD)</div><div class="num">{{ summary.awarded_ytd or 0 }}</div></div>
+  <div class="kpi"><div class="lbl">Eligible Value</div>
+    <div class="num" style="font-size:1.25rem;">₱{{ '{:,.0f}'.format(summary.eligible_value or 0) }}</div></div>
+</div>
+
+<div class="filters">
+  <a href="?" class="{{ 'active' if not status_filter else '' }}">All</a>
+  {% for s in ['UPCOMING','ELIGIBLE','AWARDED','WAIVED'] %}
+  <a href="?status={{ s }}" class="{{ 'active' if status_filter == s else '' }}">{{ s.title() }}</a>
+  {% endfor %}
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr><th>Employee</th><th>Years</th><th>Eligibility Date</th>
+        <th>Award</th><th>Status</th><th>Memo</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>
+        <div style="font-weight:600;">{{ r.full_name }}</div>
+        <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div>
+      </td>
+      <td style="font-weight:700;font-size:1.05rem;color:#4f46e5;">{{ r.service_years }}</td>
+      <td>{{ r.eligibility_date.strftime('%b %d, %Y') if r.eligibility_date else '—' }}</td>
+      <td>
+        <div>{{ r.award_type or '—' }}</div>
+        <div style="font-size:.78rem;color:#6b7280;">{{ '₱{:,.0f}'.format(r.award_value|float) if r.award_value else '' }}</div>
+      </td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td>
+        {% if r.memo_no %}
+        <div style="font-family:monospace;font-size:.78rem;">{{ r.memo_no }}</div>
+        <div style="font-size:.7rem;color:#9ca3af;">{{ r.memo_generated_at.strftime('%b %d') if r.memo_generated_at else '' }}</div>
+        {% endif %}
+      </td>
+      <td style="white-space:nowrap;">
+        {% if r.status == 'ELIGIBLE' %}
+          <a href="/rewards/loyalty/{{ r.id }}/memo.pdf" class="btn-xs btn-amber" target="_blank">📄 Memo</a>
+          <button onclick="awardIt({{ r.id }})" class="btn-xs btn-green">✓ Awarded</button>
+        {% elif r.status == 'AWARDED' and r.memo_no %}
+          <a href="/rewards/loyalty/{{ r.id }}/memo.pdf" class="btn-xs btn-ghost" style="color:#4f46e5;border:1px solid #4f46e5;" target="_blank">Re-print</a>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">🎖️</div>
+  <div style="font-weight:600;">No loyalty milestones recorded.</div>
+  <div style="font-size:.85rem;margin-top:.25rem;">Click <em>Run Scan</em> to detect anniversaries.</div>
+</div>
+{% endif %}
+
+<script>
+  document.getElementById('btnScan').addEventListener('click', async () => {
+    const btn = document.getElementById('btnScan');
+    btn.disabled = true; btn.textContent = '⏳ Scanning…';
+    const r = await fetch('/rewards/loyalty/scan', {method:'POST'});
+    const j = await r.json();
+    alert(`Scan complete. ${j.inserted} new milestones recorded.`);
+    location.reload();
+  });
+  async function awardIt(id) {
+    if (!confirm('Mark this loyalty award as conferred?')) return;
+    const r = await fetch(`/rewards/loyalty/${id}/awarded`, {method:'POST'});
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block page_title %}Goals & OKRs{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Goals & OKRs</h2>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <form method="GET" style="display:flex;gap:.4rem;align-items:center;">
+      <select name="cycle_id" onchange="this.form.submit()"
+              style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;">
+        <option value="">All Cycles</option>
+        {% for c in cycles %}
+        <option value="{{ c.id }}" {% if cycle_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <a href="{{ url_for('goals.my_goals') }}"
+       style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.85rem;color:#374151;text-decoration:none;">
+      My Goals
+    </a>
+  </div>
+</div>
+
+<!-- Stats Cards -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.85rem;margin-bottom:1.5rem;">
+  <a href="#goal-tree" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Total Goals</div>
+    <div style="font-size:1.6rem;font-weight:800;color:var(--primary,#4f46e5);">{{ stats.total }}</div>
+  </a>
+  <a href="#goal-tree" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Active</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#2563eb;">{{ stats.active }}</div>
+  </a>
+  <a href="#goal-tree" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Completed</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#059669;">{{ stats.completed }}</div>
+  </a>
+  <a href="#goal-tree" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Avg Progress</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#d97706;">{{ stats.avg_progress or 0 }}%</div>
+  </a>
+</div>
+
+<!-- Goal Tree -->
+<div id="goal-tree" style="margin-bottom:1.5rem;">
+  <h3 style="font-size:1rem;font-weight:700;margin-bottom:.6rem;">Goal Hierarchy</h3>
+  {% macro render_goal(goal, indent) %}
+  <div class="card" style="padding:.75rem 1rem;margin-left:{{ indent * 1.5 }}rem;margin-bottom:.4rem;border-left:3px solid {% if goal.owner_type == 'ORGANIZATION' %}var(--primary,#4f46e5){% elif goal.owner_type == 'DEPARTMENT' %}#059669{% elif goal.owner_type == 'TEAM' %}#d97706{% else %}#6b7280{% endif %};">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;">
+          <a href="{{ url_for('goals.detail', goal_id=goal.id) }}" style="font-size:.85rem;font-weight:600;color:#1f2937;text-decoration:none;">{{ goal.title }}</a>
+          <span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:.65rem;font-weight:600;
+            background:{% if goal.owner_type == 'ORGANIZATION' %}rgba(79,70,229,.1){% elif goal.owner_type == 'DEPARTMENT' %}rgba(5,150,105,.1){% elif goal.owner_type == 'TEAM' %}rgba(217,119,6,.1){% else %}rgba(107,114,128,.1){% endif %};
+            color:{% if goal.owner_type == 'ORGANIZATION' %}var(--primary,#4f46e5){% elif goal.owner_type == 'DEPARTMENT' %}#059669{% elif goal.owner_type == 'TEAM' %}#d97706{% else %}#6b7280{% endif %};">
+            {{ goal.owner_type }}
+          </span>
+          <span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:.65rem;font-weight:600;
+            background:{% if goal.status == 'COMPLETED' %}#dcfce7{% elif goal.status == 'ACTIVE' %}#dbeafe{% else %}#f1f5f9{% endif %};
+            color:{% if goal.status == 'COMPLETED' %}#166534{% elif goal.status == 'ACTIVE' %}#1e40af{% else %}#374151{% endif %};">
+            {{ goal.status }}
+          </span>
+        </div>
+        <div style="font-size:.78rem;color:#6b7280;">
+          {{ goal.owner_name or '' }}
+          {% if goal.due_date %}&middot; Due {{ goal.due_date.strftime('%b %d, %Y') if goal.due_date else '' }}{% endif %}
+        </div>
+      </div>
+      <div style="min-width:140px;margin-left:1rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <div style="flex:1;height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+            <div style="height:100%;width:{{ goal.progress_pct or 0 }}%;background:{% if (goal.progress_pct or 0) >= 100 %}#059669{% elif (goal.progress_pct or 0) >= 50 %}#d97706{% else %}var(--primary,#4f46e5){% endif %};border-radius:999px;transition:width .3s;"></div>
+          </div>
+          <span style="font-size:.75rem;font-weight:700;color:#374151;min-width:35px;text-align:right;">{{ goal.progress_pct or 0 }}%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% for child in goal.children %}
+    {{ render_goal(child, indent + 1) }}
+  {% endfor %}
+  {% endmacro %}
+
+  {% if tree %}
+    {% for goal in tree %}
+      {{ render_goal(goal, 0) }}
+    {% endfor %}
+  {% else %}
+    <div class="card" style="padding:1.5rem;text-align:center;color:#9ca3af;font-size:.85rem;">No goals found. Create one below.</div>
+  {% endif %}
+</div>
+
+<!-- Create Goal Form -->
+{% if session.get('role_code') in ['HR_ADMIN', 'SUPER_ADMIN', 'MANAGER'] %}
+<div class="card" style="padding:1.25rem;">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:.6rem;">Create Goal</div>
+  <form method="POST" action="{{ url_for('goals.create') }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Title</label>
+        <input type="text" name="title" required placeholder="Goal title"
+               style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+      </div>
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Cycle</label>
+        <select name="cycle_id" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="">-- Optional --</option>
+          {% for c in cycles %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Owner Type</label>
+        <select name="owner_type" id="ownerType" onchange="toggleOwnerSelect()"
+                style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="EMPLOYEE">Employee</option>
+          <option value="DEPARTMENT">Department</option>
+          <option value="ORGANIZATION">Organization</option>
+          <option value="TEAM">Team</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Owner</label>
+        <select name="owner_id" id="ownerEmployee" required
+                style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="">-- Select --</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}" data-type="EMPLOYEE">{{ e.full_name }}</option>
+          {% endfor %}
+          {% for d in departments %}
+          <option value="{{ d.id }}" data-type="DEPARTMENT" style="display:none;">{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Parent Goal</label>
+        <select name="parent_goal_id" style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="">-- None (Top-level) --</option>
+          {% for g in all_goals %}
+          <option value="{{ g.id }}">{{ g.title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Due Date</label>
+        <input type="date" name="due_date"
+               style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+      </div>
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Metric</label>
+        <input type="text" name="metric" placeholder="e.g. Revenue, NPS"
+               style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+        <div>
+          <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Target Value</label>
+          <input type="number" name="target_value" step="0.01" placeholder="100"
+                 style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        </div>
+        <div>
+          <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Weight</label>
+          <input type="number" name="weight" step="0.1" value="1.0"
+                 style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:.85rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Description</label>
+      <textarea name="description" rows="2" placeholder="Describe the goal..."
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;"></textarea>
+    </div>
+    <div style="margin-top:.85rem;">
+      <button type="submit"
+              style="padding:8px 20px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Create Goal
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleOwnerSelect() {
+  var type = document.getElementById('ownerType').value;
+  var opts = document.querySelectorAll('#ownerEmployee option[data-type]');
+  opts.forEach(function(o) {
+    if (type === 'ORGANIZATION') {
+      o.style.display = '';
+    } else {
+      o.style.display = o.getAttribute('data-type') === type ? '' : 'none';
+    }
+  });
+  document.getElementById('ownerEmployee').value = '';
+}
+</script>
+{% endblock %}

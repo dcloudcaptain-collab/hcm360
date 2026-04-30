@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block page_title %}Guided Tours{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .sub { font-size:.85rem; color:#6b7280; }
+  .btn { display:inline-flex; align-items:center; gap:.35rem; padding:7px 14px; border-radius:8px;
+    font-size:.82rem; font-weight:600; text-decoration:none; border:none; cursor:pointer; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .btn-xs { padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px; border:none; cursor:pointer; }
+
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:.85rem; margin-bottom:1rem; }
+  .kpi { background:#fff; border:1px solid #e5e7eb; border-radius:11px; padding:.85rem 1rem; }
+  .kpi .lbl { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
+  .kpi .num { font-size:1.7rem; font-weight:800; margin-top:.2rem; color:#4f46e5; line-height:1; }
+
+  table.dt { width:100%; border-collapse:collapse; font-size:.87rem; background:#fff; border-radius:11px; overflow:hidden; border:1px solid #e5e7eb; }
+  table.dt th { text-align:left; padding:.6rem .85rem; background:#f9fafb; color:#6b7280;
+    font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.5px solid #e5e7eb; }
+  table.dt td { padding:.65rem .85rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  table.dt tbody tr:hover td { background:#f9fafb; }
+  .badge-active { background:#dcfce7; color:#166534; padding:2px 10px; border-radius:999px; font-size:.72rem; font-weight:700; }
+  .badge-inactive { background:#f3f4f6; color:#6b7280; padding:2px 10px; border-radius:999px; font-size:.72rem; font-weight:700; }
+  .role-chip { display:inline-block; background:#ede9fe; color:#5b21b6; padding:1px 7px;
+    border-radius:4px; font-size:.68rem; font-weight:700; margin:1px; }
+
+  .reset-form { display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-end;
+    padding:1rem; background:#f9fafb; border:1px solid #e5e7eb; border-radius:11px; margin-bottom:1rem; }
+  .reset-form .f { display:flex; flex-direction:column; gap:.2rem; }
+  .reset-form label { font-size:.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .reset-form select, .reset-form input { padding:.45rem .6rem; border:1.5px solid #d1d5db; border-radius:7px; font-size:.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>🧭 Guided Tours</h2>
+    <div class="sub">Manage first-time user walkthroughs and tooltips across HCM360</div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    <button class="btn btn-ghost" onclick="document.getElementById('resetPanel').scrollIntoView({behavior:'smooth'});">↻ Reset Completions</button>
+    <a href="/admin/tours/new" class="btn btn-primary">+ New Tour</a>
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="lbl">Active Tours</div><div class="num">{{ stats.active_count or 0 }}</div></div>
+  <div class="kpi"><div class="lbl">Total Tours</div><div class="num" style="color:#111827;">{{ stats.total_count or 0 }}</div></div>
+  <div class="kpi"><div class="lbl">Completions</div><div class="num" style="color:#16a34a;">{{ stats.total_completions or 0 }}</div></div>
+  <div class="kpi"><div class="lbl">Users Reached</div><div class="num" style="color:#2563eb;">{{ stats.users_reached or 0 }}</div></div>
+</div>
+
+<table class="dt">
+  <thead>
+    <tr>
+      <th>Key</th>
+      <th>Title</th>
+      <th>Module</th>
+      <th>URL Pattern</th>
+      <th>Roles</th>
+      <th>Version</th>
+      <th>Completions</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td style="font-family:monospace;font-size:.78rem;">{{ r.tour_key }}</td>
+      <td><strong>{{ r.title }}</strong></td>
+      <td style="font-size:.78rem;color:#6b7280;">{{ r.module or '—' }}</td>
+      <td style="font-family:monospace;font-size:.78rem;color:#6b7280;">{{ r.url_pattern or '—' }}</td>
+      <td style="max-width:240px;">
+        {% for role in r.allowed_roles %}
+        <span class="role-chip">{{ role }}</span>
+        {% endfor %}
+      </td>
+      <td style="font-family:monospace;">v{{ r.version }}</td>
+      <td style="font-family:monospace;text-align:right;">{{ r.completion_count }}</td>
+      <td><span class="{{ 'badge-active' if r.is_active else 'badge-inactive' }}">{{ 'Active' if r.is_active else 'Inactive' }}</span></td>
+      <td style="white-space:nowrap;">
+        <a href="/admin/tours/{{ r.id }}/edit" class="btn-xs" style="background:#fff;color:#4f46e5;border:1px solid #4f46e5;">Edit</a>
+        {% if r.is_active %}
+        <button class="btn-xs" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca;"
+                onclick="deactivate('{{ r.tour_key }}')">✕</button>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div id="resetPanel" class="reset-form" style="margin-top:1rem;">
+  <div class="f">
+    <label>Reset completions for role</label>
+    <select id="resetRole">
+      <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+      <option value="HR_ADMIN">HR_ADMIN</option>
+      <option value="MANAGER">MANAGER</option>
+      <option value="EMPLOYEE">EMPLOYEE</option>
+      <option value="EXECUTIVE">EXECUTIVE</option>
+    </select>
+  </div>
+  <div class="f">
+    <label>Tour key (optional)</label>
+    <input type="text" id="resetKey" placeholder="leave blank for ALL tours" style="width:280px;" />
+  </div>
+  <button class="btn btn-primary" onclick="resetRole()">↻ Reset</button>
+  <span class="sub">Users in that role will see the tour again on next visit.</span>
+</div>
+
+<script>
+  async function deactivate(key) {
+    if (!confirm('Deactivate tour "' + key + '"?')) return;
+    const r = await fetch('/admin/tours/' + encodeURIComponent(key) + '/deactivate', {method:'POST'});
+    if ((await r.json()).ok) location.reload();
+  }
+  async function resetRole() {
+    const role = document.getElementById('resetRole').value;
+    const key = document.getElementById('resetKey').value.trim();
+    if (!confirm('Reset ' + (key ? 'tour "' + key + '"' : 'ALL tours') + ' for role ' + role + '?')) return;
+    const r = await fetch('/admin/tours/reset-role', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({role_code: role, tour_key: key || null}),
+    });
+    const j = await r.json();
+    alert(j.ok ? `Removed ${j.removed} completion record(s). Users will see tours again.` : j.message);
+  }
+</script>
+{% endblock %}

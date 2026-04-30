@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block page_title %}Team Locator{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Team Locator — Today</h2>
+  <div style="display:flex;gap:.75rem;align-items:center;">
+    <span style="font-size:.85rem;color:#6b7280;">{{ today }}</span>
+    <form method="post" action="/leave/locator/log" style="display:inline-flex;gap:.4rem;align-items:center;">
+      {% if not session.employee_id and session.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER','EXECUTIVE') %}
+      {# Admin-without-employee-link: pick target employee to log on behalf of #}
+      <input list="emp-list" name="employee_picker_text" id="emp-picker"
+             placeholder="Log on behalf of…" autocomplete="off"
+             oninput="syncEmp(this)"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.85rem;min-width:220px;">
+      <input type="hidden" name="employee_id" id="emp-picker-id">
+      <datalist id="emp-list"></datalist>
+      <script>
+        let _empLookup = {};
+        async function syncEmp(input){
+          const q = input.value.trim();
+          if (q.length < 2) return;
+          const r = await fetch('/api/employees/search?q=' + encodeURIComponent(q));
+          const d = await r.json();
+          const dl = document.getElementById('emp-list');
+          dl.innerHTML = '';
+          _empLookup = {};
+          (d.employees || []).forEach(e => {
+            const label = `${e.name} (${e.employee_no || ''})`;
+            _empLookup[label] = e.id;
+            const opt = document.createElement('option');
+            opt.value = label;
+            dl.appendChild(opt);
+          });
+          if (_empLookup[q]) document.getElementById('emp-picker-id').value = _empLookup[q];
+        }
+      </script>
+      {% endif %}
+      <select name="location_status" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+        <option value="IN_OFFICE">In Office</option>
+        <option value="WFH">WFH</option>
+        <option value="FIELD">Field</option>
+        <option value="ON_LEAVE">On Leave</option>
+      </select>
+      <button type="submit" style="padding:6px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">
+        {% if session.employee_id %}Log My Location{% else %}Log Location{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+
+{# Status summary badges #}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for grp, color, label in [
+    ('IN_OFFICE','#dcfce7','In Office'),
+    ('WFH','#dbeafe','WFH'),
+    ('FIELD','#fef9c3','Field'),
+    ('ON_LEAVE','#fee2e2','On Leave'),
+    ('NOT_LOGGED','#f1f5f9','Not Logged'),
+  ] %}
+  {% set cnt = summary.get(grp, 0) %}
+  <a href="/leave/locator?filter={{ grp }}"
+     style="padding:.5rem 1rem;border-radius:8px;background:{{ color }};text-decoration:none;text-align:center;min-width:90px;">
+    <div style="font-size:1.4rem;font-weight:800;color:#1e293b;">{{ cnt }}</div>
+    <div style="font-size:.72rem;color:#475569;font-weight:600;">{{ label }}</div>
+  </a>
+  {% endfor %}
+</div>
+
+{# Locator board — cards by status group #}
+{% for status_key, status_label, bg_color, text_color in [
+  ('IN_OFFICE','In Office','#dcfce7','#166534'),
+  ('WFH','Working From Home','#dbeafe','#1e40af'),
+  ('FIELD','In the Field','#fef9c3','#854d0e'),
+  ('ON_LEAVE','On Leave','#fee2e2','#991b1b'),
+  ('NOT_LOGGED','Not Logged','#f8fafc','#64748b'),
+] %}
+{% set group_members = by_status.get(status_key, []) %}
+{% if group_members %}
+<div style="margin-bottom:1.25rem;">
+  <h3 style="font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin:0 0 .6rem;">
+    {{ status_label }} ({{ group_members|length }})
+  </h3>
+  <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
+    {% for e in group_members %}
+    <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .85rem;border-radius:8px;background:{{ bg_color }};min-width:180px;">
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;flex-shrink:0;">
+        {{ e.full_name[:1] }}
+      </div>
+      <div>
+        <div style="font-size:.85rem;font-weight:600;color:{{ text_color }};">{{ e.full_name }}</div>
+        <div style="font-size:.72rem;color:{{ text_color }};opacity:.7;">{{ e.department or e.position_title or '' }}</div>
+        {% if e.remarks %}
+        <div style="font-size:.7rem;color:{{ text_color }};opacity:.6;font-style:italic;">{{ e.remarks }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not by_status %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No location entries have been logged today yet.
+</div>
+{% endif %}
+
+{% endblock %}

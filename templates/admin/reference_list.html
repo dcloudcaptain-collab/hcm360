@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block page_title %}Reference Data - {{ ref_key }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="top-actions"><a class="btn-link" href="/admin/reference-data/{{ ref_key }}/new">Add New</a></div>
+  <table>
+    <thead><tr>{% if rows %}{% for col in rows[0].keys() %}<th>{{ col }}</th>{% endfor %}{% else %}{% for f in cfg.fields %}<th>{{ f }}</th>{% endfor %}{% endif %}<th>Actions</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for value in row.values() %}<td>{{ value }}</td>{% endfor %}
+        <td>
+          <a href="/admin/reference-data/{{ ref_key }}/{{ row.id }}/edit">Edit</a>
+          <form method="post" action="/admin/reference-data/{{ ref_key }}/{{ row.id }}/delete" style="display:inline-block;">
+            <button type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

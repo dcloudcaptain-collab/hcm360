@@ -1,0 +1,503 @@
+{% extends 'base.html' %}
+{% set emp = profile.employee %}
+{% block page_title %}My Profile{% endblock %}
+{% block extra_css %}
+<style>
+  /* ── Layout ────────────────────────────────────────────────────── */
+  .profile-grid { display:grid; grid-template-columns:1fr; gap:1rem; }
+
+  /* ── Hero Card ─────────────────────────────────────────────────── */
+  /* Gradient is driven by the active UI theme tokens — stops walk
+     from the darkest (sidebar) to the brightest (accent) so every
+     theme renders with a cohesive identity. */
+  .hero-card {
+    background:linear-gradient(135deg,
+      var(--sidebar, #4f46e5)  0%,
+      var(--primary, #6366f1)  55%,
+      var(--accent,  #818cf8)  100%);
+    border-radius:14px; padding:1.75rem 1.75rem 1.25rem; color:#fff;
+    margin-bottom:1.25rem; position:relative; overflow:hidden;
+  }
+  .hero-card::before {
+    content:''; position:absolute; top:-40px; right:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background:rgba(255,255,255,.06); pointer-events:none;
+  }
+  .hero-card::after {
+    content:''; position:absolute; bottom:-60px; left:-20px;
+    width:220px; height:220px; border-radius:50%;
+    background:rgba(255,255,255,.04); pointer-events:none;
+  }
+  .hero-avatar {
+    width:88px; height:88px; border-radius:50%;
+    background:rgba(255,255,255,.2); border:3px solid rgba(255,255,255,.35);
+    font-size:2rem; font-weight:800; display:flex;
+    align-items:center; justify-content:center; flex-shrink:0;
+    backdrop-filter:blur(4px); overflow:hidden; position:relative;
+    cursor:pointer;
+  }
+  .hero-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+  .hero-avatar .ph-edit {
+    position:absolute; left:0; right:0; bottom:0; height:24px;
+    background:rgba(0,0,0,.55); color:#fff;
+    font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity .15s;
+  }
+  .hero-avatar:hover .ph-edit { opacity:1; }
+  .hero-photo-rm {
+    background:none; border:none; color:rgba(255,255,255,.7);
+    font-size:.7rem; cursor:pointer; padding:0; text-decoration:underline;
+    margin-top:.3rem;
+  }
+  .hero-photo-rm:hover { color:#fff; }
+  .hero-name { font-size:1.35rem; font-weight:800; line-height:1.2; }
+  .hero-sub  { font-size:.88rem; opacity:.82; margin-top:.2rem; }
+  .hero-badge {
+    display:inline-flex; align-items:center; gap:.3rem;
+    padding:3px 12px; border-radius:999px; font-size:.72rem; font-weight:700;
+    background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.3);
+  }
+  .hero-badge.active { background:rgba(134,239,172,.25); border-color:rgba(134,239,172,.5); color:#bbf7d0; }
+  .hero-meta { display:flex; flex-wrap:wrap; gap:1rem; margin-top:1rem; font-size:.8rem; opacity:.85; }
+  .hero-meta span { display:flex; align-items:center; gap:.3rem; }
+
+  /* ── Quick Nav ─────────────────────────────────────────────────── */
+  .quick-nav {
+    display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.25rem;
+  }
+  .quick-nav a {
+    display:flex; align-items:center; gap:.4rem;
+    padding:7px 16px; border-radius:8px; font-size:.8rem; font-weight:600;
+    text-decoration:none; border:1.5px solid #e5e7eb;
+    color:#374151; background:#fff; transition:all .15s;
+  }
+  .quick-nav a:hover {
+    border-color:var(--primary,#4f46e5); color:var(--primary,#4f46e5);
+    background:#f5f3ff; box-shadow:0 2px 8px rgba(79,70,229,.12);
+  }
+  .quick-nav a .nav-icon { font-size:.95rem; }
+
+  /* ── Section Cards ─────────────────────────────────────────────── */
+  .sec-card {
+    background:#fff; border:1.5px solid #e5e7eb; border-radius:12px;
+    overflow:hidden; margin-bottom:1rem; box-shadow:0 1px 4px rgba(0,0,0,.04);
+  }
+  .sec-summary {
+    padding:1rem 1.25rem; font-weight:700; font-size:.92rem;
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; list-style:none; user-select:none;
+    color:#111827; gap:.5rem;
+  }
+  .sec-summary::-webkit-details-marker { display:none; }
+  .sec-title { display:flex; align-items:center; gap:.55rem; }
+  .sec-icon {
+    width:30px; height:30px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.9rem; flex-shrink:0;
+  }
+  .sec-chevron {
+    font-size:1rem; color:#9ca3af; transition:transform .2s;
+    flex-shrink:0;
+  }
+  details[open] .sec-chevron { transform:rotate(90deg); }
+  .sec-body { padding:0 1.25rem 1.25rem; border-top:1px solid #f3f4f6; }
+
+  /* ── Personal Info Grid ────────────────────────────────────────── */
+  .info-grid {
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+    gap:.1rem; margin-top:.75rem;
+  }
+  .info-item {
+    padding:.6rem .5rem; border-radius:6px;
+  }
+  .info-item:hover { background:#f9fafb; }
+  .info-label { font-size:.72rem; color:#9ca3af; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.15rem; }
+  .info-value { font-size:.88rem; font-weight:600; color:#111827; }
+  .info-value.empty { color:#d1d5db; font-weight:400; }
+
+  /* ── Data Tables ───────────────────────────────────────────────── */
+  .dt { width:100%; border-collapse:collapse; font-size:.85rem; margin-top:.75rem; }
+  .dt thead tr { background:#f8fafc; }
+  .dt th {
+    padding:.6rem .875rem; text-align:left; font-size:.7rem; font-weight:700;
+    color:#6b7280; text-transform:uppercase; letter-spacing:.06em;
+    border-bottom:1.5px solid #e5e7eb;
+  }
+  .dt td {
+    padding:.7rem .875rem; border-bottom:1px solid #f1f5f9;
+    color:#374151; vertical-align:middle;
+  }
+  .dt tbody tr:last-child td { border-bottom:none; }
+  .dt tbody tr:hover td { background:#f9fafb; }
+
+  /* ── Badges ────────────────────────────────────────────────────── */
+  .badge {
+    display:inline-flex; align-items:center; gap:.25rem;
+    padding:2px 10px; border-radius:999px; font-size:.72rem; font-weight:700;
+  }
+  .badge-primary { background:#dbeafe; color:#1d4ed8; }
+  .badge-green   { background:#dcfce7; color:#166534; }
+  .badge-yes     { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+  .badge-type    { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+
+  /* ── Empty State ───────────────────────────────────────────────── */
+  .empty-state {
+    display:flex; align-items:center; gap:.5rem;
+    padding:.85rem .5rem; color:#9ca3af; font-size:.85rem;
+    font-style:italic;
+  }
+</style>
+{% endblock %}
+{% block content %}
+
+{# ══ Hero Header ══════════════════════════════════════════════════════ #}
+<div class="hero-card">
+  <div style="display:flex;align-items:flex-start;gap:1.1rem;flex-wrap:wrap;position:relative;z-index:1;">
+    <div style="display:flex;flex-direction:column;align-items:center;">
+      <div class="hero-avatar"
+           onclick="document.getElementById('myPhotoFileInput').click();"
+           title="Click to {{ 'change' if emp.profile_photo_path else 'upload' }} your photo"
+           data-hint="Click your avatar to upload a profile picture (JPG/PNG/WebP, ≤ 5 MB).">
+        {% if emp.profile_photo_path %}
+          <img src="/uploads/{{ emp.profile_photo_path }}" alt="{{ emp.full_name }}">
+        {% else %}
+          {{ ((emp.first_name or 'E')[0] ~ (emp.last_name or '')[0]) | upper }}
+        {% endif %}
+        <span class="ph-edit">{{ 'Change' if emp.profile_photo_path else 'Upload' }}</span>
+      </div>
+      <form id="myPhotoForm"
+            action="{{ url_for('employees.photo_upload', employee_id=emp.id) }}"
+            method="post" enctype="multipart/form-data"
+            style="display:none;">
+        <input type="hidden" name="next" value="{{ url_for('ess.my_profile') }}">
+        <input id="myPhotoFileInput" name="photo" type="file"
+               accept="image/png,image/jpeg,image/webp,image/gif"
+               onchange="document.getElementById('myPhotoForm').submit();">
+      </form>
+      {% if emp.profile_photo_path %}
+      <form action="{{ url_for('employees.photo_delete', employee_id=emp.id) }}" method="post"
+            style="display:inline;"
+            onsubmit="return confirm('Remove your profile picture?');">
+        <input type="hidden" name="next" value="{{ url_for('ess.my_profile') }}">
+        <button type="submit" class="hero-photo-rm"
+                data-hint="Delete the current photo. Initials will show instead.">remove photo</button>
+      </form>
+      {% endif %}
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="hero-name">{{ emp.full_name }}</div>
+      <div class="hero-sub">
+        {{ emp.position_title or '—' }}
+        {% if emp.department_name %} · {{ emp.department_name }}{% endif %}
+      </div>
+      <div style="display:flex;align-items:center;gap:.6rem;margin-top:.55rem;flex-wrap:wrap;">
+        <span class="hero-badge {% if emp.status == 'ACTIVE' %}active{% endif %}">
+          <span>{% if emp.status == 'ACTIVE' %}●{% else %}○{% endif %}</span>
+          {{ emp.status or '—' }}
+        </span>
+        {% if emp.employment_type %}
+        <span class="hero-badge">{{ emp.employment_type }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-size:.75rem;opacity:.65;margin-bottom:.15rem;">Employee No.</div>
+      <div style="font-size:1rem;font-weight:800;font-family:monospace;letter-spacing:.04em;">{{ emp.employee_no or '—' }}</div>
+    </div>
+  </div>
+  <div class="hero-meta" style="position:relative;z-index:1;">
+    {% if emp.date_hired %}
+    <span><span>📅</span> Hired: <strong>{{ emp.date_hired }}</strong></span>
+    {% endif %}
+    {% if emp.date_regularized %}
+    <span><span>🎯</span> Regularized: <strong>{{ emp.date_regularized }}</strong></span>
+    {% endif %}
+    {% if emp.supervisor_name %}
+    <span><span>👤</span> Reports to: <strong>{{ emp.supervisor_name }}</strong></span>
+    {% endif %}
+    {% if emp.work_arrangement %}
+    <span><span>💼</span> {{ emp.work_arrangement }}</span>
+    {% endif %}
+  </div>
+</div>
+
+{# ══ Quick Nav ════════════════════════════════════════════════════════ #}
+<nav class="quick-nav">
+  {% for key, label, icon in [
+    ('addresses','Addresses','🏠'),
+    ('emergency-contacts','Emergency Contacts','🆘'),
+    ('government-ids','Government IDs','🪪'),
+    ('bank-accounts','Bank Accounts','🏦'),
+    ('dependents','Dependents','👨‍👩‍👧')]
+  %}
+  <a href="{{ url_for('ess.my_sub_list', sub_key=key) }}">
+    <span class="nav-icon">{{ icon }}</span>{{ label }}
+  </a>
+  {% endfor %}
+</nav>
+
+{# ══ Personal Information ═════════════════════════════════════════════ #}
+<div class="sec-card">
+  <details open>
+    <summary class="sec-summary">
+      <span class="sec-title">
+        <span class="sec-icon" style="background:#ede9fe;">👤</span>
+        Personal Information
+      </span>
+      <span class="sec-chevron">›</span>
+    </summary>
+    <div class="sec-body">
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Gender</div>
+          <div class="info-value {% if not emp.gender %}empty{% endif %}">{{ emp.gender or '—' }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Civil Status</div>
+          <div class="info-value {% if not emp.civil_status %}empty{% endif %}">{{ emp.civil_status or '—' }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Date of Birth</div>
+          <div class="info-value {% if not emp.date_of_birth %}empty{% endif %}">{{ emp.date_of_birth or '—' }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Mobile No.</div>
+          <div class="info-value {% if not emp.mobile_no %}empty{% endif %}">{{ emp.mobile_no or '—' }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Work Email</div>
+          <div class="info-value {% if not emp.work_email %}empty{% endif %}" style="word-break:break-all;">{{ emp.work_email or '—' }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Employment Type</div>
+          <div class="info-value {% if not emp.employment_type %}empty{% endif %}">{{ emp.employment_type or '—' }}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Work Arrangement</div>
+          <div class="info-value {% if not emp.work_arrangement %}empty{% endif %}">{{ emp.work_arrangement or '—' }}</div>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+{# ══ Addresses ════════════════════════════════════════════════════════ #}
+<div class="sec-card">
+  <details open>
+    <summary class="sec-summary">
+      <span class="sec-title">
+        <span class="sec-icon" style="background:#fef3c7;">🏠</span>
+        Addresses
+        {% if profile.addresses %}
+        <span class="badge badge-primary">{{ profile.addresses|length }}</span>
+        {% endif %}
+      </span>
+      <span class="sec-chevron">›</span>
+    </summary>
+    <div class="sec-body">
+      {% if profile.addresses %}
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Address</th>
+            <th style="text-align:center;">Primary</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in profile.addresses %}
+          <tr>
+            <td><span class="badge badge-type">{{ a.address_type or '—' }}</span></td>
+            <td>{{ [a.street, a.city, a.province, a.zip_code] | select | join(', ') or '—' }}</td>
+            <td style="text-align:center;">
+              {% if a.is_primary %}
+              <span class="badge badge-yes">✓ Primary</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">📭 No addresses on file. <a href="/me/profile/addresses/new" style="color:var(--primary,#4f46e5);font-weight:600;text-decoration:none;margin-left:.25rem;">+ Add one</a></div>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+{# ══ Emergency Contacts ═══════════════════════════════════════════════ #}
+<div class="sec-card">
+  <details open>
+    <summary class="sec-summary">
+      <span class="sec-title">
+        <span class="sec-icon" style="background:#fee2e2;">🆘</span>
+        Emergency Contacts
+        {% if profile.emergency %}
+        <span class="badge badge-primary">{{ profile.emergency|length }}</span>
+        {% endif %}
+      </span>
+      <span class="sec-chevron">›</span>
+    </summary>
+    <div class="sec-body">
+      {% if profile.emergency %}
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Relationship</th>
+            <th>Mobile</th>
+            <th style="text-align:center;">Primary</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in profile.emergency %}
+          <tr>
+            <td style="font-weight:600;">{{ c.full_name or '—' }}</td>
+            <td><span class="badge badge-type">{{ c.relationship or '—' }}</span></td>
+            <td style="font-family:monospace;font-size:.83rem;">{{ c.mobile_no or '—' }}</td>
+            <td style="text-align:center;">
+              {% if c.is_primary %}
+              <span class="badge badge-yes">✓ Primary</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">📭 No emergency contacts on file. <a href="/me/profile/emergency-contacts/new" style="color:var(--primary,#4f46e5);font-weight:600;text-decoration:none;margin-left:.25rem;">+ Add one</a></div>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+{# ══ Government IDs ═══════════════════════════════════════════════════ #}
+<div class="sec-card">
+  <details>
+    <summary class="sec-summary">
+      <span class="sec-title">
+        <span class="sec-icon" style="background:#e0f2fe;">🪪</span>
+        Government IDs
+        {% if profile.gov_ids %}
+        <span class="badge badge-primary">{{ profile.gov_ids|length }}</span>
+        {% endif %}
+      </span>
+      <span class="sec-chevron">›</span>
+    </summary>
+    <div class="sec-body">
+      {% if profile.gov_ids %}
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>ID Type</th>
+            <th>ID Number</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in profile.gov_ids %}
+          <tr>
+            <td><span class="badge badge-type">{{ g.id_type }}</span></td>
+            <td style="font-family:monospace;font-size:.83rem;letter-spacing:.03em;">{{ g.id_number }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">📭 No government IDs on file. <a href="/me/profile/government-ids/new" style="color:var(--primary,#4f46e5);font-weight:600;text-decoration:none;margin-left:.25rem;">+ Add one</a></div>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+{# ══ Bank Accounts ════════════════════════════════════════════════════ #}
+<div class="sec-card">
+  <details>
+    <summary class="sec-summary">
+      <span class="sec-title">
+        <span class="sec-icon" style="background:#d1fae5;">🏦</span>
+        Bank Accounts
+        {% if profile.banks %}
+        <span class="badge badge-primary">{{ profile.banks|length }}</span>
+        {% endif %}
+      </span>
+      <span class="sec-chevron">›</span>
+    </summary>
+    <div class="sec-body">
+      {% if profile.banks %}
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Bank</th>
+            <th>Account Number</th>
+            <th style="text-align:center;">Primary</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in profile.banks %}
+          <tr>
+            <td style="font-weight:600;">{{ b.bank_name }}</td>
+            <td style="font-family:monospace;font-size:.83rem;letter-spacing:.04em;">{{ b.account_number }}</td>
+            <td style="text-align:center;">
+              {% if b.is_primary %}
+              <span class="badge badge-yes">✓ Primary</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">📭 No bank accounts on file. <a href="/me/profile/bank-accounts/new" style="color:var(--primary,#4f46e5);font-weight:600;text-decoration:none;margin-left:.25rem;">+ Add one</a></div>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+{# ══ Dependents ═══════════════════════════════════════════════════════ #}
+<div class="sec-card">
+  <details>
+    <summary class="sec-summary">
+      <span class="sec-title">
+        <span class="sec-icon" style="background:#fae8ff;">👨‍👩‍👧</span>
+        Dependents
+        {% if profile.dependents %}
+        <span class="badge badge-primary">{{ profile.dependents|length }}</span>
+        {% endif %}
+      </span>
+      <span class="sec-chevron">›</span>
+    </summary>
+    <div class="sec-body">
+      {% if profile.dependents %}
+      <table class="dt">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Relationship</th>
+            <th>Date of Birth</th>
+            <th style="text-align:center;">Beneficiary</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in profile.dependents %}
+          <tr>
+            <td style="font-weight:600;">{{ d.full_name }}</td>
+            <td><span class="badge badge-type">{{ d.relationship }}</span></td>
+            <td style="font-family:monospace;font-size:.83rem;">{{ d.date_of_birth or '—' }}</td>
+            <td style="text-align:center;">
+              {% if d.is_beneficiary %}
+              <span class="badge badge-green">✓ Beneficiary</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">📭 No dependents on file. <a href="/me/profile/dependents/new" style="color:var(--primary,#4f46e5);font-weight:600;text-decoration:none;margin-left:.25rem;">+ Add one</a></div>
+      {% endif %}
+    </div>
+  </details>
+</div>
+
+{% endblock %}

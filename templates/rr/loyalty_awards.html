@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block page_title %}Loyalty Awards{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Loyalty Award Tracker</h2>
+  <form method="post" action="/rr/loyalty/scan" style="display:inline;">
+    <button type="submit" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      Scan Milestones
+    </button>
+  </form>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('UPCOMING','Upcoming'),('ELIGIBLE','Eligible'),('AWARDED','Awarded')] %}
+  <a href="?status={{ s }}"
+     style="padding:6px 14px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for m in milestones %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;
+              border-left:4px solid {% if m.service_years >= 25 %}#d97706{% elif m.service_years >= 20 %}#7c3aed{% elif m.service_years >= 15 %}#2563eb{% else %}#16a34a{% endif %};">
+    <div style="text-align:center;min-width:60px;">
+      <div style="font-size:1.5rem;font-weight:800;color:{% if m.service_years >= 25 %}#d97706{% elif m.service_years >= 20 %}#7c3aed{% elif m.service_years >= 15 %}#2563eb{% else %}#16a34a{% endif %};">
+        {{ m.service_years }}
+      </div>
+      <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;font-weight:600;">Years</div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:.95rem;font-weight:700;">{{ m.employee_name }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">
+        {{ m.department_name or '—' }}
+        &nbsp;·&nbsp; Hired: {{ m.date_hired.strftime('%b %d, %Y') if m.date_hired else '—' }}
+        &nbsp;·&nbsp; Anniversary: {{ m.eligibility_date.strftime('%b %d, %Y') if m.eligibility_date else '—' }}
+      </div>
+      {% if m.award_value %}
+      <div style="font-size:.8rem;color:#16a34a;font-weight:600;margin-top:.15rem;">
+        {{ m.award_type.replace('_',' ').title() }} — ₱{{ '{:,.2f}'.format(m.award_value) }}
+      </div>
+      {% endif %}
+    </div>
+    <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;flex-shrink:0;
+      background:{% if m.status == 'AWARDED' %}#dcfce7{% elif m.status == 'ELIGIBLE' %}#dbeafe{% else %}#fef9c3{% endif %};
+      color:{% if m.status == 'AWARDED' %}#166534{% elif m.status == 'ELIGIBLE' %}#1e40af{% else %}#854d0e{% endif %};">
+      {{ m.status }}
+    </span>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No loyalty milestones. Click "Scan Milestones" to detect.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}Shift Assignments{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Shift Assignments</h2>
+  <a href="/attendance/shifts" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Shift Definitions</a>
+</div>
+
+{# Filter by department #}
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1rem;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Department</label>
+    <select name="department_id" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All Departments</option>
+      {% for d in departments %}<option value="{{ d.id }}" {% if dept_id == d.id %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+</form>
+
+{# Assignment form #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Assign Shift</h3>
+  <form method="post" action="/attendance/shift-assignments/assign" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Employee</label>
+      <select name="employee_id" required style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="">— Select —</option>
+        {% for e in employees %}<option value="{{ e.id }}">{{ e.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Shift</label>
+      <select name="shift_id" required style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        {% for s in shifts %}<option value="{{ s.id }}">{{ s.name }} ({{ s.time_in }}–{{ s.time_out }})</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Effective From</label>
+      <input name="effective_from" type="date" required style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Effective To</label>
+      <input name="effective_to" type="date" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <button type="submit" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">Assign</button>
+  </form>
+</div>
+
+{# Current assignments #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+      <th style="padding:8px 12px;text-align:left;">Employee</th>
+      <th style="padding:8px 12px;text-align:left;">Department</th>
+      <th style="padding:8px 12px;text-align:center;">Shift</th>
+      <th style="padding:8px 12px;text-align:center;">Time</th>
+      <th style="padding:8px 12px;text-align:center;">From</th>
+      <th style="padding:8px 12px;text-align:center;">To</th>
+    </tr></thead>
+    <tbody>
+      {% for a in assignments %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:500;">{{ a.employee_name }}</td>
+        <td style="padding:8px 12px;color:#6b7280;">{{ a.department_name or '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.08);color:var(--primary,#4f46e5);">{{ a.shift_code }}</span>
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;font-size:.8rem;">{{ a.time_in }}–{{ a.time_out }}</td>
+        <td style="padding:8px 12px;text-align:center;color:#6b7280;">{{ a.effective_from.strftime('%b %d, %Y') if a.effective_from else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;color:#6b7280;">{{ a.effective_to.strftime('%b %d, %Y') if a.effective_to else 'Ongoing' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No shift assignments found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

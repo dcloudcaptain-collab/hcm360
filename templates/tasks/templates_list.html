@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block page_title %}Task Templates{% endblock %}
+{% block extra_css %}{% include 'tasks/_shared.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee-picker.css') }}">
+<script src="{{ url_for('static', filename='js/employee-picker.js') }}"></script>
+<style>
+  .tpl-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(290px,1fr)); gap:1rem; }
+  .tpl-card {
+     background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1.1rem;
+     display:flex; flex-direction:column; gap:.6rem;
+     transition:box-shadow .15s, transform .15s;
+  }
+  .tpl-card:hover { box-shadow:0 6px 18px rgba(0,0,0,.08); transform:translateY(-1px); }
+  .tpl-icon {
+     width:42px; height:42px; border-radius:10px; background:#ede9fe; color:#5b21b6;
+     display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem;
+  }
+  .tpl-title { font-weight:700; font-size:1rem; color:#111827; margin:0; }
+  .tpl-desc { font-size:.82rem; color:#6b7280; line-height:1.45; }
+  .tpl-meta { display:flex; gap:.4rem; font-size:.72rem; color:#6b7280; flex-wrap:wrap; }
+  .tpl-meta span { background:#f3f4f6; padding:2px 7px; border-radius:6px; font-weight:600; }
+
+  /* Spawn modal */
+  .modal-backdrop {
+     position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000;
+     display:none; align-items:center; justify-content:center;
+     padding:1rem;
+  }
+  .modal-backdrop.show { display:flex; }
+  .modal {
+     background:#fff; border-radius:12px; padding:1.5rem 1.75rem;
+     width:640px; max-width:100%; max-height:90vh; overflow-y:auto;
+     box-shadow:0 12px 40px rgba(0,0,0,.25);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>📑 Task Templates</h2>
+    <div class="sub">
+      {{ templates|length }} template{{ 's' if templates|length != 1 else '' }} available ·
+      One-click spawn a full checklist for an employee.
+    </div>
+  </div>
+  <div>
+    <a href="{{ url_for('tasks.admin_tasks') }}" class="btn btn-ghost">← Back to All Tasks</a>
+  </div>
+</div>
+
+<div class="tpl-grid">
+  {% for t in templates %}
+  <div class="tpl-card">
+    <div style="display:flex;align-items:center;gap:.7rem;">
+      <div class="tpl-icon">
+        {% set icons = {
+          'user-plus':'👤',
+          'user-minus':'👋',
+          'bar-chart-2':'📊',
+          'check-square':'✅',
+          'file-text':'📄'
+        } %}
+        {{ icons[t.icon] if t.icon in icons else '📋' }}
+      </div>
+      <div>
+        <h3 class="tpl-title">{{ t.title }}</h3>
+        <div class="tpl-meta">
+          <span>{{ t.checklist_count }} items</span>
+          <span>{{ (t.category or 'WORK').replace('_',' ') }}</span>
+          <span class="p-{{ t.default_priority }}" style="background:none;">{{ t.default_priority }}</span>
+        </div>
+      </div>
+    </div>
+    <p class="tpl-desc">{{ t.description }}</p>
+    <div style="margin-top:auto;">
+      <button type="button" class="btn btn-primary btn-xs"
+              onclick="openSpawn('{{ t.code }}','{{ t.title }}')">Use template →</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# Spawn modal — uses the global employee picker (individual · dept · group) #}
+<div class="modal-backdrop" id="spawnModal">
+  <div class="modal">
+    <h3 id="spawnTitle" style="margin:0 0 .6rem;">Spawn Template</h3>
+    <p style="font-size:.82rem;color:#6b7280;margin:0 0 .9rem;">
+      Pick individual employees, a whole department, or a custom group.
+      Spawning will create one task per checklist item, per selected employee.
+    </p>
+    <form method="post" id="spawnForm">
+      <div id="spawnPicker" style="margin-bottom:.85rem;"></div>
+
+      <div style="display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem;">
+        <label style="font-size:.72rem;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;font-weight:600;">
+          Start date (anchors checklist offsets)
+        </label>
+        <input type="date" name="start_date"
+               style="padding:.5rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.9rem;">
+      </div>
+
+      <div style="display:flex;gap:.4rem;justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="closeSpawn()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Spawn tasks</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  let picker = null;
+
+  window.openSpawn = function(code, title){
+    document.getElementById('spawnTitle').textContent = 'Spawn: ' + title;
+    document.getElementById('spawnForm').action = '/admin/task-templates/' + code + '/spawn';
+    document.getElementById('spawnModal').classList.add('show');
+    // (Re)construct the picker fresh each time the modal opens
+    document.getElementById('spawnPicker').innerHTML = '';
+    picker = new EmployeePicker(document.getElementById('spawnPicker'), {
+      mode: 'multi',
+      inputName: 'target_employee_ids[]',
+      allowDepartments: true,
+      allowGroups: true,
+      placeholder: 'Search employees to assign this template to…',
+    });
+  };
+
+  window.closeSpawn = function(){
+    document.getElementById('spawnModal').classList.remove('show');
+    document.getElementById('spawnPicker').innerHTML = '';
+    picker = null;
+  };
+
+  document.getElementById('spawnForm').addEventListener('submit', function(e){
+    if (!picker || picker.getSelectedIds().length === 0) {
+      e.preventDefault();
+      alert('Pick at least one employee, department, or group.');
+    }
+  });
+
+  document.getElementById('spawnModal').addEventListener('click', function(e){
+    if (e.target.id === 'spawnModal') closeSpawn();
+  });
+})();
+</script>
+{% endblock %}

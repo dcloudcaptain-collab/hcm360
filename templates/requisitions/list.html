@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block page_title %}Job Requisitions{% endblock %}
+{% block extra_css %}{% include 'requisitions/_shared.html' %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>📋 Job Requisitions</h2>
+    <div class="sub">Request and track plantilla fills through approval → publication.</div>
+  </div>
+  {% if can_create %}
+  <a class="btn btn-primary" href="{{ url_for('requisitions.new') }}">+ New Requisition</a>
+  {% endif %}
+</div>
+
+{# KPI cards #}
+{% if stats %}
+<div class="kpi-grid">
+  <div class="kpi"><div class="lbl">Pending Approval</div><div class="num">{{ stats.pending_count or 0 }}</div></div>
+  <div class="kpi"><div class="lbl">Approved YTD</div><div class="num">{{ stats.approved_ytd or 0 }}</div></div>
+  <div class="kpi"><div class="lbl">Avg Days to Approve</div><div class="num">{{ stats.avg_days_approve or '0' }}</div></div>
+  <div class="kpi"><div class="lbl">Open Vacancies</div><div class="num">{{ stats.open_vacancies or 0 }}</div></div>
+</div>
+{% endif %}
+
+{# Filters #}
+<div class="filters">
+  <a href="{{ url_for('requisitions.list_view') }}" class="{% if not status_filter %}active{% endif %}">All</a>
+  <a href="{{ url_for('requisitions.list_view', status='DRAFT') }}" class="{% if status_filter=='DRAFT' %}active{% endif %}">Draft</a>
+  <a href="{{ url_for('requisitions.list_view', status='PENDING_APPROVAL') }}" class="{% if status_filter=='PENDING_APPROVAL' %}active{% endif %}">Pending</a>
+  <a href="{{ url_for('requisitions.list_view', status='APPROVED') }}" class="{% if status_filter=='APPROVED' %}active{% endif %}">Approved</a>
+  <a href="{{ url_for('requisitions.list_view', status='PUBLISHED') }}" class="{% if status_filter=='PUBLISHED' %}active{% endif %}">Published</a>
+  <a href="{{ url_for('requisitions.list_view', status='REJECTED') }}" class="{% if status_filter=='REJECTED' %}active{% endif %}">Rejected</a>
+  <a href="{{ url_for('requisitions.list_view', status='CANCELLED') }}" class="{% if status_filter=='CANCELLED' %}active{% endif %}">Cancelled</a>
+  <span style="flex:1"></span>
+  <form style="display:inline-flex;gap:.4rem;" method="get">
+    {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+    <select name="department_id" onchange="this.form.submit()" style="padding:4px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.78rem;">
+      <option value="">All departments</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if dept_filter==d.id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="priority" onchange="this.form.submit()" style="padding:4px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.78rem;">
+      <option value="">Any priority</option>
+      {% for p in ['URGENT','HIGH','NORMAL','LOW'] %}
+      <option value="{{ p }}" {% if priority_filter==p %}selected{% endif %}>{{ p.title() }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+{% if not items %}
+<div class="card" style="text-align:center;color:#6b7280;padding:3rem 1rem;">
+  📭 No requisitions yet.
+  {% if can_create %}
+  <br><a href="{{ url_for('requisitions.new') }}" style="color:#4f46e5;font-weight:600;">Create your first one →</a>
+  {% endif %}
+</div>
+{% else %}
+<table class="dt" data-hint="Click any row to view the full requisition detail.">
+  <thead>
+    <tr>
+      <th>Reference</th>
+      <th>Position</th>
+      <th>Dept</th>
+      <th style="text-align:center;">HC</th>
+      <th>Priority</th>
+      <th>Status</th>
+      <th>Target Date</th>
+      <th>Requested By</th>
+      <th style="text-align:right;">Pending</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in items %}
+    <tr style="cursor:pointer;" onclick="location.href='{{ url_for('requisitions.view', req_id=r.id) }}'">
+      <td><code style="color:#4f46e5;font-weight:600;">{{ r.reference_no }}</code></td>
+      <td>{{ r.position_title or '—' }}</td>
+      <td style="font-size:.82rem;">{{ r.department_name or '—' }}</td>
+      <td style="text-align:center;font-weight:700;">{{ r.headcount }}{% if r.approved_headcount %} <small style="color:#6b7280;">({{ r.approved_headcount }})</small>{% endif %}</td>
+      <td><span class="prio-badge p-{{ r.priority or 'NORMAL' }}">{{ r.priority or 'NORMAL' }}</span></td>
+      <td><span class="status-badge s-{{ r.status }}">{{ r.status.replace('_',' ') }}</span></td>
+      <td style="font-size:.82rem;color:#6b7280;">{% if r.target_hire_date %}{{ r.target_hire_date.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
+      <td style="font-size:.82rem;">{{ r.requested_by_name or '—' }}</td>
+      <td style="text-align:right;font-size:.82rem;color:{% if r.days_pending and r.days_pending > 2 %}#dc2626{% else %}#6b7280{% endif %};">
+        {% if r.days_pending is not none %}{{ r.days_pending }}d{% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

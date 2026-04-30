@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block page_title %}Benefits Administration{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Benefits Administration</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Manage benefit plans, enrollments, and life events.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/benefits/plans" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">All Plans</a>
+    <a href="/benefits/enroll" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;background:var(--primary,#4f46e5);color:#fff;">Enroll Employee</a>
+  </div>
+</div>
+
+{# Stats Cards #}
+{% if stats %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem;">
+  {% for label, key, color in [
+    ('Active Plans','active_plans','#4f46e5'), ('Enrolled Employees','enrolled_employees','#16a34a'),
+    ('Active Enrollments','active_enrollments','#2563eb'),
+    ('Employer Cost/mo','total_employer_cost','#d97706'),
+    ('Employee Cost/mo','total_employee_cost','#7c3aed'),
+    ('Open Life Events','open_life_events','#dc2626'),
+    ('Open Windows','open_windows','#059669')
+  ] %}
+  <div class="card" style="padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;color:{{ color }};">
+      {% if 'cost' in key.lower() %}₱{{ '{:,.0f}'.format(stats[key] or 0) }}{% else %}{{ stats[key] or 0 }}{% endif %}
+    </div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">{{ label }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Enrollment by Type #}
+{% if by_type %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Enrollment by Benefit Type</strong>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Type</th>
+        <th style="padding:6px 8px;">Category</th>
+        <th style="padding:6px 8px;">Employees</th>
+        <th style="padding:6px 8px;text-align:right;">Employer Cost</th>
+        <th style="padding:6px 8px;text-align:right;">Employee Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in by_type %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ row.type_name }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:4px;background:#f1f5f9;color:#64748b;">{{ row.category }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;">{{ row.employees }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(row.employer_total or 0) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(row.employee_total or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# Plans Summary #}
+{% if plans %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Benefit Plans</strong>
+    <a href="/benefits/plans" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.75rem;">
+    {% for p in plans[:8] %}
+    <a href="/benefits/plans/{{ p.id }}" class="card" style="padding:.85rem;text-decoration:none;color:inherit;border:1px solid #e5e7eb;transition:box-shadow .15s;"
+       onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;justify-content:space-between;align-items:start;">
+        <div>
+          <div style="font-size:.82rem;font-weight:600;">{{ p.name }}</div>
+          <div style="font-size:.72rem;color:#6b7280;">{{ p.type_name }} · {{ p.provider or '—' }}</div>
+        </div>
+        <span style="font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;background:{% if p.category=='HEALTH' %}#dbeafe{% elif p.category=='LIFE' %}#fce7f3{% elif p.category=='RETIREMENT' %}#dcfce7{% else %}#f1f5f9{% endif %};color:{% if p.category=='HEALTH' %}#1d4ed8{% elif p.category=='LIFE' %}#be185d{% elif p.category=='RETIREMENT' %}#166534{% else %}#64748b{% endif %};">{{ p.category }}</span>
+      </div>
+      <div style="display:flex;gap:.75rem;margin-top:.5rem;font-size:.78rem;">
+        <span>{{ p.enrolled_count }} enrolled</span>
+        <span style="color:#6b7280;">ER: ₱{{ '{:,.0f}'.format(p.employer_cost) }}</span>
+        <span style="color:#6b7280;">EE: ₱{{ '{:,.0f}'.format(p.employee_cost) }}</span>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# Open Life Events #}
+{% if life_events %}
+<div class="card" style="padding:1rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Open Life Events</strong>
+    <a href="/benefits/life-events" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+  </div>
+  {% for ev in life_events[:5] %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    <div>
+      <span style="font-size:.85rem;font-weight:500;">{{ ev.employee_name }}</span>
+      <span style="font-size:.78rem;color:#6b7280;margin-left:.5rem;">{{ ev.event_type|replace('_',' ') }} — {{ ev.event_date }}</span>
+    </div>
+    <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#fef9c3;color:#854d0e;">{{ ev.status }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

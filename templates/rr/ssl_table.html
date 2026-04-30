@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block page_title %}SSL Salary Table{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">SSL Salary Grade / Step Table</h2>
+  <span style="font-size:.8rem;color:#6b7280;">EO 201 — Salary Standardization Law</span>
+</div>
+
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1.25rem;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Salary Grade</label>
+    <input name="salary_grade" type="number" min="1" max="33" value="{{ sg_filter or '' }}" placeholder="1–33"
+           style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;width:100px;">
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+  <a href="/rr/ssl-table" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:6px;font-size:.875rem;color:#374151;text-decoration:none;">Show All</a>
+</form>
+
+{% if rows %}
+{# Pivot: group by salary_grade, columns = steps 1-8 #}
+{% set ns = namespace(grouped={}) %}
+{% for r in rows %}
+  {% if r.salary_grade not in ns.grouped %}
+    {% set _ = ns.grouped.update({r.salary_grade: {}}) %}
+  {% endif %}
+  {% set _ = ns.grouped[r.salary_grade].update({r.step_no: r.monthly_rate}) %}
+{% endfor %}
+
+<section class="card" style="padding:0;overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.825rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:center;position:sticky;left:0;background:#f9fafb;z-index:1;">SG</th>
+        {% for step in range(1, 9) %}
+        <th style="padding:8px 12px;text-align:right;">Step {{ step }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for sg in range(33, 0, -1) %}
+      {% if sg in ns.grouped %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if sg_filter and sg == sg_filter %}background:rgba(99,102,241,.06);{% endif %}">
+        <td style="padding:8px 12px;text-align:center;font-weight:800;color:var(--primary,#4f46e5);position:sticky;left:0;background:{% if sg_filter and sg == sg_filter %}rgba(99,102,241,.06){% else %}#fff{% endif %};z-index:1;">
+          {{ sg }}
+        </td>
+        {% for step in range(1, 9) %}
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;font-size:.8rem;">
+          {% if ns.grouped[sg].get(step) %}
+          ₱{{ '{:,.2f}'.format(ns.grouped[sg][step]) }}
+          {% else %}—{% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No SSL data loaded. Seed the <code>rwd_ssl_table</code> with current salary rates.
+</div>
+{% endif %}
+
+{% endblock %}

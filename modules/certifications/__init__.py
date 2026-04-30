@@ -1,0 +1,1 @@
+from modules.certifications.routes import certifications_bp

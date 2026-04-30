@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if manager_view|default(false) %}Employee Skills{% else %}My Skills{% endif %}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{% if manager_view|default(false) %}Employee Skill Profile{% else %}My Skills Profile{% endif %}</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Self-assessment and skill ratings grouped by category.</p>
+  </div>
+  <a href="/skills" style="font-size:.82rem;color:var(--primary,#4f46e5);">&larr; Back to Skills Dashboard</a>
+</div>
+
+{% if skills %}
+{% set ns = namespace(current_cat='') %}
+{% for s in skills %}
+  {% if s.category_name != ns.current_cat %}
+    {% if ns.current_cat != '' %}</div>{% endif %}
+    {% set ns.current_cat = s.category_name %}
+    <div class="card" style="padding:1rem;margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ s.category_color or '#6b7280' }};"></span>
+        <strong style="font-size:.9rem;">{{ s.category_name }}</strong>
+      </div>
+  {% endif %}
+
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:.85rem;font-weight:500;">{{ s.skill_name }}</div>
+      {% if s.skill_description %}<div style="font-size:.72rem;color:#9ca3af;">{{ s.skill_description }}</div>{% endif %}
+      <span style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:4px;background:{% if s.skill_type=='TECHNICAL' %}#dbeafe;color:#1d4ed8{% else %}#fce7f3;color:#be185d{% endif %};">{{ s.skill_type }}</span>
+    </div>
+
+    {# Self Rating Stars #}
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <div style="text-align:center;">
+        <div style="font-size:.65rem;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Self</div>
+        {% if not manager_view|default(false) %}
+        <form method="post" action="{% if manager_view|default(false) %}/skills/employee/{{ employee_id }}/rate{% else %}/skills/my/rate{% endif %}" style="display:inline;">
+          <input type="hidden" name="skill_id" value="{{ s.skill_id }}">
+          {% for star in range(1, 6) %}
+          <button type="submit" name="self_rating" value="{{ star }}"
+                  style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 1px;color:{% if (s.self_rating or 0) >= star %}#f59e0b{% else %}#d1d5db{% endif %};">&#9733;</button>
+          {% endfor %}
+        </form>
+        {% else %}
+        <div>
+          {% for star in range(1, 6) %}
+          <span style="font-size:1rem;color:{% if (s.self_rating or 0) >= star %}#f59e0b{% else %}#d1d5db{% endif %};">&#9733;</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# Manager Rating #}
+      <div style="text-align:center;">
+        <div style="font-size:.65rem;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Manager</div>
+        {% if manager_view|default(false) %}
+        <form method="post" action="/skills/employee/{{ employee_id }}/rate" style="display:inline;">
+          <input type="hidden" name="skill_id" value="{{ s.skill_id }}">
+          {% for star in range(1, 6) %}
+          <button type="submit" name="manager_rating" value="{{ star }}"
+                  style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 1px;color:{% if (s.manager_rating or 0) >= star %}#8b5cf6{% else %}#d1d5db{% endif %};">&#9733;</button>
+          {% endfor %}
+        </form>
+        {% else %}
+        <div>
+          {% for star in range(1, 6) %}
+          <span style="font-size:1rem;color:{% if (s.manager_rating or 0) >= star %}#8b5cf6{% else %}#d1d5db{% endif %};">&#9733;</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      {# Gap Indicator #}
+      <div style="text-align:center;min-width:60px;">
+        <div style="font-size:.65rem;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;">Gap</div>
+        {% if s.gap is not none and s.gap > 0 %}
+        <div style="background:#e5e7eb;border-radius:4px;height:8px;width:60px;">
+          {% set gap_pct = [((s.gap or 0)|float / 5 * 100)|int, 100]|min %}
+          <div style="background:{% if (s.gap or 0)|float >= 2 %}#dc2626{% elif (s.gap or 0)|float >= 1 %}#d97706{% else %}#16a34a{% endif %};height:8px;border-radius:4px;width:{{ gap_pct }}%;"></div>
+        </div>
+        <div style="font-size:.7rem;font-weight:600;color:{% if (s.gap or 0)|float >= 2 %}#dc2626{% elif (s.gap or 0)|float >= 1 %}#d97706{% else %}#16a34a{% endif %};">-{{ s.gap }}</div>
+        {% else %}
+        <span style="font-size:.72rem;color:#16a34a;">OK</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+{% if skills %}</div>{% endif %}
+
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No skills found. Start by rating your skills from the <a href="/skills/catalog" style="color:var(--primary,#4f46e5);">Skill Catalog</a>.
+</div>
+{% endif %}
+
+{% endblock %}

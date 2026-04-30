@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block page_title %}SSS Contribution Schedule{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">SSS Contribution Schedule (Private Sector)</h2>
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;">Salary From</th>
+        <th style="padding:10px 14px;">Salary To</th>
+        <th style="padding:10px 14px;">MSC</th>
+        <th style="padding:10px 14px;">EE Share</th>
+        <th style="padding:10px 14px;">ER Share</th>
+        <th style="padding:10px 14px;">EC</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if loop.index is odd %}background:rgba(0,0,0,.015);{% endif %}">
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.salary_bracket_from) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.salary_bracket_to) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.monthly_salary_credit) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;font-weight:600;">{{ '{:,.2f}'.format(r.ee_contribution) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.er_contribution) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.ec_contribution) }}</td>
+        <td style="padding:8px 14px;">
+          <form method="post" action="/config/sss/{{ r.id }}/delete" style="display:inline;"
+                onsubmit="return confirm('Delete?');">
+            <button type="submit" class="btn-sm btn-outline" style="font-size:.7rem;padding:2px 6px;color:#dc2626;">X</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No SSS schedule found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="card">
+  <h3 style="margin:0 0 1rem;font-size:1rem;font-weight:600;">Add SSS Bracket</h3>
+  <form method="post" action="/config/sss/save" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+    <input type="hidden" name="bracket_id" value="">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Effective Date</label>
+      <input name="effective_date" type="date" required value="2025-01-01" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Salary From</label>
+      <input name="bracket_from" type="number" step="0.01" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:120px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Salary To</label>
+      <input name="bracket_to" type="number" step="0.01" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:120px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">MSC</label>
+      <input name="monthly_salary_credit" type="number" step="0.01" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:100px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">EE</label>
+      <input name="ee_contribution" type="number" step="0.01" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:100px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">ER</label>
+      <input name="er_contribution" type="number" step="0.01" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:100px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">EC</label>
+      <input name="ec_contribution" type="number" step="0.01" value="10.00" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:80px;">
+    </div>
+    <button type="submit" class="btn btn-sm">Add</button>
+  </form>
+</div>
+
+{% endblock %}

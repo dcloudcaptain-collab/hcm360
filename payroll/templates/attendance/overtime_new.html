@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block page_title %}New OT Request{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:1rem;">
+  <a href="/attendance/overtime" style="font-size:.85rem;color:var(--primary);">&larr; Back to OT Requests</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <h2 style="margin:0 0 1rem;font-size:1.15rem;font-weight:700;">File Overtime Request</h2>
+  <form method="post" style="display:flex;flex-direction:column;gap:1rem;">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.8rem;font-weight:600;color:#374151;">Employee</label>
+      <select name="employee_id" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+        <option value="">Select employee...</option>
+        {% for e in employees %}
+        <option value="{{ e.id }}">{{ e.full_name }} ({{ e.employee_no }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:1rem;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">Work Date</label>
+        <input type="date" name="work_date" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">OT Hours</label>
+        <input type="number" name="ot_hours" step="0.5" min="0.5" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.8rem;font-weight:600;color:#374151;">Reason</label>
+      <textarea name="reason" rows="3" required placeholder="Reason for overtime..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;resize:vertical;"></textarea>
+    </div>
+    <button type="submit" class="btn">Submit OT Request</button>
+  </form>
+</div>
+
+{% endblock %}

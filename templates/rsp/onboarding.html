@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block page_title %}Onboarding Tracker{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Onboarding Tracker</h2>
+  <a href="/rsp/appointments" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Appointments</a>
+</div>
+
+{% if checklists %}
+<div style="display:flex;flex-direction:column;gap:.85rem;">
+  {% for cl in checklists %}
+  {% set pct = ((cl.completed_items / cl.total_items * 100) if cl.total_items else 0)|round(0)|int %}
+  <div class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <div>
+        <span style="font-size:.95rem;font-weight:700;">{{ cl.employee_name }}</span>
+        <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;margin-left:.5rem;
+          background:{% if cl.status == 'COMPLETED' %}#dcfce7{% else %}#dbeafe{% endif %};
+          color:{% if cl.status == 'COMPLETED' %}#166534{% else %}#1e40af{% endif %};">
+          {{ cl.status.replace('_',' ') }}
+        </span>
+      </div>
+      <span style="font-size:.85rem;font-weight:600;color:{% if pct == 100 %}#16a34a{% elif pct >= 50 %}#d97706{% else %}#dc2626{% endif %};">
+        {{ cl.completed_items }}/{{ cl.total_items }} ({{ pct }}%)
+      </span>
+    </div>
+    {# Progress bar #}
+    <div style="height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;margin-bottom:.5rem;">
+      <div style="height:100%;border-radius:3px;transition:width .3s;
+        background:{% if pct == 100 %}#16a34a{% elif pct >= 50 %}#d97706{% else %}#dc2626{% endif %};
+        width:{{ pct }}%;"></div>
+    </div>
+    <div style="font-size:.78rem;color:#6b7280;">
+      {% if cl.target_date %}Target: {{ cl.target_date.strftime('%b %d, %Y') }}{% endif %}
+      {% if cl.completed_at %}&nbsp;·&nbsp; Completed: {{ cl.completed_at.strftime('%b %d, %Y') }}{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No onboarding checklists found.
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block page_title %}Certificate Request Queue{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Certificate Request Queue</h2>
+  <a href="/dms/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← 201 File</a>
+</div>
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;">
+  {% for s, label in [('','All'),('PENDING','Pending'),('PROCESSING','Processing'),('READY','Ready'),('RELEASED','Released'),('REJECTED','Rejected')] %}
+  <a href="?status={{ s }}" style="padding:6px 14px;border-radius:20px;font-size:.82rem;text-decoration:none;font-weight:500;
+    {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for r in requests %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+    <div style="flex:1;">
+      <div style="font-size:.95rem;font-weight:700;">{{ r.employee_name }}</div>
+      <div style="font-size:.85rem;color:#374151;">{{ r.cert_type_name }} ({{ r.copies_requested }} copy{{ 'ies' if r.copies_requested > 1 }})</div>
+      <div style="font-size:.78rem;color:#6b7280;">{{ r.department_name or '—' }} · {{ r.purpose or 'No purpose stated' }} · Requested: {{ r.requested_at.strftime('%b %d, %Y') if r.requested_at else '—' }}</div>
+      {% if r.processed_by_name %}<div style="font-size:.75rem;color:#9ca3af;">Processed by: {{ r.processed_by_name }}</div>{% endif %}
+    </div>
+    <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0;">
+      <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+        background:{% if r.status == 'RELEASED' %}#dcfce7{% elif r.status == 'READY' %}#dbeafe{% elif r.status == 'PROCESSING' %}#fef9c3{% elif r.status == 'REJECTED' %}#fee2e2{% else %}#f1f5f9{% endif %};
+        color:{% if r.status == 'RELEASED' %}#166534{% elif r.status == 'READY' %}#1e40af{% elif r.status == 'PROCESSING' %}#854d0e{% elif r.status == 'REJECTED' %}#991b1b{% else %}#374151{% endif %};">{{ r.status }}</span>
+      {% if r.status == 'PENDING' %}
+      <form method="post" action="/dms/certificate-requests/{{ r.id }}/process" style="display:inline;">
+        <button type="submit" style="padding:4px 10px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:4px;font-size:.75rem;cursor:pointer;">Process</button>
+      </form>
+      {% elif r.status == 'PROCESSING' %}
+      <form method="post" action="/dms/certificate-requests/{{ r.id }}/ready" style="display:inline;">
+        <button type="submit" style="padding:4px 10px;background:#16a34a;color:#fff;border:none;border-radius:4px;font-size:.75rem;cursor:pointer;">Mark Ready</button>
+      </form>
+      {% elif r.status == 'READY' %}
+      <form method="post" action="/dms/certificate-requests/{{ r.id }}/release" style="display:inline;">
+        <button type="submit" style="padding:4px 10px;background:#16a34a;color:#fff;border:none;border-radius:4px;font-size:.75rem;cursor:pointer;">Release</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No certificate requests found.</div>
+  {% endfor %}
+</div>
+{% endblock %}

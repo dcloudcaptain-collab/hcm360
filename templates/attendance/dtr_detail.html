@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block page_title %}DTR Detail — {{ detail.full_name }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+  <a href="/attendance/dtr" style="font-size:.825rem;color:#6b7280;text-decoration:none;">← DTR</a>
+  <span style="color:#d1d5db;">/</span>
+  <h2 style="margin:0;font-size:1.15rem;font-weight:700;">
+    {{ detail.full_name }} — {{ detail.work_date }}
+  </h2>
+</div>
+
+{# ── Record summary ─────────────────────────────────────────────── #}
+<section class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;">
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Employee</div>
+      <div style="font-weight:600;">{{ detail.full_name }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">{{ detail.employee_no }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Department</div>
+      <div>{{ detail.department }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Shift</div>
+      <div>{{ detail.shift_name or '—' }}</div>
+      {% if detail.shift_start and detail.shift_end %}
+      <div style="font-size:.8rem;color:#6b7280;">{{ detail.shift_start }} – {{ detail.shift_end }}</div>
+      {% endif %}
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Time In</div>
+      <div style="font-family:monospace;font-size:1rem;font-weight:700;">
+        {{ detail.time_in.strftime('%H:%M') if detail.time_in else '—' }}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Time Out</div>
+      <div style="font-family:monospace;font-size:1rem;font-weight:700;">
+        {{ detail.time_out.strftime('%H:%M') if detail.time_out else '—' }}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Hours Worked</div>
+      <div style="font-size:1rem;font-weight:700;">{{ '%.2f'|format(detail.hours_worked) if detail.hours_worked else '—' }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Status</div>
+      <div style="font-weight:700;
+        color:{% if detail.status=='PRESENT' %}#16a34a{% elif detail.status=='LATE' %}#d97706{% elif detail.status=='ABSENT' %}#dc2626{% else %}#6b7280{% endif %};">
+        {{ detail.status or '—' }}
+      </div>
+    </div>
+    {% if detail.hours_late %}
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Late</div>
+      <div style="color:#d97706;font-weight:600;">{{ '%.2f'|format(detail.hours_late) }}h</div>
+    </div>
+    {% endif %}
+    {% if detail.remarks %}
+    <div style="grid-column:1/-1;">
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Remarks</div>
+      <div style="color:#6b7280;font-size:.875rem;">{{ detail.remarks }}</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+{# ── Admin Override Form ─────────────────────────────────────────── #}
+{% if can_edit %}
+<section class="card" style="padding:1.25rem;margin-bottom:1.25rem;border-left:4px solid #d97706;">
+  <h3 style="margin:0 0 1rem;font-size:.95rem;font-weight:700;color:#92400e;">
+    Admin Override
+  </h3>
+  <p style="margin:0 0 1rem;font-size:.825rem;color:#6b7280;">
+    Directly edit this DTR record. The original values will be preserved in the override log below.
+  </p>
+  <form method="post"
+        action="/attendance/dtr/{{ detail.employee_id }}/{{ detail.work_date }}/override"
+        style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">New Time In</label>
+      <input type="time" name="new_time_in"
+             value="{{ detail.time_in.strftime('%H:%M') if detail.time_in else '' }}"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;font-family:monospace;">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">New Time Out</label>
+      <input type="time" name="new_time_out"
+             value="{{ detail.time_out.strftime('%H:%M') if detail.time_out else '' }}"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;font-family:monospace;">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Status</label>
+      <select name="new_status"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="PRESENT" {% if detail.status=='PRESENT' %}selected{% endif %}>PRESENT</option>
+        <option value="LATE"    {% if detail.status=='LATE'    %}selected{% endif %}>LATE</option>
+        <option value="ABSENT"  {% if detail.status=='ABSENT'  %}selected{% endif %}>ABSENT</option>
+        <option value="REST_DAY"{% if detail.status=='REST_DAY'%}selected{% endif %}>REST DAY</option>
+        <option value="HOLIDAY" {% if detail.status=='HOLIDAY' %}selected{% endif %}>HOLIDAY</option>
+      </select>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:240px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Reason <span style="color:#dc2626;">*</span></label>
+      <input type="text" name="reason" required placeholder="State the reason for this override…"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+
+    <button type="submit"
+            style="padding:7px 18px;background:#d97706;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      Apply Override
+    </button>
+  </form>
+</section>
+{% endif %}
+
+{# ── Override audit log ─────────────────────────────────────────── #}
+{% if overrides %}
+<section class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:.875rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.06);">
+    <h3 style="margin:0;font-size:.9rem;font-weight:700;">Override History</h3>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.825rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 14px;text-align:left;">When</th>
+        <th style="padding:8px 14px;text-align:left;">By</th>
+        <th style="padding:8px 14px;text-align:center;">Before</th>
+        <th style="padding:8px 14px;text-align:center;">After</th>
+        <th style="padding:8px 14px;text-align:left;">Reason</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in overrides %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 14px;color:#6b7280;font-size:.8rem;white-space:nowrap;">
+          {{ o.overridden_at.strftime('%Y-%m-%d %H:%M') }}
+        </td>
+        <td style="padding:8px 14px;font-weight:500;">{{ o.overridden_by_name }}</td>
+        <td style="padding:8px 14px;text-align:center;font-family:monospace;font-size:.8rem;color:#9ca3af;">
+          {{ o.orig_time_in.strftime('%H:%M') if o.orig_time_in else '—' }}–{{ o.orig_time_out.strftime('%H:%M') if o.orig_time_out else '—' }}
+          <span style="font-family:sans-serif;color:#d97706;">{{ o.orig_status }}</span>
+        </td>
+        <td style="padding:8px 14px;text-align:center;font-family:monospace;font-size:.8rem;color:#374151;">
+          {{ o.new_time_in.strftime('%H:%M') if o.new_time_in else '—' }}–{{ o.new_time_out.strftime('%H:%M') if o.new_time_out else '—' }}
+          <span style="font-family:sans-serif;color:#16a34a;">{{ o.new_status }}</span>
+        </td>
+        <td style="padding:8px 14px;color:#6b7280;">{{ o.reason }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block page_title %}New Pay Run{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:1rem;">
+  <a href="/payroll/runs" style="font-size:.85rem;color:var(--primary);">&larr; Back to Runs</a>
+</div>
+
+<div class="card" style="max-width:500px;">
+  <h2 style="margin:0 0 1rem;font-size:1.15rem;font-weight:700;">Create Pay Run</h2>
+  <form method="post" style="display:flex;flex-direction:column;gap:1rem;">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.8rem;font-weight:600;color:#374151;">Pay Period</label>
+      <select name="pay_period_id" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+        <option value="">Select period...</option>
+        {% for p in periods %}
+        <option value="{{ p.id }}">{{ p.period_code }} ({{ p.date_from }} – {{ p.date_to }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.8rem;font-weight:600;color:#374151;">Notes (optional)</label>
+      <textarea name="notes" rows="2" placeholder="Run notes..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;resize:vertical;"></textarea>
+    </div>
+    <button type="submit" class="btn">Create Pay Run</button>
+  </form>
+</div>
+
+{% endblock %}

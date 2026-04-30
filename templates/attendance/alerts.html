@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block page_title %}Attendance Alerts{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Attendance Alerts — {{ ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][month] }} {{ year }}</h2>
+  <a href="/attendance/dtr" style="font-size:.85rem;color:var(--primary,#4f46e5);">← DTR</a>
+</div>
+
+{# Summary cards #}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;border-left:4px solid #dc2626;">
+    <span style="font-size:1.3rem;font-weight:800;color:#dc2626;">{{ tardiness|length }}</span>
+    <span style="font-size:.82rem;color:#6b7280;">Habitual Tardiness (≥7x)</span>
+  </div>
+  <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;border-left:4px solid #9333ea;">
+    <span style="font-size:1.3rem;font-weight:800;color:#9333ea;">{{ awol|length }}</span>
+    <span style="font-size:.82rem;color:#6b7280;">AWOL (Absent w/o Leave)</span>
+  </div>
+  <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;border-left:4px solid #d97706;">
+    <span style="font-size:1.3rem;font-weight:800;color:#d97706;">{{ low_leave|length }}</span>
+    <span style="font-size:.82rem;color:#6b7280;">Low VL Balance (&lt;5 days)</span>
+  </div>
+</div>
+
+{# Habitual Tardiness #}
+<section class="card" style="padding:1rem;margin-bottom:1rem;">
+  <h3 style="margin:0 0 .6rem;font-size:.95rem;font-weight:700;color:#dc2626;">🔴 Habitual Tardiness (≥ 7 instances)</h3>
+  {% if tardiness %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);font-size:.7rem;text-transform:uppercase;color:#6b7280;">
+      <th style="padding:6px 10px;text-align:left;">Employee</th><th style="padding:6px 10px;text-align:left;">Department</th>
+      <th style="padding:6px 10px;text-align:center;">Late Count</th><th style="padding:6px 10px;text-align:center;">Total Late Hours</th>
+    </tr></thead>
+    <tbody>
+      {% for t in tardiness %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:6px 10px;font-weight:600;">{{ t.employee_name }}</td>
+        <td style="padding:6px 10px;color:#6b7280;">{{ t.department_name or '—' }}</td>
+        <td style="padding:6px 10px;text-align:center;font-weight:800;color:#dc2626;">{{ t.late_count }}</td>
+        <td style="padding:6px 10px;text-align:center;">{{ '%.1f'|format(t.total_late_hours or 0) }}h</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p style="color:#9ca3af;font-size:.85rem;">No habitual tardiness detected this month.</p>{% endif %}
+</section>
+
+{# AWOL #}
+<section class="card" style="padding:1rem;margin-bottom:1rem;">
+  <h3 style="margin:0 0 .6rem;font-size:.95rem;font-weight:700;color:#9333ea;">🟣 AWOL — Absent Without Official Leave</h3>
+  {% if awol %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);font-size:.7rem;text-transform:uppercase;color:#6b7280;">
+      <th style="padding:6px 10px;text-align:left;">Employee</th><th style="padding:6px 10px;text-align:left;">Department</th>
+      <th style="padding:6px 10px;text-align:center;">AWOL Days</th><th style="padding:6px 10px;text-align:left;">Dates</th>
+    </tr></thead>
+    <tbody>
+      {% for a in awol %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:6px 10px;font-weight:600;">{{ a.employee_name }}</td>
+        <td style="padding:6px 10px;color:#6b7280;">{{ a.department_name or '—' }}</td>
+        <td style="padding:6px 10px;text-align:center;font-weight:800;color:#9333ea;">{{ a.awol_days }}</td>
+        <td style="padding:6px 10px;font-size:.78rem;color:#374151;">{{ a.awol_dates|join(', ') if a.awol_dates else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p style="color:#9ca3af;font-size:.85rem;">No AWOL cases detected this month.</p>{% endif %}
+</section>
+
+{# Low Leave Balance #}
+<section class="card" style="padding:1rem;">
+  <h3 style="margin:0 0 .6rem;font-size:.95rem;font-weight:700;color:#d97706;">🟡 Low Vacation Leave Balance (&lt; 5 days)</h3>
+  {% if low_leave %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);font-size:.7rem;text-transform:uppercase;color:#6b7280;">
+      <th style="padding:6px 10px;text-align:left;">Employee</th><th style="padding:6px 10px;text-align:left;">Department</th>
+      <th style="padding:6px 10px;text-align:center;">VL Balance</th>
+    </tr></thead>
+    <tbody>
+      {% for l in low_leave %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:6px 10px;font-weight:600;">{{ l.employee_name }}</td>
+        <td style="padding:6px 10px;color:#6b7280;">{{ l.department_name or '—' }}</td>
+        <td style="padding:6px 10px;text-align:center;font-weight:800;color:{% if l.balance <= 0 %}#dc2626{% elif l.balance <= 2 %}#d97706{% else %}#374151{% endif %};">
+          {{ '%.1f'|format(l.balance) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p style="color:#9ca3af;font-size:.85rem;">All employees have adequate VL balance.</p>{% endif %}
+</section>
+{% endblock %}

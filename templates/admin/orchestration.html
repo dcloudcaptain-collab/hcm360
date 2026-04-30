@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block page_title %}Cross-Module Orchestration{% endblock %}
+{% block content %}
+<section class="card"><h3>Flow Registry</h3><table><thead><tr><th>Name</th><th>Trigger Module</th><th>Status</th></tr></thead><tbody>{% for f in flows %}<tr><td>{{ f.flow_name }}</td><td>{{ f.trigger_module }}</td><td>{{ f.flow_status }}</td></tr>{% endfor %}</tbody></table></section>
+<section class="card"><h3>Steps</h3><table><thead><tr><th>Flow ID</th><th>Step</th><th>Module</th><th>Action Type</th></tr></thead><tbody>{% for s in steps %}<tr><td>{{ s.orchestration_flow_id }}</td><td>{{ s.step_order }}</td><td>{{ s.target_module }}</td><td>{{ s.action_type }}</td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

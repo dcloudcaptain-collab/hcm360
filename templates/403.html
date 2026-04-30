@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block page_title %}Access Restricted{% endblock %}
+
+{% block content %}
+<style>
+  .fb-card {
+    background:#fff; border:1px solid #e5e7eb; border-radius:14px;
+    padding:2rem 2.25rem; max-width:640px; margin:2rem auto;
+    box-shadow:0 4px 24px rgba(0,0,0,.04);
+  }
+  .fb-badge {
+    display:inline-block; background:#fee2e2; color:#991b1b;
+    padding:4px 10px; border-radius:999px; font-size:.72rem;
+    font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    margin-bottom:.8rem;
+  }
+  .fb-path {
+    background:#f3f4f6; color:#111827; padding:.45rem .7rem;
+    border-radius:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.85rem; display:inline-block; margin:.2rem 0 1rem; max-width:100%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .fb-card h1 { margin:.25rem 0 .5rem; font-size:1.45rem; font-weight:800; color:#111827; }
+  .fb-card p  { color:#4b5563; font-size:.9rem; line-height:1.55; margin:.25rem 0 .8rem; }
+
+  .fb-field label {
+    display:block; font-size:.72rem; font-weight:700; color:#6b7280;
+    text-transform:uppercase; letter-spacing:.05em; margin:0 0 .3rem;
+  }
+  .fb-field textarea, .fb-field input {
+    width:100%; padding:.6rem .7rem; border:1.5px solid #d1d5db;
+    border-radius:8px; font-size:.9rem; font-family:inherit; background:#fff;
+    box-sizing:border-box;
+  }
+  .fb-field textarea:focus, .fb-field input:focus {
+    outline:none; border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.15);
+  }
+
+  .fb-actions { display:flex; gap:.5rem; margin-top:1rem; flex-wrap:wrap; justify-content:flex-end; }
+  .btn { display:inline-flex; align-items:center; padding:9px 16px;
+         border-radius:8px; font-size:.85rem; font-weight:600;
+         text-decoration:none; cursor:pointer; border:none; font-family:inherit; }
+  .btn-primary   { background:#4f46e5; color:#fff; }
+  .btn-primary:hover { background:#4338ca; }
+  .btn-secondary { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+
+  .fb-success {
+    margin-top:1.25rem; padding:.9rem 1rem; background:#dcfce7;
+    color:#166534; border-radius:10px; border:1px solid #bbf7d0;
+    font-size:.88rem;
+  }
+  .fb-success strong { font-weight:700; }
+</style>
+
+<div class="fb-card" data-hint="Access to this page is restricted. Submit a request and admins will be notified immediately.">
+  <span class="fb-badge">🔒 403 · Forbidden</span>
+  <h1>You don't have access to this page.</h1>
+  <p>
+    It looks like your role doesn't include access to
+    <span class="fb-path">{{ requested_path }}</span>
+    {% if page_title %}(<strong>{{ page_title }}</strong>){% endif %}.
+  </p>
+  <p>
+    If you believe you <em>should</em> have access — for example, it's part
+    of your job but the matrix hasn't been updated — you can request access
+    below. Your message will be sent to the system administrators as a task
+    and an in-app notification.
+  </p>
+
+  <div id="requestForm">
+    <form method="post" action="{{ url_for('access_requests.create') }}"
+          onsubmit="return submitAccessRequest(this);">
+      <input type="hidden" name="requested_path" value="{{ requested_path }}">
+      <input type="hidden" name="page_title" value="{{ page_title or '' }}">
+      <input type="hidden" name="module" value="{{ module or '' }}">
+
+      <div class="fb-field" style="margin-bottom:.9rem;">
+        <label for="reason">Why do you need access? (optional but helpful)</label>
+        <textarea id="reason" name="reason" rows="3"
+                  data-hint="Give a short justification — e.g., 'I run trainings and need to post a new program'. Speeds up approval."
+                  placeholder="e.g., I'm filling in for our L&D coordinator and need to view the training catalog."></textarea>
+      </div>
+
+      <div class="fb-actions">
+        <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
+        <button type="submit" class="btn btn-primary"
+                data-hint="Notifies every SUPER_ADMIN and HR_ADMIN via in-app bell + a task in their inbox.">
+          📨 Request Access
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div id="requestSuccess" style="display:none;"></div>
+</div>
+
+<script>
+  async function submitAccessRequest(form){
+    event.preventDefault();
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        headers: {'X-Requested-With':'XMLHttpRequest'},
+        body: new FormData(form),
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      const form_box = document.getElementById('requestForm');
+      const ok_box   = document.getElementById('requestSuccess');
+      form_box.style.display = 'none';
+      ok_box.style.display = 'block';
+      ok_box.className = 'fb-success';
+      ok_box.innerHTML =
+        (data.ok
+          ? '<strong>' + (data.deduped ? '✅ Already pending' : '✅ Request submitted')
+            + '</strong><br>' + (data.message || '')
+            + '<div style="margin-top:.7rem;"><a href="/" class="btn btn-secondary">Back to Dashboard</a></div>'
+          : '<strong>⚠️ ' + (data.error || 'Could not submit') + '</strong>');
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = '📨 Request Access';
+      alert('Network error — please try again.');
+    }
+    return false;
+  }
+</script>
+{% endblock %}

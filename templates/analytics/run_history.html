@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block page_title %}Report Run History{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Report Run History</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/reports/builder" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Builder</a>
+    <a href="/reports/scheduled" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Scheduled</a>
+  </div>
+</div>
+
+{# Summary stats #}
+{% set completed = history|selectattr('status','eq','COMPLETED')|list|length %}
+{% set failed = history|selectattr('status','eq','FAILED')|list|length %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:var(--primary,#4f46e5);">{{ history|length }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Total Runs</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#16a34a;">{{ completed }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Completed</span>
+  </div>
+  {% if failed %}
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#dc2626;">{{ failed }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Failed</span>
+  </div>
+  {% endif %}
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:left;">Report</th>
+        <th style="padding:8px 12px;text-align:center;">Triggered By</th>
+        <th style="padding:8px 12px;text-align:center;">Format</th>
+        <th style="padding:8px 12px;text-align:center;">Rows</th>
+        <th style="padding:8px 12px;text-align:center;">Status</th>
+        <th style="padding:8px 12px;text-align:center;">Started</th>
+        <th style="padding:8px 12px;text-align:center;">Completed</th>
+        <th style="padding:8px 12px;text-align:center;">Run By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in history %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if h.status == 'FAILED' %}background:#fef2f2;{% endif %}">
+        <td style="padding:8px 12px;font-weight:500;">{{ h.report_name or 'Ad-hoc Export' }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 7px;border-radius:999px;
+            background:{% if h.triggered_by == 'SCHEDULED' %}#dbeafe{% elif h.triggered_by == 'API' %}#fef9c3{% else %}#f1f5f9{% endif %};
+            color:{% if h.triggered_by == 'SCHEDULED' %}#1e40af{% elif h.triggered_by == 'API' %}#854d0e{% else %}#374151{% endif %};">
+            {{ h.triggered_by }}
+          </span>
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-weight:600;">{{ h.output_format }}</td>
+        <td style="padding:8px 12px;text-align:center;">{{ '{:,}'.format(h.row_count) if h.row_count else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if h.status == 'COMPLETED' %}#dcfce7{% elif h.status == 'FAILED' %}#fee2e2{% else %}#fef9c3{% endif %};
+            color:{% if h.status == 'COMPLETED' %}#166534{% elif h.status == 'FAILED' %}#991b1b{% else %}#854d0e{% endif %};">
+            {{ h.status }}
+          </span>
+          {% if h.error_message %}
+          <div style="font-size:.72rem;color:#dc2626;margin-top:.2rem;">{{ h.error_message[:60] }}</div>
+          {% endif %}
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;color:#6b7280;">
+          {{ h.started_at.strftime('%b %d, %Y %H:%M') if h.started_at else '—' }}
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;color:#6b7280;">
+          {{ h.completed_at.strftime('%H:%M:%S') if h.completed_at else '—' }}
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;color:#6b7280;">{{ h.run_by_name or 'System' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="padding:2rem;text-align:center;color:#9ca3af;">No report runs recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

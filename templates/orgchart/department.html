@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ department.department_name }} — Positions{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ department.department_name }}</h2>
+  <a href="/orgchart/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Org Chart</a>
+</div>
+{% if department.head_name %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:1.25rem;border-left:4px solid var(--primary,#4f46e5);">
+  <span style="font-size:.82rem;color:#6b7280;">Department Head:</span>
+  <strong style="font-size:.95rem;margin-left:.3rem;">{{ department.head_name }}</strong>
+</div>
+{% endif %}
+
+{% set filled = positions|selectattr('fill_status','eq','FILLED')|list|length %}
+{% set vacant = positions|selectattr('fill_status','eq','VACANT')|list|length %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#16a34a;">{{ filled }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Filled</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#dc2626;">{{ vacant }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Vacant</span>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem;">
+  {% for p in positions %}
+  <div class="card" style="padding:.85rem 1rem;border-left:4px solid {% if p.fill_status == 'FILLED' %}#16a34a{% else %}#dc2626{% endif %};">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <div style="font-size:.9rem;font-weight:700;">{{ p.title }}</div>
+        {% if p.salary_grade %}<div style="font-size:.78rem;color:var(--primary,#4f46e5);font-weight:600;">SG {{ p.salary_grade }}</div>{% endif %}
+      </div>
+      <span style="font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;
+        background:{% if p.fill_status == 'FILLED' %}#dcfce7{% else %}#fee2e2{% endif %};
+        color:{% if p.fill_status == 'FILLED' %}#166534{% else %}#991b1b{% endif %};">
+        {{ p.fill_status }}
+      </span>
+    </div>
+    {% if p.employee_name %}
+    <div style="margin-top:.3rem;font-size:.85rem;">
+      <a href="/employees/{{ p.employee_id }}" style="color:#374151;text-decoration:none;font-weight:500;">
+        👤 {{ p.employee_name }}
+      </a>
+      {% if p.emp_status %}<span style="font-size:.72rem;color:#9ca3af;margin-left:.3rem;">({{ p.emp_status }})</span>{% endif %}
+    </div>
+    {% else %}
+    <div style="margin-top:.3rem;font-size:.82rem;color:#dc2626;font-style:italic;">Position Vacant</div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;grid-column:1/-1;">No positions defined for this department.</div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block page_title %}Rating Distribution{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  {% if distribution %}
+  var colorMap = {
+    'Outstanding': '#16a34a',
+    'Very Satisfactory': '#2563eb',
+    'Satisfactory': '#d97706',
+    'Unsatisfactory': '#dc2626',
+    'Poor': '#991b1b'
+  };
+  var labels = {{ distribution | map(attribute='adjectival_rating') | list | tojson }};
+  var data = {{ distribution | map(attribute='cnt') | list | tojson }};
+  new Chart(document.getElementById('distChart'), {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: labels.map(function(l) { return colorMap[l] || '#9ca3af'; }),
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } } }
+    }
+  });
+  {% endif %}
+});
+</script>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Rating Distribution & PBB Report</h2>
+  <a href="/pm/cycles" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Cycles</a>
+</div>
+
+{# Cycle selector #}
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1.25rem;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Cycle</label>
+    <select name="cycle_id" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">— Select —</option>
+      {% for c in cycles %}
+      <option value="{{ c.id }}" {% if cycle_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">View</button>
+</form>
+
+{% if cycle_id %}
+<div class="grid two" style="gap:1.25rem;margin-bottom:1.25rem;">
+  {# Distribution chart #}
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Adjectival Rating Distribution</h3>
+    {% if distribution %}
+    <div style="position:relative;height:240px;">
+      <canvas id="distChart"></canvas>
+    </div>
+    {% else %}
+    <p style="text-align:center;color:#9ca3af;padding:2rem 0;">No finalized ratings yet.</p>
+    {% endif %}
+  </section>
+
+  {# Summary stats #}
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Summary</h3>
+    <div style="display:flex;flex-direction:column;gap:.6rem;">
+      {% for d in distribution %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;border-radius:6px;
+                  background:{% if d.adjectival_rating == 'Outstanding' %}rgba(22,163,74,.08){% elif d.adjectival_rating == 'Very Satisfactory' %}rgba(37,99,235,.08){% elif d.adjectival_rating == 'Satisfactory' %}rgba(217,119,6,.08){% else %}rgba(220,38,38,.08){% endif %};">
+        <span style="font-size:.875rem;font-weight:600;">{{ d.adjectival_rating }}</span>
+        <span style="font-size:1rem;font-weight:800;">{{ d.cnt }}</span>
+      </div>
+      {% endfor %}
+      <div style="margin-top:.5rem;padding:.5rem .75rem;border-radius:6px;background:rgba(0,0,0,.03);display:flex;justify-content:space-between;">
+        <span style="font-size:.875rem;font-weight:700;">Total Rated</span>
+        <span style="font-size:1rem;font-weight:800;">{{ summaries|length }}</span>
+      </div>
+      <div style="padding:.5rem .75rem;border-radius:6px;background:#dcfce7;display:flex;justify-content:space-between;">
+        <span style="font-size:.875rem;font-weight:700;color:#166534;">PBB Eligible</span>
+        <span style="font-size:1rem;font-weight:800;color:#166534;">{{ pbb_list|length }}</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+{# Full ratings table #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:left;">Employee</th>
+        <th style="padding:8px 12px;text-align:left;">Department</th>
+        <th style="padding:8px 12px;text-align:center;">Rating</th>
+        <th style="padding:8px 12px;text-align:center;">Adjectival</th>
+        <th style="padding:8px 12px;text-align:center;">PBB</th>
+        <th style="padding:8px 12px;text-align:center;">Step Inc.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in summaries %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:500;">
+          <a href="/pm/ipcr/{{ s.employee_id }}/{{ s.cycle_id }}" style="color:inherit;text-decoration:none;">{{ s.employee_name }}</a>
+        </td>
+        <td style="padding:8px 12px;color:#6b7280;">{{ s.department_name or '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;font-weight:800;
+                   color:{% if s.final_numerical_rating >= 4.5 %}#16a34a{% elif s.final_numerical_rating >= 3.5 %}#2563eb{% elif s.final_numerical_rating >= 2.5 %}#d97706{% else %}#dc2626{% endif %};">
+          {{ '%.2f'|format(s.final_numerical_rating) }}
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if s.adjectival_rating == 'Outstanding' %}#dcfce7{% elif s.adjectival_rating == 'Very Satisfactory' %}#dbeafe{% elif s.adjectival_rating == 'Satisfactory' %}#fef9c3{% else %}#fee2e2{% endif %};
+            color:{% if s.adjectival_rating == 'Outstanding' %}#166534{% elif s.adjectival_rating == 'Very Satisfactory' %}#1e40af{% elif s.adjectival_rating == 'Satisfactory' %}#854d0e{% else %}#991b1b{% endif %};">
+            {{ s.adjectival_rating }}
+          </span>
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if s.pbb_eligible %}<span style="color:#16a34a;font-weight:700;">✓</span>{% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if s.step_increment_eligible %}<span style="color:#16a34a;font-weight:700;">✓</span>{% else %}<span style="color:#d1d5db;">—</span>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No finalized ratings for this cycle.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">Select a performance cycle to view rating distribution.</div>
+{% endif %}
+
+{% endblock %}

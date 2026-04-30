@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block page_title %}Training Sessions{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Training Sessions</h2>
+  <a href="/ld/programs" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Programs</a>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('SCHEDULED','Scheduled'),('ONGOING','Ongoing'),('COMPLETED','Completed'),('CANCELLED','Cancelled')] %}
+  <a href="?status={{ s }}{% if program_id %}&program_id={{ program_id }}{% endif %}"
+     style="padding:6px 14px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for s in sessions %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+    <div style="flex:1;">
+      <div style="font-size:.95rem;font-weight:700;">{{ s.program_title }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">
+        {{ s.session_date.strftime('%b %d, %Y') if s.session_date else '—' }}
+        {% if s.session_end %} — {{ s.session_end.strftime('%b %d, %Y') }}{% endif %}
+        &nbsp;·&nbsp; {{ s.venue or 'TBD' }}
+        {% if s.facilitator %}&nbsp;·&nbsp; {{ s.facilitator }}{% endif %}
+      </div>
+      <div style="font-size:.78rem;color:#9ca3af;margin-top:.2rem;">
+        {{ s.enrolled_count }}/{{ s.max_participants or '∞' }} enrolled
+        {% if s.category %}&nbsp;·&nbsp; {{ s.category }}{% endif %}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0;">
+      <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+        background:{% if s.status == 'COMPLETED' %}#dcfce7{% elif s.status == 'ONGOING' %}#dbeafe{% elif s.status == 'SCHEDULED' %}#fef9c3{% else %}#fee2e2{% endif %};
+        color:{% if s.status == 'COMPLETED' %}#166534{% elif s.status == 'ONGOING' %}#1e40af{% elif s.status == 'SCHEDULED' %}#854d0e{% else %}#991b1b{% endif %};">
+        {{ s.status }}
+      </span>
+      <a href="/ld/attendance?session_id={{ s.id }}"
+         style="padding:5px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;">
+        Attendance
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No sessions found.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block page_title %}New Appointment{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Issue Appointment Paper</h2>
+  <a href="/rsp/appointments" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Appointments</a>
+</div>
+
+<div class="grid two" style="gap:1.25rem;align-items:start;">
+  <form method="post" action="/rsp/appointments/new">
+    <section class="card" style="padding:1.25rem;">
+      <h3 style="margin:0 0 1rem;font-size:.95rem;font-weight:700;">Appointment Details</h3>
+      <div style="display:flex;flex-direction:column;gap:.85rem;">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Appointment No. *</label>
+            <input name="appointment_no" required placeholder="e.g. APPT-2026-001"
+                   style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+          </div>
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Appointment Type *</label>
+            <select name="appointment_type" required
+                    style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+              {% for t in ['PERMANENT','TEMPORARY','CASUAL','COTERMINOUS','CONTRACTUAL'] %}
+              <option value="{{ t }}">{{ t }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Employee *</label>
+          <input name="employee_id" type="number" required placeholder="Employee ID"
+                 style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+        </div>
+
+        <div>
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Position *</label>
+          <select name="position_id" required
+                  style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+            <option value="">— Select Position —</option>
+            {% for p in positions %}
+            <option value="{{ p.id }}">{{ p.title }} (SG {{ p.salary_grade }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Plantilla Item (Vacant)</label>
+          <select name="plantilla_item_id"
+                  style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+            <option value="">— Select Item —</option>
+            {% for item in plantilla %}
+            <option value="{{ item.id }}">{{ item.item_number }} — {{ item.position_title }} (SG {{ item.salary_grade }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Salary Grade *</label>
+            <input name="salary_grade" type="number" min="1" max="33" required placeholder="1–33"
+                   style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+          </div>
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Step No.</label>
+            <input name="step_no" type="number" min="1" max="8" value="1"
+                   style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+          </div>
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Monthly Salary (₱) *</label>
+            <input name="monthly_salary" type="number" step="0.01" required placeholder="0.00"
+                   style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Effective Date *</label>
+            <input type="date" name="effective_date" required
+                   style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+          </div>
+          <div>
+            <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">End Date <span style="font-weight:400;color:#9ca3af;">(if not permanent)</span></label>
+            <input type="date" name="end_date"
+                   style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+          </div>
+        </div>
+
+        <button type="submit"
+                style="width:100%;padding:10px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:600;cursor:pointer;">
+          Issue Appointment & Start Approval
+        </button>
+      </div>
+    </section>
+  </form>
+
+  <section class="card" style="padding:1.25rem;background:rgba(99,102,241,.03);border:1px dashed rgba(99,102,241,.2);">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;color:var(--primary,#4f46e5);">Approval Workflow</h3>
+    <div style="display:flex;flex-direction:column;gap:.5rem;">
+      {% for step, role in [('HR Review','HR Admin'),('Dept. Head Review','Department Head'),('HRMO Endorsement','HRMO'),('Appointing Authority','Super Admin')] %}
+      <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;border-radius:6px;background:rgba(255,255,255,.7);">
+        <div style="width:22px;height:22px;border-radius:50%;background:var(--primary,#4f46e5);color:#fff;
+                    display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;">
+          {{ loop.index }}
+        </div>
+        <div>
+          <div style="font-size:.85rem;font-weight:600;">{{ step }}</div>
+          <div style="font-size:.75rem;color:#6b7280;">{{ role }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:.85rem;font-size:.78rem;color:#9ca3af;">
+      Once issued, the appointment paper moves through this workflow. CSC attestation is tracked after final approval.
+    </div>
+  </section>
+</div>
+
+{% endblock %}

@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ cycle.name }} — Comp Review{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ cycle.name }}</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">{{ cycle.review_type }} {{ cycle.year }} &middot;
+      <span style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:999px;background:{% if cycle.status=='OPEN' %}#dcfce7;color:#166534{% elif cycle.status=='FINALIZED' %}#dbeafe;color:#1d4ed8{% elif cycle.status=='DRAFT' %}#fef9c3;color:#854d0e{% else %}#f1f5f9;color:#64748b{% endif %};">{{ cycle.status }}</span>
+    </p>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    {% if cycle.status != 'FINALIZED' %}
+    <form method="post" action="/comp-review/{{ cycle.id }}/finalize" style="display:inline;">
+      <button type="submit" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:#dc2626;color:#fff;"
+              onclick="return confirm('Finalize this cycle? This cannot be undone.')">Finalize Cycle</button>
+    </form>
+    {% endif %}
+    <a href="/comp-review" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">&larr; All Cycles</a>
+  </div>
+</div>
+
+{# Budget Tracker #}
+{% if summary %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Budget Tracker</strong>
+  {% set budget = summary.budget_amount or 1 %}
+  {% set used = summary.total_cost or 0 %}
+  {% set pct_used = ((used / budget) * 100)|round(1) if budget > 0 else 0 %}
+  <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem;">
+    <span>Used: <strong style="font-family:monospace;">{{ '{:,.0f}'.format(used) }}</strong></span>
+    <span>Budget: <strong style="font-family:monospace;">{{ '{:,.0f}'.format(budget) }}</strong></span>
+  </div>
+  <div style="background:#e5e7eb;border-radius:6px;height:14px;overflow:hidden;">
+    <div style="background:{% if pct_used > 100 %}#dc2626{% elif pct_used > 85 %}#d97706{% else %}#16a34a{% endif %};height:14px;border-radius:6px;width:{{ [pct_used, 100]|min }}%;transition:width .3s;"></div>
+  </div>
+  <div style="font-size:.75rem;color:#6b7280;margin-top:.25rem;">{{ pct_used }}% utilized &middot; {{ summary.worksheet_count }} worksheets &middot; Proposed increases: {{ '{:,.0f}'.format(summary.total_proposed_increase or 0) }} &middot; Bonuses: {{ '{:,.0f}'.format(summary.total_bonus or 0) }}</div>
+</div>
+
+{# By Department #}
+{% if by_dept %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Budget by Department</strong>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Department</th>
+        <th style="padding:6px 8px;text-align:center;">Worksheets</th>
+        <th style="padding:6px 8px;text-align:right;">Proposed Increase</th>
+        <th style="padding:6px 8px;text-align:right;">Bonus</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in by_dept %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ d.department_name }}</td>
+        <td style="padding:6px 8px;text-align:center;">{{ d.worksheets }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">{{ '{:,.0f}'.format(d.dept_proposed or 0) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">{{ '{:,.0f}'.format(d.dept_bonus or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+
+{# Add Worksheet Form — employee search autocomplete #}
+{% if cycle.status != 'FINALIZED' %}
+<div class="card" style="padding:1rem 1.1rem 1.1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.8rem;">Add Worksheet</strong>
+
+  {# Search box #}
+  <div style="position:relative;max-width:380px;margin-bottom:.75rem;">
+    <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:3px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Search Employee</label>
+    <div style="position:relative;">
+      <span style="position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:#9ca3af;pointer-events:none;">🔍</span>
+      <input id="ws-search" type="search" autocomplete="off"
+             placeholder="Name or employee ID…"
+             style="width:100%;padding:.52rem .75rem .52rem 2.2rem;border:1px solid #d1d5db;border-radius:8px;font-size:.85rem;box-sizing:border-box;transition:border-color .15s;">
+    </div>
+    <ul id="ws-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 20px rgba(15,23,42,.12);list-style:none;margin:.25rem 0 0;padding:.25rem 0;z-index:999;max-height:260px;overflow-y:auto;font-size:.82rem;"></ul>
+  </div>
+
+  {# Selected employee preview card #}
+  <div id="ws-preview" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.85rem 1rem;margin-bottom:.85rem;max-width:600px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem;">
+      <strong style="font-size:.82rem;color:#374151;">Selected Employee</strong>
+      <button type="button" id="ws-clear" style="background:none;border:none;cursor:pointer;color:#9ca3af;font-size:.78rem;padding:0;">✕ Clear</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.55rem .85rem;">
+      <div>
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Employee ID</div>
+        <div id="pv-emp-id" style="font-family:monospace;font-size:.85rem;font-weight:700;color:#111827;"></div>
+      </div>
+      <div style="grid-column:span 2;">
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Full Name</div>
+        <div id="pv-full-name" style="font-size:.9rem;font-weight:700;color:#111827;"></div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Manager ID</div>
+        <div id="pv-mgr-id" style="font-family:monospace;font-size:.85rem;color:#374151;"></div>
+      </div>
+      <div style="grid-column:span 2;">
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Manager Name</div>
+        <div id="pv-mgr-name" style="font-size:.85rem;color:#374151;"></div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Current Salary</div>
+        <div id="pv-salary" style="font-family:monospace;font-size:.9rem;font-weight:700;color:var(--primary,#0f6f8f);"></div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Department</div>
+        <div id="pv-dept" style="font-size:.82rem;color:#374151;"></div>
+      </div>
+      <div>
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;font-weight:700;margin-bottom:2px;">Position</div>
+        <div id="pv-pos" style="font-size:.82rem;color:#374151;"></div>
+      </div>
+    </div>
+  </div>
+
+  {# Actual submission form (hidden fields populated by JS) #}
+  <form id="ws-form" method="post" action="/comp-review/{{ cycle.id }}/worksheet">
+    <input id="f-employee-id"    type="hidden" name="employee_id">
+    <input id="f-manager-id"     type="hidden" name="manager_id">
+    <input id="f-current-salary" type="hidden" name="current_salary">
+    <button id="ws-submit" type="submit" disabled
+            style="padding:.52rem 1.25rem;border-radius:8px;font-size:.85rem;font-weight:600;border:none;cursor:pointer;background:#cbd5e1;color:#94a3b8;transition:background .15s,color .15s;">
+      Add to Worksheet
+    </button>
+  </form>
+</div>
+
+<script>
+(function () {
+  const searchEl  = document.getElementById('ws-search');
+  const dropdown  = document.getElementById('ws-dropdown');
+  const preview   = document.getElementById('ws-preview');
+  const clearBtn  = document.getElementById('ws-clear');
+  const submitBtn = document.getElementById('ws-submit');
+
+  // preview display fields
+  const pvEmpId   = document.getElementById('pv-emp-id');
+  const pvName    = document.getElementById('pv-full-name');
+  const pvMgrId   = document.getElementById('pv-mgr-id');
+  const pvMgrName = document.getElementById('pv-mgr-name');
+  const pvSalary  = document.getElementById('pv-salary');
+  const pvDept    = document.getElementById('pv-dept');
+  const pvPos     = document.getElementById('pv-pos');
+
+  // hidden form inputs
+  const fEmpId    = document.getElementById('f-employee-id');
+  const fMgrId    = document.getElementById('f-manager-id');
+  const fSalary   = document.getElementById('f-current-salary');
+
+  let debounce;
+
+  searchEl.addEventListener('input', function () {
+    clearTimeout(debounce);
+    const q = this.value.trim();
+    if (q.length < 2) { dropdown.style.display = 'none'; return; }
+    debounce = setTimeout(() => fetchResults(q), 250);
+  });
+
+  searchEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { dropdown.style.display = 'none'; clearSelection(); }
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!searchEl.contains(e.target) && !dropdown.contains(e.target)) {
+      dropdown.style.display = 'none';
+    }
+  });
+
+  function fetchResults(q) {
+    fetch('/api/v1/employees/search?q=' + encodeURIComponent(q))
+      .then(r => r.json())
+      .then(renderDropdown)
+      .catch(() => { dropdown.style.display = 'none'; });
+  }
+
+  function renderDropdown(results) {
+    dropdown.innerHTML = '';
+    if (!results.length) {
+      const li = document.createElement('li');
+      li.textContent = 'No employees found';
+      li.style.cssText = 'padding:.5rem 1rem;color:#9ca3af;font-size:.8rem;';
+      dropdown.appendChild(li);
+    } else {
+      results.forEach(emp => {
+        const li = document.createElement('li');
+        li.style.cssText = 'padding:.5rem 1rem;cursor:pointer;border-bottom:1px solid #f3f4f6;transition:background .1s;';
+        li.innerHTML = `
+          <div style="font-weight:600;color:#111827;">${emp.full_name}</div>
+          <div style="font-size:.73rem;color:#6b7280;font-family:monospace;">${emp.employee_no}
+            ${emp.department_name ? ' · ' + emp.department_name : ''}
+            ${emp.position_title  ? ' · ' + emp.position_title  : ''}
+          </div>`;
+        li.addEventListener('mouseenter', () => li.style.background = '#f0f9ff');
+        li.addEventListener('mouseleave', () => li.style.background = '');
+        li.addEventListener('click', () => selectEmployee(emp));
+        dropdown.appendChild(li);
+      });
+    }
+    dropdown.style.display = 'block';
+  }
+
+  function selectEmployee(emp) {
+    dropdown.style.display = 'none';
+    searchEl.value = emp.full_name + ' (' + emp.employee_no + ')';
+
+    // Populate preview card
+    pvEmpId.textContent   = emp.employee_no + ' (ID: ' + emp.id + ')';
+    pvName.textContent    = emp.full_name;
+    pvMgrId.textContent   = emp.manager_id ? 'ID: ' + emp.manager_id : '—';
+    pvMgrName.textContent = emp.manager_name || '—';
+    pvSalary.textContent  = emp.current_salary
+      ? '₱ ' + Number(emp.current_salary).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2})
+      : '—';
+    pvDept.textContent    = emp.department_name || '—';
+    pvPos.textContent     = emp.position_title  || '—';
+    preview.style.display = 'block';
+
+    // Populate hidden form inputs
+    fEmpId.value  = emp.id;
+    fMgrId.value  = emp.manager_id || '';
+    fSalary.value = emp.current_salary || 0;
+
+    // Enable submit
+    submitBtn.disabled = false;
+    submitBtn.style.background = 'var(--primary,#0f6f8f)';
+    submitBtn.style.color = '#fff';
+    submitBtn.style.cursor = 'pointer';
+  }
+
+  function clearSelection() {
+    searchEl.value = '';
+    preview.style.display = 'none';
+    fEmpId.value = fMgrId.value = fSalary.value = '';
+    submitBtn.disabled = true;
+    submitBtn.style.background = '#cbd5e1';
+    submitBtn.style.color = '#94a3b8';
+    submitBtn.style.cursor = 'default';
+  }
+
+  clearBtn.addEventListener('click', clearSelection);
+})();
+</script>
+{% endif %}
+
+{# Worksheets Table #}
+<div class="card" style="padding:1rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Worksheets</strong>
+  {% if worksheets %}
+  <div style="overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.7rem;text-transform:uppercase;">
+        <th style="padding:6px 6px;text-align:left;">Employee</th>
+        <th style="padding:6px 6px;text-align:left;">Dept</th>
+        <th style="padding:6px 6px;text-align:right;">Current Salary</th>
+        <th style="padding:6px 6px;text-align:center;">Increase %</th>
+        <th style="padding:6px 6px;text-align:right;">New Salary</th>
+        <th style="padding:6px 6px;text-align:right;">Bonus</th>
+        <th style="padding:6px 6px;text-align:center;">Compa Ratio</th>
+        <th style="padding:6px 6px;text-align:left;">Justification</th>
+        <th style="padding:6px 6px;text-align:center;">Status</th>
+        <th style="padding:6px 6px;text-align:center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for w in worksheets %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 6px;font-weight:500;">{{ w.employee_name }}<br><span style="font-size:.7rem;color:#9ca3af;">{{ w.employee_code }}</span></td>
+        <td style="padding:6px 6px;font-size:.78rem;">{{ w.department_name or '' }}</td>
+        <td style="padding:6px 6px;text-align:right;font-family:monospace;">{{ '{:,.0f}'.format(w.current_salary or 0) }}</td>
+        <td style="padding:6px 6px;text-align:center;">
+          {% if cycle.status != 'FINALIZED' and w.status != 'APPROVED' %}
+          <form method="post" action="/comp-review/worksheet/{{ w.id }}/update" style="display:flex;gap:4px;align-items:center;justify-content:center;">
+            <input type="hidden" name="cycle_id" value="{{ cycle.id }}">
+            <input name="proposed_increase_pct" type="number" step="0.01" value="{{ w.proposed_increase_pct or '' }}" style="width:55px;padding:3px 5px;border:1px solid #d1d5db;border-radius:4px;font-size:.78rem;text-align:center;">
+            <input name="bonus_amount" type="number" step="0.01" value="{{ w.bonus_amount or '' }}" placeholder="Bonus" style="width:65px;padding:3px 5px;border:1px solid #d1d5db;border-radius:4px;font-size:.78rem;" title="Bonus amount">
+            <input name="manager_justification" value="{{ w.manager_justification or '' }}" placeholder="Justification" style="width:100px;padding:3px 5px;border:1px solid #d1d5db;border-radius:4px;font-size:.78rem;">
+            <button type="submit" style="padding:3px 8px;border-radius:4px;font-size:.72rem;font-weight:600;border:none;cursor:pointer;background:#e5e7eb;color:#374151;">Save</button>
+          </form>
+          {% else %}
+            {{ w.proposed_increase_pct or '—' }}%
+          {% endif %}
+        </td>
+        <td style="padding:6px 6px;text-align:right;font-family:monospace;font-weight:600;">{{ '{:,.0f}'.format(w.proposed_new_salary or 0) if w.proposed_new_salary else '—' }}</td>
+        <td style="padding:6px 6px;text-align:right;font-family:monospace;">{{ '{:,.0f}'.format(w.bonus_amount or 0) if w.bonus_amount else '—' }}</td>
+        <td style="padding:6px 6px;text-align:center;font-weight:700;color:{% if w.compa_ratio and w.compa_ratio < 0.8 %}#dc2626{% elif w.compa_ratio and w.compa_ratio > 1.2 %}#d97706{% else %}#16a34a{% endif %};">{{ '{:.2f}'.format(w.compa_ratio) if w.compa_ratio else '—' }}</td>
+        <td style="padding:6px 6px;font-size:.78rem;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ w.manager_justification or '' }}">{{ w.manager_justification or '' }}</td>
+        <td style="padding:6px 6px;text-align:center;">
+          <span style="font-size:.68rem;font-weight:600;padding:2px 7px;border-radius:999px;background:{% if w.status=='APPROVED' %}#dcfce7;color:#166534{% elif w.status=='REJECTED' %}#fee2e2;color:#991b1b{% else %}#fef9c3;color:#854d0e{% endif %};">{{ w.status }}</span>
+        </td>
+        <td style="padding:6px 6px;text-align:center;">
+          {% if cycle.status != 'FINALIZED' and w.status == 'DRAFT' %}
+          <form method="post" action="/comp-review/worksheet/{{ w.id }}/approve" style="display:inline-flex;gap:4px;">
+            <input type="hidden" name="cycle_id" value="{{ cycle.id }}">
+            <button type="submit" name="status" value="APPROVED" style="padding:2px 8px;border-radius:4px;font-size:.7rem;font-weight:600;border:none;cursor:pointer;background:#dcfce7;color:#166534;">Approve</button>
+            <button type="submit" name="status" value="REJECTED" style="padding:2px 8px;border-radius:4px;font-size:.7rem;font-weight:600;border:none;cursor:pointer;background:#fee2e2;color:#991b1b;">Reject</button>
+          </form>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p style="text-align:center;color:#9ca3af;font-size:.85rem;">No worksheets yet. Add employees above.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

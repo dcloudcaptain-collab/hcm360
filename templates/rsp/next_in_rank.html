@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block page_title %}Next-in-Rank List{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Next-in-Rank List</h2>
+  <a href="/rsp/appointments" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Appointments</a>
+</div>
+
+{# Position selector + compute trigger #}
+<div class="grid two" style="gap:1.25rem;margin-bottom:1.25rem;align-items:start;">
+  <form method="get" style="display:flex;gap:.6rem;align-items:flex-end;">
+    <div style="flex:1;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Select Position</label>
+      <select name="position_id"
+              style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;">
+        <option value="">— Choose Position —</option>
+        {% for p in positions %}
+        <option value="{{ p.id }}" {% if position_id == p.id %}selected{% endif %}>
+          {{ p.title }} (SG {{ p.salary_grade }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit"
+            style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">
+      View
+    </button>
+  </form>
+
+  {% if position_id %}
+  <form method="post" action="/rsp/next-in-rank/compute" style="display:flex;align-items:flex-end;gap:.5rem;">
+    <input type="hidden" name="position_id" value="{{ position_id }}">
+    <div style="flex:1;font-size:.8rem;color:#6b7280;padding:.5rem .75rem;background:rgba(99,102,241,.04);
+                border-radius:6px;border:1px dashed rgba(99,102,241,.2);">
+      Recompute ranks based on current CSC qualifications and seniority, then notify eligible employees.
+    </div>
+    <button type="submit"
+            style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;white-space:nowrap;">
+      Compute & Notify
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% if candidates %}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:center;">Rank</th>
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;text-align:left;">Department</th>
+        <th style="padding:10px 14px;text-align:center;">SG</th>
+        <th style="padding:10px 14px;text-align:center;">Type</th>
+        <th style="padding:10px 14px;text-align:center;">Qualified</th>
+        <th style="padding:10px 14px;text-align:center;">Assessed</th>
+        <th style="padding:10px 14px;text-align:center;">Notified</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in candidates %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);
+                 {% if not c.qualification_met %}opacity:.55;{% endif %}">
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:1rem;font-weight:800;
+                       color:{% if c.rank == 1 %}#d97706{% elif c.rank <= 3 %}var(--primary,#4f46e5){% else %}#9ca3af{% endif %};">
+            {{ c.rank }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;">
+          <a href="/employees/{{ c.employee_id }}" style="font-weight:600;color:inherit;text-decoration:none;">
+            {{ c.full_name }}
+          </a>
+        </td>
+        <td style="padding:9px 14px;color:#6b7280;">{{ c.department_name or '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ c.salary_grade }}</td>
+        <td style="padding:9px 14px;text-align:center;font-size:.78rem;color:#6b7280;">
+          {{ c.employment_type or '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          {% if c.qualification_met %}
+          <span style="color:#16a34a;font-size:1rem;">✓</span>
+          {% else %}
+          <span style="color:#dc2626;font-size:1rem;">✗</span>
+          {% endif %}
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-size:.8rem;color:#6b7280;">
+          {{ c.assessed_on.strftime('%b %d, %Y') if c.assessed_on else '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-size:.8rem;">
+          {% if c.notified_at %}
+          <span style="color:#16a34a;">{{ c.notified_at.strftime('%b %d') }}</span>
+          {% else %}
+          <span style="color:#9ca3af;">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% elif position_id %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No next-in-rank list computed yet for this position.
+  Use <strong>Compute & Notify</strong> to generate the ranking.
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  Select a position above to view or compute the next-in-rank list.
+</div>
+{% endif %}
+
+{% endblock %}

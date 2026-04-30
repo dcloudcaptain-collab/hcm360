@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block page_title %}Training Attendance{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Geo-Tagged Training Attendance</h2>
+  <a href="/ld/sessions" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Sessions</a>
+</div>
+
+{# Session selector #}
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1.25rem;align-items:flex-end;">
+  <div style="flex:1;max-width:400px;">
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Session</label>
+    <select name="session_id" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">— Select Session —</option>
+      {% for s in sessions %}
+      <option value="{{ s.id }}" {% if session_id == s.id %}selected{% endif %}>
+        {{ s.program_title }} ({{ s.session_date.strftime('%b %d') if s.session_date else '—' }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">View</button>
+</form>
+
+{% if session_id and logs %}
+{# Attendance stats #}
+{% set valid_count = logs|selectattr('is_valid')|list|length %}
+{% set invalid_count = logs|rejectattr('is_valid')|list|length %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:var(--primary,#4f46e5);">{{ logs|length }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Total Check-ins</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#16a34a;">{{ valid_count }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Valid</span>
+  </div>
+  {% if invalid_count %}
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#dc2626;">{{ invalid_count }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Flagged</span>
+  </div>
+  {% endif %}
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:left;">Employee</th>
+        <th style="padding:8px 12px;text-align:center;">Check-in Time</th>
+        <th style="padding:8px 12px;text-align:center;">Lat / Lng</th>
+        <th style="padding:8px 12px;text-align:center;">Accuracy</th>
+        <th style="padding:8px 12px;text-align:center;">Device</th>
+        <th style="padding:8px 12px;text-align:center;">Valid</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in logs %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if not l.is_valid %}background:#fef2f2;{% endif %}">
+        <td style="padding:8px 12px;font-weight:500;">{{ l.employee_name }}</td>
+        <td style="padding:8px 12px;text-align:center;color:#6b7280;">
+          {{ l.checked_in_at.strftime('%b %d %H:%M') if l.checked_in_at else '—' }}
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;font-family:monospace;color:#6b7280;">
+          {% if l.checkin_lat %}{{ '%.5f'|format(l.checkin_lat) }}, {{ '%.5f'|format(l.checkin_lng) }}{% else %}—{% endif %}
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if l.checkin_accuracy_m %}
+          <span style="font-size:.78rem;color:{% if l.checkin_accuracy_m <= 50 %}#16a34a{% elif l.checkin_accuracy_m <= 200 %}#d97706{% else %}#dc2626{% endif %};">
+            ±{{ l.checkin_accuracy_m|int }}m
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-size:.75rem;color:#9ca3af;">
+          {{ l.device_id[:12] if l.device_id else '—' }}
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if l.is_valid %}
+          <span style="color:#16a34a;font-weight:700;">✓</span>
+          {% else %}
+          <span style="color:#dc2626;font-weight:700;" title="{{ l.invalidated_reason or '' }}">✗</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% elif session_id %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No attendance logs for this session.</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">Select a session to view attendance records.</div>
+{% endif %}
+
+{% endblock %}

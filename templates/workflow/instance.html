@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block page_title %}Workflow Instance{% endblock %}
+{% block content %}
+<section class="card">
+  <h3>{{ instance.reference_no }}</h3>
+  <p><strong>Workflow:</strong> {{ instance.workflow_name }}</p>
+  <p><strong>Status:</strong> {{ instance.status_label }}</p>
+  <p><strong>Current Step:</strong> {{ instance.step_name or '-' }}</p>
+  <p><strong>Approver Role:</strong> {{ instance.approver_role_code or '-' }}</p>
+</section>
+<div class="grid two">
+<section class="card">
+  <h3>Checklist</h3>
+  <table>
+    <thead><tr><th>Item</th><th>Required</th><th>Gate</th><th>Completed</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for c in checklist %}
+      <tr>
+        <td>{{ c.item_label }}</td>
+        <td>{{ c.is_required }}</td>
+        <td>{{ c.is_gate }}</td>
+        <td>{{ c.is_completed }}</td>
+        <td>{% if feature_flags.get('BTN_CHECKLIST_TOGGLE') %}<form method="post" action="/workflow/checklist/{{ c.id }}/toggle"><button type="submit">Toggle</button></form>{% else %}<span class="small">Restricted</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+<section class="card">
+  <h3>Available Actions</h3>
+  {% if feature_flags.get('BTN_WORKFLOW_ACTION') %}{% for r in routes %}<form method="post" action="/workflow/instance/{{ instance.id }}/action" style="margin-bottom:10px;"><input type="hidden" name="action_code" value="{{ r.action_code }}"><button type="submit">{{ r.action_code }}{% if r.label %} — {{ r.label }}{% endif %}</button></form>{% endfor %}{% else %}<div class="small">Action buttons restricted for this role.</div>{% endif %}
+  <p class="small">Approve will be blocked if gate checklist items are incomplete.</p>
+</section>
+</div>
+{% endblock %}

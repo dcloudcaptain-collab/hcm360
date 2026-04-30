@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block page_title %}SALN Filings{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📋 SALN Filings</h2><div class="sub">All employee SALN submissions</div></div>
+  <a href="/admin/saln-settings" class="btn btn-ghost">⚙️ Settings</a>
+</div>
+
+<div class="filters">
+  <a href="?" class="{{ 'active' if not status_filter else '' }}">All</a>
+  {% for s in ['DRAFT','SUBMITTED','VERIFIED','ARCHIVED'] %}
+  <a href="?status={{ s }}" class="{{ 'active' if status_filter == s else '' }}">{{ s.title() }}</a>
+  {% endfor %}
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead><tr><th>Employee</th><th>Year</th><th>Mode</th><th>Status</th>
+      <th>Filed</th><th>Verified</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><div style="font-weight:600;">{{ r.full_name }}</div>
+          <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div></td>
+      <td style="font-family:monospace;font-weight:600;">{{ r.filing_year }}</td>
+      <td><span style="font-size:.72rem;padding:2px 8px;background:#ede9fe;color:#5b21b6;border-radius:5px;font-weight:700;">{{ r.mode.replace('_',' ') }}</span></td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td style="font-size:.8rem;">{{ r.filed_at.strftime('%b %d, %Y') if r.filed_at else '—' }}</td>
+      <td style="font-size:.8rem;">{{ r.verified_at.strftime('%b %d, %Y') if r.verified_at else '—' }}</td>
+      <td style="white-space:nowrap;">
+        <a href="/dms/saln/{{ r.id }}.pdf" target="_blank" class="btn-xs btn-ghost" style="color:#4f46e5;border:1px solid #4f46e5;">📄 PDF</a>
+        {% if r.status == 'SUBMITTED' %}
+        <button onclick="verify({{ r.id }})" class="btn-xs btn-green">✓ Verify</button>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">📭</div>
+  <div style="font-weight:600;">No SALN filings yet.</div>
+</div>
+{% endif %}
+
+<script>
+  async function verify(id) {
+    if (!confirm('Mark this SALN filing as verified?')) return;
+    const r = await fetch(`/dms/saln/${id}/verify`, {method:'POST'});
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endblock %}

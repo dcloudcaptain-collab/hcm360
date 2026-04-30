@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block page_title %}My Payslips{% endblock %}
+{% block content %}
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
+  <h2 style="margin:0; font-size:1.2rem; font-weight:700;">My Payslips</h2>
+  <span style="font-size:.85rem; color:#6b7280;">{{ total }} payslip{{ 's' if total != 1 else '' }}</span>
+</div>
+
+{% if rows %}
+<section class="card" style="padding:0; overflow:hidden;">
+  <table style="width:100%; border-collapse:collapse; font-size:.875rem;">
+    <thead>
+      <tr style="background:#f9fafb;">
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Period</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Type</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Pay Date</th>
+        <th style="text-align:right; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Basic</th>
+        <th style="text-align:right; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Gross</th>
+        <th style="text-align:right; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Net Pay</th>
+        <th style="text-align:center; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      <tr style="border-top:1px solid #f3f4f6;">
+        <td style="padding:.65rem 1rem;">{{ r.date_from }} – {{ r.date_to }}</td>
+        <td style="padding:.65rem 1rem; color:#6b7280;">{{ r.period_type or '—' }}</td>
+        <td style="padding:.65rem 1rem; color:#6b7280;">{{ r.payment_date or '—' }}</td>
+        <td style="padding:.65rem 1rem; text-align:right;">₱{{ '{:,.2f}'.format(r.basic_pay or 0) }}</td>
+        <td style="padding:.65rem 1rem; text-align:right;">₱{{ '{:,.2f}'.format(r.gross_pay or 0) }}</td>
+        <td style="padding:.65rem 1rem; text-align:right; font-weight:700; color:var(--primary,#4f46e5);">₱{{ '{:,.2f}'.format(r.net_pay or 0) }}</td>
+        <td style="padding:.65rem 1rem; text-align:center; white-space:nowrap;">
+          <a href="/payroll/payslips/{{ r.id }}/view" style="padding:4px 10px;font-size:.75rem;font-weight:600;border:1px solid #d1d5db;border-radius:5px;text-decoration:none;color:#374151;margin-right:4px;">View</a>
+          <a href="/payroll/payslips/{{ r.id }}/pdf" style="padding:4px 10px;font-size:.75rem;font-weight:600;border-radius:5px;text-decoration:none;background:var(--primary,#4f46e5);color:#fff;" target="_blank">PDF</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% set per_page = 12 %}
+{% set total_pages = ((total - 1) // per_page + 1) if total > 0 else 1 %}
+{% if total_pages > 1 %}
+<div style="display:flex; justify-content:center; gap:.5rem; margin-top:1rem; flex-wrap:wrap;">
+  {% if page > 1 %}
+  <a href="?page={{ page - 1 }}"
+     style="padding:6px 14px; border:1px solid #d1d5db; border-radius:6px; font-size:.875rem; text-decoration:none; color:#374151;">← Prev</a>
+  {% endif %}
+  {% for p in range(1, total_pages + 1) %}
+  <a href="?page={{ p }}"
+     style="padding:6px 14px; border-radius:6px; font-size:.875rem; text-decoration:none;
+       {% if p == page %}background:var(--primary,#4f46e5); color:#fff; border:1px solid transparent;
+       {% else %}border:1px solid #d1d5db; color:#374151;{% endif %}">{{ p }}</a>
+  {% endfor %}
+  {% if page < total_pages %}
+  <a href="?page={{ page + 1 }}"
+     style="padding:6px 14px; border:1px solid #d1d5db; border-radius:6px; font-size:.875rem; text-decoration:none; color:#374151;">Next →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="card" style="padding:2.5rem; text-align:center; color:#9ca3af;">
+  <div style="font-size:2rem; margin-bottom:.5rem;">📄</div>
+  <div style="font-weight:600; margin-bottom:.25rem;">No payslips available yet.</div>
+  <div style="font-size:.85rem;">Your payslips will appear here once payroll is processed.</div>
+</div>
+{% endif %}
+
+{% endblock %}

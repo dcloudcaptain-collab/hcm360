@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block page_title %}Search{% endblock %}
+{% block content %}
+<section class="card"><h3>Results for "{{ term }}"</h3><table><thead><tr><th>Type</th><th>Title</th><th>Subtitle</th><th>Open</th></tr></thead><tbody>{% for r in results %}<tr><td>{{ r.entity_type }}</td><td>{{ r.title }}</td><td>{{ r.subtitle }}</td><td><a href="{{ r.target_url }}">Go</a></td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

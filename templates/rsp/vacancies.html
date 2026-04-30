@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block page_title %}Vacancy Postings{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Vacancy Postings</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/rsp/plantilla" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Plantilla</a>
+  </div>
+</div>
+
+{# Status tabs #}
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('DRAFT','Draft'),('ACTIVE','Active'),('CLOSED','Closed')] %}
+  <a href="?status={{ s }}"
+     style="padding:6px 16px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.85rem;">
+  {% for v in vacancies %}
+  <div class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.35rem;">
+          <span style="font-size:.95rem;font-weight:700;">{{ v.position_title or v.posting_title or 'Untitled' }}</span>
+          <span style="font-size:.7rem;padding:2px 8px;border-radius:999px;font-weight:600;
+            background:{% if v.posting_status == 'ACTIVE' %}#dcfce7{% elif v.posting_status == 'DRAFT' %}#f1f5f9{% else %}#fee2e2{% endif %};
+            color:{% if v.posting_status == 'ACTIVE' %}#166534{% elif v.posting_status == 'DRAFT' %}#374151{% else %}#991b1b{% endif %};">
+            {{ v.posting_status or v.status }}
+          </span>
+        </div>
+        <div style="font-size:.8rem;color:#6b7280;">
+          {{ v.department_name or '—' }} &nbsp;·&nbsp; Ref: {{ v.reference_no }}
+          {% if v.published_at %}&nbsp;·&nbsp; Published: {{ v.published_at.strftime('%b %d, %Y') }}{% endif %}
+          {% if v.closes_at %}&nbsp;·&nbsp; Closes: {{ v.closes_at.strftime('%b %d, %Y') }}{% endif %}
+        </div>
+        {% if v.csc_reference_no %}
+        <div style="margin-top:.3rem;font-size:.78rem;color:#6366f1;">CSC Ref: {{ v.csc_reference_no }}</div>
+        {% endif %}
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;">
+        <a href="/rsp/applicants?posting_id={{ v.posting_id }}"
+           style="padding:5px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;">
+          Applicants
+        </a>
+        {% if v.posting_status == 'DRAFT' and v.posting_id %}
+        <button onclick="document.getElementById('pub-form-{{ v.id }}').style.display='block'"
+                style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;cursor:pointer;background:none;">
+          Publish
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    {# Publish form (hidden by default) #}
+    {% if v.posting_id %}
+    <form id="pub-form-{{ v.id }}" method="post" action="/rsp/vacancies/{{ v.id }}/publish"
+          style="display:none;margin-top:.75rem;padding:.75rem;background:rgba(99,102,241,.04);border-radius:6px;border:1px dashed rgba(99,102,241,.2);">
+      <input type="hidden" name="posting_id" value="{{ v.posting_id }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.6rem;align-items:end;">
+        <div>
+          <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Channel</label>
+          <select name="channel" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:.825rem;">
+            <option value="AGENCY_BULLETIN">Agency Bulletin</option>
+            <option value="CSC_BOARD">CSC Bulletin Board</option>
+            <option value="WEBSITE">Agency Website</option>
+            <option value="PHILJOBNET">PhilJobNet</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">CSC Ref No.</label>
+          <input name="csc_reference_no" placeholder="Optional"
+                 style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:.825rem;">
+        </div>
+        <div>
+          <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Closing Date</label>
+          <input type="date" name="closes_at"
+                 style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:.825rem;">
+        </div>
+        <button type="submit" style="padding:6px 14px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.825rem;font-weight:600;cursor:pointer;">
+          Publish
+        </button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No vacancies found.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

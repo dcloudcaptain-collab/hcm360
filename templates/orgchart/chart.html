@@ -1,0 +1,343 @@
+{% extends 'base.html' %}
+{% block page_title %}Organization Chart{% endblock %}
+{% block content %}
+<style>
+/* ── Base layout ── */
+.oc-chart { overflow-x:auto; padding:1rem 0; }
+.oc-level { display:flex; flex-direction:column; align-items:center; }
+
+/* ── Person Card ── */
+.oc-card {
+  width:170px; background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+  text-align:center; padding:.85rem .6rem .7rem; position:relative;
+  box-shadow:0 1px 4px rgba(0,0,0,.06); transition:box-shadow .15s, transform .15s;
+  display:block;
+}
+.oc-clickable { cursor:pointer; text-decoration:none; color:inherit; }
+.oc-clickable:hover { box-shadow:0 4px 16px rgba(59,130,246,.18); transform:translateY(-2px); border-color:#3b82f6; }
+
+/* SELF — the logged-in employee's card */
+.oc-card.self-card {
+  border:2px solid #f59e0b;
+  background:linear-gradient(135deg,#fffbeb,#fff);
+  box-shadow:0 0 0 4px rgba(245,158,11,.15), 0 2px 8px rgba(0,0,0,.08);
+}
+.oc-card.self-card .oc-sg { color:#d97706; }
+
+/* ANCESTOR — nodes above the logged-in employee */
+.oc-card.ancestor-card {
+  background:#f8fafc;
+  border-color:#cbd5e1;
+  opacity:.85;
+  cursor:default;
+}
+.oc-card.ancestor-card .oc-name  { color:#64748b; }
+.oc-card.ancestor-card .oc-title { color:#94a3b8; }
+.oc-card.ancestor-card .oc-dept  { color:#b0bec5; }
+
+/* Lock badge on restricted ancestor cards */
+.oc-lock-badge {
+  position:absolute; bottom:6px; right:6px;
+  font-size:.65rem; color:#94a3b8;
+  line-height:1;
+}
+
+/* Root of full tree (admin view) */
+.oc-card.root-card { border:2px solid var(--primary,#3b82f6); }
+
+/* Avatar */
+.oc-avatar {
+  width:56px; height:56px; border-radius:50%; margin:0 auto .5rem;
+  background:linear-gradient(135deg,#e0e7ff,#c7d2fe); display:flex;
+  align-items:center; justify-content:center; font-size:1.2rem; font-weight:700;
+  color:var(--primary,#4f46e5); border:3px solid #fff;
+  box-shadow:0 0 0 2px var(--primary,#3b82f6);
+  overflow:hidden; position:relative;
+}
+.oc-card.self-card .oc-avatar { box-shadow:0 0 0 2px #f59e0b; }
+.oc-card.ancestor-card .oc-avatar { box-shadow:0 0 0 2px #94a3b8; }
+.oc-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+
+/* Self badge */
+.oc-self-badge {
+  position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+  background:#f59e0b; color:#fff; font-size:.6rem; font-weight:800;
+  padding:1px 6px; border-radius:4px; white-space:nowrap; letter-spacing:.03em;
+}
+
+/* Report count badge */
+.oc-badge {
+  position:absolute; top:-2px; right:-2px; background:var(--primary,#3b82f6);
+  color:#fff; font-size:.65rem; font-weight:700; min-width:18px; height:18px;
+  border-radius:9px; display:flex; align-items:center; justify-content:center;
+  border:2px solid #fff;
+}
+.oc-card.ancestor-card .oc-badge { background:#94a3b8; }
+
+.oc-name  { font-size:.82rem; font-weight:700; color:#1e293b; margin-bottom:.15rem;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.oc-title { font-size:.7rem; color:#6b7280; line-height:1.25;
+            display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.oc-dept  { font-size:.65rem; color:#9ca3af; margin-top:.2rem; }
+.oc-sg    { font-size:.6rem; font-weight:700; color:var(--primary,#3b82f6); }
+
+/* ── Ancestor path indicator ── */
+.oc-path-line {
+  width:2px; background:linear-gradient(to bottom,#94a3b8,#cbd5e1);
+  height:28px;
+}
+.oc-vline { width:2px; height:24px; background:#cbd5e1; }
+
+/* ── Connector Lines ── */
+.oc-children-wrap { display:flex; flex-direction:column; align-items:center; }
+
+/* ── Expand toggle ── */
+.oc-toggle {
+  width:24px; height:24px; border-radius:50%; border:1px solid #cbd5e1;
+  background:#fff; display:flex; align-items:center; justify-content:center;
+  font-size:.7rem; color:#6b7280; cursor:pointer; margin-top:4px;
+  transition:background .15s;
+}
+.oc-toggle:hover { background:#f1f5f9; }
+
+/* ── Legend ── */
+.oc-legend {
+  display:flex; gap:1rem; flex-wrap:wrap; align-items:center;
+  font-size:.75rem; color:#6b7280; margin-bottom:1rem;
+}
+.oc-legend-dot {
+  width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px;
+}
+
+/* Print */
+@media print {
+  .sidebar,.topbar,.no-print { display:none!important; }
+  .main { margin:0!important; padding:0!important; }
+  .layout { display:block!important; }
+  .oc-chart { overflow:visible; }
+}
+</style>
+
+{# ── Page header ──────────────────────────────────────────────── #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;" class="no-print">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Organization Chart</h2>
+    {% if scoped_tree %}
+    <p style="margin:.2rem 0 0;font-size:.8rem;color:#6b7280;">
+      Showing your position in the organization — ancestors above, your team below.
+    </p>
+    {% endif %}
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <button onclick="toggleAll(true)"  style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;background:none;cursor:pointer;">Expand All</button>
+    <button onclick="toggleAll(false)" style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;background:none;cursor:pointer;">Collapse All</button>
+    <button onclick="window.print()"   style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;background:none;cursor:pointer;">Print</button>
+  </div>
+</div>
+
+{# ── Stats bar ────────────────────────────────────────────────── #}
+{% if stats %}
+{% set scope_name = stats.scope_label %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;" class="no-print">
+  {% if scope_name %}
+  <div style="padding:.45rem .9rem;background:#ede9fe;border-left:3px solid #4f46e5;border-radius:6px;font-size:.82rem;color:#5b21b6;font-weight:700;">
+    📊 {{ scope_name }}
+  </div>
+  {% endif %}
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.2rem;font-weight:800;color:var(--primary,#4f46e5);">{{ stats.dept_count or 0 }}</span>
+    <span style="font-size:.78rem;color:#6b7280;">{{ 'Department' if scope_name else 'Departments' }}</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.2rem;font-weight:800;color:#16a34a;">{{ stats.headcount or 0 }}</span>
+    <span style="font-size:.78rem;color:#6b7280;">Headcount</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.2rem;font-weight:800;color:#dc2626;">{{ stats.vacant_positions or 0 }}</span>
+    <span style="font-size:.78rem;color:#6b7280;">Vacant</span>
+  </div>
+  {% if stats.total_positions %}
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.2rem;font-weight:800;color:#2563eb;">{{ ((stats.headcount or 0) / stats.total_positions * 100)|round(0)|int }}%</span>
+    <span style="font-size:.78rem;color:#6b7280;">Fill Rate</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Privacy Notice (self-service/non-admin view) ────────────────── #}
+{% if scoped_tree and session.role_code not in ('SUPER_ADMIN', 'HR_ADMIN') %}
+<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.8rem;color:#166534;" class="no-print">
+  <strong>Privacy Notice:</strong> You can see your position in the organization and your direct team. Ancestors are shown for context but their details are restricted. Contact HR for access to other departments.
+</div>
+{% endif %}
+
+{# ── Legend (scoped view only) ────────────────────────────────── #}
+{% if scoped_tree %}
+<div class="oc-legend no-print">
+  <span><span class="oc-legend-dot" style="background:#94a3b8;"></span>Ancestor / Supervisor <span style="font-size:.7rem;color:#94a3b8;">🔒 restricted</span></span>
+  <span><span class="oc-legend-dot" style="background:#f59e0b;"></span>You</span>
+  <span><span class="oc-legend-dot" style="background:var(--primary,#4f46e5);"></span>Your Team</span>
+</div>
+{% endif %}
+
+{# ── Chart Card ───────────────────────────────────────────────── #}
+<div class="card" style="padding:1.5rem;overflow-x:auto;">
+  <div class="oc-chart">
+
+    {# ── Shared person card macro ──────────────────────────────── #}
+    {% macro render_person(person, is_root, is_ancestor) %}
+    {% set is_self = person.get('is_self', false) %}
+    {% set can_view = (viewable_ids is none) or (person.id in viewable_ids) %}
+    {# Self node and team members are clickable; ancestors are never clickable #}
+    {% set can_click = can_view and (not is_ancestor) %}
+
+    <div class="oc-level" data-person-id="{{ person.id }}">
+
+      {# Card wrapper — clickable if viewable AND not ancestor #}
+      {% if can_click %}
+      <a href="{% if is_self %}/me/profile{% else %}/employees/{{ person.id }}{% endif %}"
+         class="oc-card {% if is_self %}self-card{% elif is_ancestor %}ancestor-card{% elif is_root %}root-card{% endif %} oc-clickable">
+      {% else %}
+      <div class="oc-card {% if is_self %}self-card{% elif is_ancestor %}ancestor-card{% elif is_root %}root-card{% endif %}">
+      {% endif %}
+
+        {# "YOU" label on self card #}
+        {% if is_self %}
+        <span class="oc-self-badge">YOU</span>
+        {% endif %}
+
+        <div class="oc-avatar">
+          {# First-name + Last-name initials, FL order (e.g., "Gabriel Soriano" → "GS"). #}
+          {% set parts = (person.name or 'E').split() %}
+          {% set ini = ((parts[0][0] if parts else 'E') ~ (parts[-1][0] if parts|length > 1 else '')) | upper %}
+          {% if person.photo %}
+          {# Stored as relative path (e.g., 'employee_photos/123.jpg'); fall through if it's already absolute. #}
+          <img src="{% if person.photo.startswith('http') or person.photo.startswith('/') %}{{ person.photo }}{% else %}/uploads/{{ person.photo }}{% endif %}"
+               alt="{{ person.name }}"
+               onerror="this.parentElement.innerHTML='{{ ini|e }}';">
+          {% else %}
+          {{ ini }}
+          {% endif %}
+          {% if person.direct_reports > 0 %}
+          <span class="oc-badge">{{ person.direct_reports }}</span>
+          {% endif %}
+        </div>
+
+        <div class="oc-name"  title="{{ person.name }}">{{ person.name }}</div>
+        <div class="oc-title" title="{{ person.position_title or '' }}">{{ person.position_title or 'No Position' }}</div>
+        {% if person.department_name %}
+        <div class="oc-dept">@ {{ person.department_name }}</div>
+        {% endif %}
+        {% if person.salary_grade and not is_ancestor %}
+        <div class="oc-sg">SG {{ person.salary_grade }}</div>
+        {% endif %}
+
+        {# Lock indicator on ancestor cards — restricted access #}
+        {% if is_ancestor %}
+        <span class="oc-lock-badge" title="Restricted — you cannot access details above your rank">🔒</span>
+        {% endif %}
+
+      {% if can_click %}</a>{% else %}</div>{% endif %}
+
+      {# Children subtree #}
+      {% if person.children %}
+      <div class="oc-children-wrap">
+        <div class="{% if is_ancestor %}oc-path-line{% else %}oc-vline{% endif %}"></div>
+        <div class="oc-toggle" onclick="event.preventDefault();toggleChildren(this);" title="Expand/Collapse">
+          <span>▾</span>
+        </div>
+        <div class="oc-vline"></div>
+        <div class="oc-children-container" style="display:flex;flex-direction:column;align-items:center;">
+          {% set child_count = person.children|length %}
+          {# Horizontal connector bar (multi-child) #}
+          {% if child_count > 1 %}
+          <div style="position:relative;">
+            <div style="position:absolute;top:0;left:95px;right:95px;height:2px;background:#cbd5e1;"></div>
+          {% endif %}
+          <div style="display:flex;gap:12px;padding-top:0;">
+            {% for child in person.children %}
+            {# For ancestors the single chain child inherits ancestor styling;
+               for employee's children they are team members #}
+            {% set child_is_ancestor = is_ancestor and not child.get('is_self', false) and not person.get('is_self', false) %}
+            <div style="display:flex;flex-direction:column;align-items:center;">
+              <div style="width:2px;height:20px;background:#cbd5e1;"></div>
+              {{ render_person(child, false, child_is_ancestor) }}
+            </div>
+            {% endfor %}
+          </div>
+          {% if child_count > 1 %}</div>{% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endmacro %}
+
+    {# ── Render: scoped tree (employee view) ────────────────────── #}
+    {% if scoped_tree %}
+      {# Root node is always an ancestor unless the employee has no supervisors #}
+      {% set root_is_ancestor = not scoped_tree.get('is_self', false) %}
+      {{ render_person(scoped_tree, true, root_is_ancestor) }}
+
+    {# ── Render: full tree (admin/HR view) ──────────────────────── #}
+    {% elif person_tree %}
+      {% for root in person_tree %}
+        {{ render_person(root, true, false) }}
+      {% endfor %}
+
+    {# ── Fallback: department-based tree ─────────────────────────── #}
+    {% elif tree %}
+      <div style="text-align:center;color:#6b7280;font-size:.9rem;margin-bottom:1rem;">
+        <p>Person-based hierarchy not available. Showing department structure.</p>
+        <p style="font-size:.82rem;color:#9ca3af;">Set <code>immediate_supervisor_id</code> on employees to enable the visual org chart.</p>
+      </div>
+      {% for dept in tree %}
+      <div class="oc-card" style="margin:0 auto 1rem;width:200px;">
+        <div class="oc-name">{{ dept.name }}</div>
+        {% if dept.head_name %}<div class="oc-title">{{ dept.head_name }}</div>{% endif %}
+        <div class="oc-dept">{{ dept.employee_count }} staff · {{ dept.vacant_count }} vacant</div>
+      </div>
+      {% endfor %}
+
+    {% else %}
+      <p style="text-align:center;color:#9ca3af;padding:3rem;">
+        No organization data found. Add employees with supervisor relationships to build the chart.
+      </p>
+    {% endif %}
+
+  </div>{# .oc-chart #}
+</div>{# .card #}
+
+<script>
+function toggleChildren(btn) {
+  var wrap      = btn.closest('.oc-children-wrap');
+  var container = wrap.querySelector('.oc-children-container');
+  var arrow     = btn.querySelector('span');
+  if (container.style.display === 'none') {
+    container.style.display = '';
+    arrow.textContent = '▾';
+  } else {
+    container.style.display = 'none';
+    arrow.textContent = '▸';
+  }
+}
+
+function toggleAll(expand) {
+  document.querySelectorAll('.oc-children-container').forEach(function(c) {
+    c.style.display = expand ? '' : 'none';
+  });
+  document.querySelectorAll('.oc-toggle span').forEach(function(s) {
+    s.textContent = expand ? '▾' : '▸';
+  });
+}
+
+// Auto-scroll to the "YOU" card on load
+window.addEventListener('DOMContentLoaded', function() {
+  var selfCard = document.querySelector('.self-card');
+  if (selfCard) {
+    selfCard.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  }
+});
+</script>
+{% endblock %}

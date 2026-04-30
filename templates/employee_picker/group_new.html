@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block page_title %}New Employee Group{% endblock %}
+{% block extra_css %}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between;
+               flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .sub { font-size:.85rem; color:#6b7280; }
+  .btn { display:inline-flex; align-items:center; padding:8px 16px; border-radius:8px;
+         font-size:.85rem; font-weight:600; text-decoration:none; cursor:pointer;
+         border:none; font-family:inherit; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:11px;
+          padding:1.1rem 1.25rem; margin-bottom:1rem; }
+  .card h3 { margin:0 0 .7rem; font-size:.95rem; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+  @media (max-width:720px) { .grid-2 { grid-template-columns:1fr; } }
+  .f-group { display:flex; flex-direction:column; gap:.3rem; }
+  .f-group label { font-size:.72rem; color:#6b7280; text-transform:uppercase;
+                   letter-spacing:.05em; font-weight:600; }
+  .f-group input, .f-group select, .f-group textarea {
+     width:100%; padding:.55rem .7rem; border:1.5px solid #d1d5db; border-radius:8px;
+     font-size:.9rem; font-family:inherit; background:#fff; }
+  .f-group input:focus, .f-group select:focus, .f-group textarea:focus {
+     border-color:#4f46e5; outline:none; box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+  .f-group textarea { min-height:70px; resize:vertical; }
+
+  .vis-radio { display:flex; gap:.4rem; flex-wrap:wrap; }
+  .vis-option {
+     flex:1; min-width:160px;
+     padding:.7rem .85rem; border:1.5px solid #e5e7eb; border-radius:8px;
+     cursor:pointer; background:#fafafa;
+  }
+  .vis-option input { display:none; }
+  .vis-option.active { border-color:#4f46e5; background:#eef2ff; }
+  .vis-option strong { display:block; font-size:.88rem; color:#111827; margin-bottom:.2rem; }
+  .vis-option span { font-size:.72rem; color:#6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>➕ New Employee Group</h2>
+    <div class="sub">Create a custom cohort. Add members after saving.</div>
+  </div>
+  <a href="{{ url_for('employee_picker.groups_list') }}" class="btn btn-ghost">← Back</a>
+</div>
+
+<form method="post" action="{{ url_for('employee_picker.group_new') }}">
+  <div class="card">
+    <h3>📝 Group info</h3>
+    <div class="grid-2">
+      <div class="f-group">
+        <label>Group name *</label>
+        <input type="text" name="name" required maxlength="150"
+               placeholder="e.g., Q2 New Hires · Safety Committee">
+      </div>
+      <div class="f-group">
+        <label>Short code (optional)</label>
+        <input type="text" name="code" maxlength="60" pattern="[A-Z0-9_]+"
+               placeholder="e.g., Q2_NEW_HIRES (auto-uppercased)"
+               style="text-transform:uppercase;">
+      </div>
+    </div>
+    <div class="f-group" style="margin-top:.85rem;">
+      <label>Description</label>
+      <textarea name="description" rows="3"
+                placeholder="What is this group for? Who should use it?"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>🔒 Visibility</h3>
+    <div class="vis-radio" onclick="pickVis(event)">
+      <label class="vis-option active" data-val="PUBLIC">
+        <input type="radio" name="visibility" value="PUBLIC" checked>
+        <strong>🌐 Public</strong>
+        <span>Any user can see and use this group in pickers.</span>
+      </label>
+      <label class="vis-option" data-val="DEPT">
+        <input type="radio" name="visibility" value="DEPT">
+        <strong>🏢 Department</strong>
+        <span>Only visible to members of the selected department.</span>
+      </label>
+      <label class="vis-option" data-val="PRIVATE">
+        <input type="radio" name="visibility" value="PRIVATE">
+        <strong>🔐 Private</strong>
+        <span>Only you (and SUPER_ADMIN) can see it.</span>
+      </label>
+    </div>
+    <div class="f-group" style="margin-top:.85rem;">
+      <label>Department (required for DEPT visibility)</label>
+      <select name="department_id">
+        <option value="">— None —</option>
+        {% for d in departments %}
+        <option value="{{ d.id }}">{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.4rem;justify-content:flex-end;">
+    <a href="{{ url_for('employee_picker.groups_list') }}" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">Create group →</button>
+  </div>
+</form>
+
+<script>
+function pickVis(e){
+  const opt = e.target.closest('.vis-option');
+  if (!opt) return;
+  document.querySelectorAll('.vis-option').forEach(x => x.classList.remove('active'));
+  opt.classList.add('active');
+  opt.querySelector('input').checked = true;
+}
+</script>
+{% endblock %}

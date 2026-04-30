@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block page_title %}Retirement Monitoring{% endblock %}
+
+{% block extra_css %}
+<style>
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:.85rem; margin-bottom:1rem; }
+  .kpi { background:#fff; border:1px solid #e5e7eb; border-radius:11px; padding:.9rem 1rem; }
+  .kpi .lbl { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:#9ca3af; }
+  .kpi .num { font-size:1.7rem; font-weight:800; margin-top:.2rem; line-height:1; }
+  .kpi.early  .num { color:#d97706; }
+  .kpi.mand   .num { color:#dc2626; }
+  .kpi.male   .num { color:#2563eb; }
+  .kpi.female .num { color:#db2777; }
+  .kpi.ack    .num { color:#16a34a; }
+
+  .filters { display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.9rem; }
+  .filters a {
+    padding:5px 12px; border-radius:999px; font-size:.78rem; font-weight:600;
+    text-decoration:none; border:1.5px solid #e5e7eb; color:#374151; background:#fff;
+  }
+  .filters a.active { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+
+  .status-badge { display:inline-block; padding:2px 10px; border-radius:999px;
+     font-size:.72rem; font-weight:700; }
+  .s-upcoming     { background:#fef3c7; color:#92400e; }
+  .s-notice-sent  { background:#dbeafe; color:#1d4ed8; }
+  .s-ack          { background:#e0f2fe; color:#075985; }
+  .s-scheduled    { background:#fce7f3; color:#9d174d; }
+  .s-retired      { background:#dcfce7; color:#166534; }
+  .s-cancelled    { background:#f3f4f6; color:#6b7280; }
+
+  .elig-badge { display:inline-block; padding:2px 8px; border-radius:5px;
+     font-size:.7rem; font-weight:700; }
+  .e-early     { background:#fef3c7; color:#92400e; }
+  .e-mandatory { background:#fee2e2; color:#991b1b; }
+
+  .gender-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:.3rem; }
+  .g-male   { background:#3b82f6; }
+  .g-female { background:#ec4899; }
+
+  .btn-xs { padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px;
+     border:none; cursor:pointer; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-green   { background:#16a34a; color:#fff; }
+  .btn-amber   { background:#f59e0b; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1px solid #d1d5db;
+      padding:5px 12px; font-size:.8rem; font-weight:600; border-radius:7px; }
+
+  table.dt { width:100%; border-collapse:collapse; font-size:.87rem; background:#fff;
+      border-radius:11px; overflow:hidden; border:1px solid #e5e7eb; }
+  table.dt th { text-align:left; padding:.6rem .85rem; background:#f9fafb; color:#6b7280;
+     font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.5px solid #e5e7eb; }
+  table.dt td { padding:.6rem .85rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  table.dt tbody tr:hover td { background:#f9fafb; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">🌅 Retirement Monitoring</h2>
+    <div style="font-size:.85rem;color:#6b7280;">
+      Early retirement at <strong>{{ rules.early_retire_age }}</strong> ·
+      Mandatory at <strong>{{ rules.mandatory_retire_age }}</strong> ·
+      {{ rules.notice_lead_months }}-month notice window
+    </div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    {% if session.role_code in ('SUPER_ADMIN', 'HR_ADMIN') %}
+    <a href="/admin/retirement-rules" class="btn-ghost">⚙️ Rules</a>
+    <button id="btnScan" class="btn-ghost" style="background:#4f46e5;color:#fff;border:none;">🔍 Run Scan</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi early">
+    <div class="lbl">Early Eligible (60+)</div>
+    <div class="num">{{ stats.early_upcoming or 0 }}</div>
+  </div>
+  <div class="kpi mand">
+    <div class="lbl">Mandatory (65)</div>
+    <div class="num">{{ stats.mandatory_upcoming or 0 }}</div>
+  </div>
+  <div class="kpi male">
+    <div class="lbl">Male Pending</div>
+    <div class="num">{{ stats.male_pending or 0 }}</div>
+  </div>
+  <div class="kpi female">
+    <div class="lbl">Female Pending</div>
+    <div class="num">{{ stats.female_pending or 0 }}</div>
+  </div>
+  <div class="kpi ack">
+    <div class="lbl">Retired YTD</div>
+    <div class="num">{{ stats.retired_ytd or 0 }}</div>
+  </div>
+</div>
+
+<div class="filters">
+  <a href="?" class="{{ 'active' if not eligibility_filter and not status_filter else '' }}">All</a>
+  <a href="?eligibility=EARLY" class="{{ 'active' if eligibility_filter == 'EARLY' else '' }}">Early (60+)</a>
+  <a href="?eligibility=MANDATORY" class="{{ 'active' if eligibility_filter == 'MANDATORY' else '' }}">Mandatory (65)</a>
+  <span style="width:.5rem;"></span>
+  {% for s in ['UPCOMING', 'NOTICE_SENT', 'ACKNOWLEDGED', 'SCHEDULED', 'RETIRED'] %}
+  <a href="?status={{ s }}" class="{{ 'active' if status_filter == s else '' }}">{{ s.title() }}</a>
+  {% endfor %}
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr>
+      <th>Employee</th>
+      <th>Department</th>
+      <th>Type</th>
+      <th>Age</th>
+      <th>Eligible Date</th>
+      <th>Status</th>
+      <th>Retirement Date</th>
+      <th style="text-align:right;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>
+        <span class="gender-dot g-{{ r.gender|lower }}"></span>
+        <span style="font-weight:600;">{{ r.full_name }}</span>
+        <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div>
+      </td>
+      <td style="color:#374151;">{{ r.department_name or '—' }}<br>
+        <span style="font-size:.75rem;color:#9ca3af;">{{ r.position_title or '' }}</span>
+      </td>
+      <td>
+        <span class="elig-badge e-{{ r.eligibility_type|lower }}">{{ r.eligibility_type }}</span>
+      </td>
+      <td>
+        <strong>{{ r.age_now or '—' }}</strong>
+        <span style="font-size:.75rem;color:#6b7280;">yo</span>
+      </td>
+      <td>{{ r.eligible_date.strftime('%b %d, %Y') if r.eligible_date else '—' }}</td>
+      <td>
+        <span class="status-badge s-{{ r.status.lower().replace('_', '-') }}">{{ r.status.replace('_', ' ').title() }}</span>
+        {% if r.notice_sent_at %}
+        <div style="font-size:.7rem;color:#9ca3af;margin-top:.15rem;">
+          Notice sent {{ r.notice_sent_at.strftime('%b %d') }}
+        </div>
+        {% endif %}
+      </td>
+      <td>{{ r.retirement_date.strftime('%b %d, %Y') if r.retirement_date else '—' }}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        {% if session.role_code in ('SUPER_ADMIN', 'HR_ADMIN') %}
+          {% if r.status == 'UPCOMING' %}
+          <button onclick="sendNotice('{{ r.id }}')" class="btn-xs btn-amber">📨 Send Notice</button>
+          {% elif r.status == 'NOTICE_SENT' %}
+          <button onclick="doAction('{{ r.id }}', 'acknowledge')" class="btn-xs btn-primary">✓ Acknowledge</button>
+          {% elif r.status == 'ACKNOWLEDGED' %}
+          <button onclick="schedule('{{ r.id }}')" class="btn-xs btn-primary">📅 Schedule</button>
+          {% elif r.status == 'SCHEDULED' %}
+          <button onclick="doAction('{{ r.id }}', 'retire')" class="btn-xs btn-green">🎉 Mark Retired</button>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="padding:2.5rem;text-align:center;color:#9ca3af;background:#fff;border-radius:11px;">
+  <div style="font-size:2rem;margin-bottom:.5rem;">🌅</div>
+  <div style="font-weight:600;">No retirement records.</div>
+  <div style="font-size:.85rem;margin-top:.25rem;">Click <em>Run Scan</em> to identify employees approaching retirement.</div>
+</div>
+{% endif %}
+
+<script>
+  async function runScan() {
+    const btn = document.getElementById('btnScan');
+    if (!btn) return;
+    btn.disabled = true; btn.textContent = '⏳ Scanning…';
+    const r = await fetch('/retirement/scan', {method: 'POST'});
+    const j = await r.json();
+    alert(`Scan complete. ${j.inserted} new rows added.\nEarly: ${j.early_age}  ·  Mandatory: ${j.mandatory_age}\nHorizon: ${j.horizon}`);
+    location.reload();
+  }
+  async function sendNotice(id) {
+    if (!confirm('Generate and send retirement notice to HR, Employee, and Finance?')) return;
+    const r = await fetch(`/retirement/${id}/notice`, {method: 'POST'});
+    const j = await r.json();
+    if (j.ok) {
+      alert(`Notices generated:\n  HR: ${j.notices.hr}\n  Employee: ${j.notices.employee}\n  Finance: ${j.notices.finance}`);
+      location.reload();
+    } else {
+      alert(j.message || 'Failed.');
+    }
+  }
+  async function doAction(id, action) {
+    const r = await fetch(`/retirement/${id}/${action}`, {method: 'POST'});
+    const j = await r.json();
+    if (j.ok) location.reload();
+    else alert(j.message || 'Action failed.');
+  }
+  async function schedule(id) {
+    const d = prompt('Retirement date (YYYY-MM-DD)?');
+    if (!d) return;
+    const r = await fetch(`/retirement/${id}/schedule`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({retirement_date: d}),
+    });
+    const j = await r.json();
+    if (j.ok) location.reload();
+    else alert(j.message || 'Failed.');
+  }
+  document.getElementById('btnScan')?.addEventListener('click', runScan);
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block page_title %}KPI Snapshot{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  {% if trend %}
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: {{ trend | map(attribute='snapshot_date') | list | tojson }},
+      datasets: [{
+        label: kpi_code || 'KPI',
+        data: {{ trend | map(attribute='kpi_value') | list | tojson }},
+        borderColor: '#4f46e5', borderWidth: 2,
+        fill: true, backgroundColor: 'rgba(99,102,241,.1)', tension: 0.4, pointRadius: 3
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } } }
+  });
+  {% endif %}
+});
+const kpi_code = {{ kpi_code | tojson }};
+</script>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">KPI Snapshot</h2>
+  <form method="post" action="/reports/kpis/refresh" style="display:inline;">
+    {% if module %}<input type="hidden" name="module" value="{{ module }}">{% endif %}
+    <button type="submit"
+            style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;background:#fff;cursor:pointer;">
+      ↻ Refresh
+    </button>
+  </form>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% for m in ['attendance', 'leave', 'payroll', 'core'] %}
+  <a href="?module={{ m }}"
+     style="padding:6px 14px;border-radius:6px;font-size:.875rem;text-decoration:none;
+       {% if module == m %}background:var(--primary,#4f46e5);color:#fff;
+       {% else %}border:1px solid #d1d5db;color:#374151;{% endif %}">
+    {{ m | capitalize }}
+  </a>
+  {% endfor %}
+  {% if module %}
+  <a href="/reports/kpis"
+     style="padding:6px 14px;border-radius:6px;font-size:.875rem;text-decoration:none;border:1px solid #d1d5db;color:#374151;">
+    All
+  </a>
+  {% endif %}
+</div>
+
+{% if trend and kpi_code %}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">30-Day Trend — {{ kpi_code }}</h3>
+  <div style="position:relative;height:180px;">
+    <canvas id="trendChart"></canvas>
+  </div>
+</section>
+{% endif %}
+
+{% if data %}
+<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+  {% for r in data %}
+  <a href="?module={{ r.module or module }}&kpi_code={{ r.kpi_code }}"
+     class="card"
+     style="flex:1;min-width:160px;padding:1rem;text-decoration:none;color:inherit;
+            {% if kpi_code == r.kpi_code %}outline:2px solid var(--primary,#4f46e5);{% endif %}">
+    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280;margin-bottom:.3rem;">
+      {{ r.module or module }} · {{ r.kpi_code }}
+    </div>
+    <div style="font-size:1.75rem;font-weight:800;color:var(--primary,#4f46e5);font-family:monospace;line-height:1.1;">
+      {{ r.kpi_value if r.kpi_value is not none else '—' }}
+    </div>
+    <div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">{{ r.kpi_label }}</div>
+    <div style="font-size:.7rem;color:#9ca3af;margin-top:.4rem;">{{ r.snapshot_date }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No KPI snapshots for today.
+  <br><br>
+  <form method="post" action="/reports/kpis/refresh" style="display:inline;">
+    {% if module %}<input type="hidden" name="module" value="{{ module }}">{% endif %}
+    <button type="submit"
+            style="padding:8px 18px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:7px;cursor:pointer;">
+      Generate Snapshot Now
+    </button>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}

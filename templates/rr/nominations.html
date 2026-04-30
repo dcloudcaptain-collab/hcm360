@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block page_title %}PRAISE Nominations{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">PRAISE Nominations</h2>
+  <span style="font-size:.8rem;color:#6b7280;">CSC MC 12-2020</span>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for n in nominations %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+    <div style="flex:1;">
+      <div style="font-size:.95rem;font-weight:700;">{{ n.nominee_name }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">
+        {{ n.category_name }} &nbsp;·&nbsp; {{ n.period }}
+        &nbsp;·&nbsp; Nominated by: {{ n.nominated_by_name }}
+      </div>
+      {% if n.justification %}
+      <div style="margin-top:.3rem;font-size:.8rem;color:#374151;">{{ n.justification[:120] }}{% if n.justification|length > 120 %}…{% endif %}</div>
+      {% endif %}
+    </div>
+    <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;flex-shrink:0;
+      background:{% if n.status == 'APPROVED' %}#dcfce7{% elif n.status == 'PENDING' %}#fef9c3{% else %}#fee2e2{% endif %};
+      color:{% if n.status == 'APPROVED' %}#166534{% elif n.status == 'PENDING' %}#854d0e{% else %}#991b1b{% endif %};">
+      {{ n.status }}
+    </span>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No nominations found.</div>
+  {% endfor %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block page_title %}Certification Compliance Matrix{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Certification Compliance Matrix</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Required certifications vs employee status.</p>
+  </div>
+  <a href="/certifications" style="font-size:.82rem;color:var(--primary,#4f46e5);">&larr; Back to Compliance Dashboard</a>
+</div>
+
+{% if required_types and rows %}
+{# Build lookup: employee_id -> {cert_type: status} #}
+{% set ns = namespace(employees={}) %}
+{% for r in rows %}
+  {% if r.employee_id not in ns.employees %}
+    {% set _ = ns.employees.update({r.employee_id: {'name': r.employee_name, 'code': r.employee_code, 'certs': {}}}) %}
+  {% endif %}
+  {% if r.cert_type %}
+    {% set _ = ns.employees[r.employee_id]['certs'].update({r.cert_type: r.cert_status}) %}
+  {% endif %}
+{% endfor %}
+
+<div class="card" style="padding:1rem;overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.7rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;position:sticky;left:0;background:var(--card,#fff);z-index:1;">Employee</th>
+        {% for ct in required_types %}
+        <th style="padding:6px 8px;text-align:center;">{{ ct }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for emp_id, emp in ns.employees.items() %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;position:sticky;left:0;background:var(--card,#fff);z-index:1;">
+          <a href="/certifications/employee/{{ emp_id }}" style="color:inherit;text-decoration:none;">{{ emp.name }}</a>
+          <div style="font-size:.68rem;color:#9ca3af;">{{ emp.code }}</div>
+        </td>
+        {% for ct in required_types %}
+        <td style="padding:6px 8px;text-align:center;">
+          {% set status = emp.certs.get(ct) %}
+          {% if status == 'ACTIVE' %}
+            <span style="font-size:1rem;color:#16a34a;" title="Active">&#10003;</span>
+          {% elif status == 'EXPIRING' %}
+            <span style="font-size:1rem;color:#d97706;" title="Expiring soon">&#9888;</span>
+          {% else %}
+            <span style="font-size:1rem;color:#dc2626;" title="Missing or expired">&#10007;</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div style="display:flex;gap:1.5rem;margin-top:.75rem;font-size:.78rem;color:#6b7280;">
+  <span><span style="color:#16a34a;">&#10003;</span> Active</span>
+  <span><span style="color:#d97706;">&#9888;</span> Expiring</span>
+  <span><span style="color:#dc2626;">&#10007;</span> Missing / Expired</span>
+</div>
+
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No required certifications found to build compliance matrix.
+</div>
+{% endif %}
+
+{% endblock %}

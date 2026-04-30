@@ -1,0 +1,467 @@
+{% extends 'base.html' %}
+{% block page_title %}Report Builder{% endblock %}
+{% block extra_js %}
+<style>
+/* ── Layout ─────────────────────────────────────────── */
+.rb-layout { display:grid; grid-template-columns:240px 1fr; gap:1rem; min-height:60vh; }
+@media(max-width:900px){ .rb-layout{grid-template-columns:1fr;} }
+
+/* ── Field Palette (left) ───────────────────────────── */
+.rb-palette { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:.75rem; overflow-y:auto; max-height:72vh; }
+.rb-palette h3 { font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#94a3b8; margin:0 0 .5rem; }
+.rb-field { display:flex; align-items:center; gap:.5rem; padding:7px 10px; margin-bottom:4px; border-radius:7px; border:1px solid #e2e8f0; background:#fff; cursor:grab; font-size:.82rem; transition:all .15s; user-select:none; }
+.rb-field:hover { border-color:#818cf8; background:#eef2ff; }
+.rb-field:active { cursor:grabbing; opacity:.7; }
+.rb-field .ft { font-size:.62rem; padding:1px 5px; border-radius:4px; font-weight:700; background:#f1f5f9; color:#64748b; }
+.rb-field .ft-NUMBER,.rb-field .ft-CURRENCY { background:#dbeafe; color:#1e40af; }
+.rb-field .ft-DATE { background:#fef9c3; color:#854d0e; }
+
+/* ── Drop Zones (right) ────────────────────────────── */
+.rb-canvas { display:flex; flex-direction:column; gap:1rem; }
+.rb-zone { border:2px dashed #cbd5e1; border-radius:10px; padding:.75rem; min-height:60px; transition:all .2s; }
+.rb-zone.drag-over { border-color:#818cf8; background:rgba(99,102,241,.04); }
+.rb-zone-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.5rem; }
+.rb-zone-title { font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#94a3b8; }
+.rb-zone-hint { font-size:.75rem; color:#cbd5e1; text-align:center; padding:.5rem; }
+
+/* ── Dropped Items ──────────────────────────────────── */
+.rb-item { display:inline-flex; align-items:center; gap:.4rem; padding:5px 10px; margin:3px; border-radius:6px; font-size:.8rem; font-weight:600; cursor:grab; user-select:none; transition:all .12s; }
+.rb-item:active { cursor:grabbing; opacity:.7; }
+.rb-item .rb-remove { cursor:pointer; opacity:.5; font-size:.7rem; margin-left:.2rem; }
+.rb-item .rb-remove:hover { opacity:1; }
+.rb-col  { background:#eef2ff; color:#4338ca; border:1px solid #c7d2fe; }
+.rb-grp  { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+.rb-sort { background:#fef9c3; color:#854d0e; border:1px solid #fde68a; }
+.rb-agg  { background:#fce7f3; color:#9d174d; border:1px solid #fbcfe8; }
+
+/* ── Filter Row ─────────────────────────────────────── */
+.rb-filter { display:grid; grid-template-columns:180px 120px 1fr 30px; gap:.4rem; align-items:center; margin-bottom:.4rem; }
+.rb-filter select, .rb-filter input { border:1px solid #d1d5db; border-radius:6px; padding:5px 8px; font-size:.82rem; }
+.rb-filter-rm { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; border:none; background:#fee2e2; color:#dc2626; cursor:pointer; font-size:.8rem; }
+
+/* ── Action Bar ─────────────────────────────────────── */
+.rb-actions { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; padding:1rem; }
+.rb-btn { padding:8px 18px; border-radius:7px; font-size:.85rem; font-weight:700; border:none; cursor:pointer; transition:all .15s; }
+.rb-btn:hover { filter:brightness(.92); }
+.rb-btn-primary { background:#4f46e5; color:#fff; }
+.rb-btn-success { background:#16a34a; color:#fff; }
+.rb-btn-outline { background:#fff; color:#374151; border:1px solid #d1d5db; }
+
+/* ── Preview Table ──────────────────────────────────── */
+.rb-preview { overflow-x:auto; }
+.rb-preview table { width:100%; border-collapse:collapse; font-size:.8rem; }
+.rb-preview th { background:#f1f5f9; padding:7px 10px; text-align:left; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; }
+.rb-preview td { padding:6px 10px; border-top:1px solid #f1f5f9; }
+.rb-preview tr:hover { background:#f8fafc; }
+.rb-preview .num { text-align:right; font-variant-numeric:tabular-nums; }
+.rb-error { padding:1rem; color:#dc2626; background:#fef2f2; border-radius:8px; font-size:.85rem; }
+</style>
+
+<script>
+/* ── State ──────────────────────────────────────────── */
+const FIELDS = {{ fields | tojson }};
+const SOURCE_ID = {{ source_id | tojson }};
+const SAVED = {{ (saved_report.config if saved_report else {}) | tojson }};
+const SAVED_NAME = {{ (saved_report.name if saved_report else '') | tojson }};
+const SAVED_ID = {{ (saved_report.id if saved_report else 'null') | tojson }};
+const FIELD_MAP = {};
+FIELDS.forEach(f => FIELD_MAP[f.field_code] = f);
+
+let columns   = SAVED.columns    || [];
+let filters   = SAVED.filters    || [];
+let groupBy   = SAVED.group_by   || [];
+let orderBy   = SAVED.order_by   || [];
+let aggregates= SAVED.aggregates || [];
+let dragData  = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (SAVED_NAME) document.getElementById('reportName').value = SAVED_NAME;
+  render();
+});
+
+/* ── Helpers ────────────────────────────────────────── */
+function label(code) { return FIELD_MAP[code]?.field_label || code; }
+function ftype(code) { return FIELD_MAP[code]?.field_type || 'TEXT'; }
+
+function getConfig() {
+  return { columns, filters, group_by: groupBy, order_by: orderBy, aggregates,
+           limit: parseInt(document.getElementById('rowLimit')?.value || 500) };
+}
+function syncHidden() {
+  var c = JSON.stringify(getConfig());
+  document.querySelectorAll('.cfg-sync').forEach(el => el.value = c);
+  document.querySelectorAll('.name-sync').forEach(el => el.value =
+    document.getElementById('reportName')?.value || 'Custom Report');
+}
+
+function selectSource() {
+  var sid = document.getElementById('sourceSelect').value;
+  if (sid) window.location = '/reports/builder?source_id=' + sid;
+}
+
+/* ── Drag & Drop ────────────────────────────────────── */
+function onDragStartField(e, code) {
+  dragData = { code, from: 'palette' };
+  e.dataTransfer.effectAllowed = 'copy';
+  e.dataTransfer.setData('text/plain', code);
+  e.target.style.opacity = '.5';
+}
+function onDragStartItem(e, code, zone, idx) {
+  dragData = { code, from: zone, idx };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', code);
+  e.target.style.opacity = '.5';
+}
+function onDragEnd(e) { e.target.style.opacity = '1'; dragData = null; }
+
+function onDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+
+function onDropColumns(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (!dragData) return;
+  // Remove from previous zone if moving
+  if (dragData.from === 'columns') columns.splice(dragData.idx, 1);
+  else if (dragData.from === 'group') { groupBy.splice(dragData.idx, 1); }
+  // Add to columns if not already there
+  if (!columns.includes(dragData.code)) columns.push(dragData.code);
+  render();
+}
+function onDropGroup(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (!dragData) return;
+  if (dragData.from === 'group') groupBy.splice(dragData.idx, 1);
+  if (!groupBy.includes(dragData.code)) groupBy.push(dragData.code);
+  // Also ensure it's in columns
+  if (!columns.includes(dragData.code)) columns.push(dragData.code);
+  render();
+}
+function onDropSort(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (!dragData) return;
+  if (!orderBy.find(o => o.field === dragData.code))
+    orderBy.push({ field: dragData.code, dir: 'ASC' });
+  render();
+}
+function onDropFilter(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if (!dragData) return;
+  filters.push({ field: dragData.code, op: '=', value: '' });
+  render();
+}
+
+function removeCol(i) { columns.splice(i, 1); render(); }
+function removeGrp(i) { groupBy.splice(i, 1); render(); }
+function removeSort(i) { orderBy.splice(i, 1); render(); }
+function removeFilter(i) { filters.splice(i, 1); render(); }
+function updateFilter(i, key, val) { filters[i][key] = val; }
+function toggleSortDir(i) {
+  orderBy[i].dir = orderBy[i].dir === 'ASC' ? 'DESC' : 'ASC';
+  render();
+}
+function toggleAgg(code) {
+  var idx = aggregates.findIndex(a => a.field === code);
+  if (idx > -1) { aggregates.splice(idx, 1); }
+  else {
+    var f = FIELD_MAP[code];
+    var fn = f?.default_aggregate || (f?.field_type === 'NUMBER' || f?.field_type === 'CURRENCY' ? 'SUM' : 'COUNT');
+    aggregates.push({ field: code, fn });
+  }
+  render();
+}
+function cycleAgg(code) {
+  var fns = ['COUNT','SUM','AVG','MIN','MAX'];
+  var idx = aggregates.findIndex(a => a.field === code);
+  if (idx < 0) return;
+  var ci = fns.indexOf(aggregates[idx].fn);
+  aggregates[idx].fn = fns[(ci + 1) % fns.length];
+  render();
+}
+
+/* Reorder within columns zone via drag between items */
+function onDropColReorder(e, targetIdx) {
+  e.preventDefault(); e.stopPropagation();
+  if (!dragData || dragData.from !== 'columns') return;
+  var item = columns.splice(dragData.idx, 1)[0];
+  columns.splice(targetIdx, 0, item);
+  render();
+}
+
+/* ── Render ─────────────────────────────────────────── */
+function render() {
+  // Columns zone
+  var cz = document.getElementById('zoneColumns');
+  if (!columns.length) {
+    cz.innerHTML = '<div class="rb-zone-hint">Drag fields here to add columns</div>';
+  } else {
+    cz.innerHTML = columns.map((c, i) => {
+      var isAgg = aggregates.find(a => a.field === c);
+      var aggLabel = isAgg ? ' <span class="rb-agg" style="padding:1px 5px;font-size:.65rem;cursor:pointer;" onclick="cycleAgg(\'' + c + '\')" title="Click to cycle aggregate">' + isAgg.fn + '</span>' : '';
+      return '<span class="rb-item rb-col" draggable="true" ' +
+        'ondragstart="onDragStartItem(event,\'' + c + '\',\'columns\',' + i + ')" ondragend="onDragEnd(event)" ' +
+        'ondragover="event.preventDefault()" ondrop="onDropColReorder(event,' + i + ')">' +
+        label(c) + aggLabel +
+        '<span class="rb-remove" onclick="removeCol(' + i + ')">&#10005;</span></span>';
+    }).join('');
+  }
+
+  // Group zone
+  var gz = document.getElementById('zoneGroup');
+  if (!groupBy.length) {
+    gz.innerHTML = '<div class="rb-zone-hint">Drag fields here to group</div>';
+  } else {
+    gz.innerHTML = groupBy.map((c, i) =>
+      '<span class="rb-item rb-grp" draggable="true" ' +
+      'ondragstart="onDragStartItem(event,\'' + c + '\',\'group\',' + i + ')" ondragend="onDragEnd(event)">' +
+      label(c) + '<span class="rb-remove" onclick="removeGrp(' + i + ')">&#10005;</span></span>'
+    ).join('');
+  }
+
+  // Sort zone
+  var sz = document.getElementById('zoneSort');
+  if (!orderBy.length) {
+    sz.innerHTML = '<div class="rb-zone-hint">Drag fields here to sort</div>';
+  } else {
+    sz.innerHTML = orderBy.map((o, i) =>
+      '<span class="rb-item rb-sort" style="cursor:pointer;" onclick="toggleSortDir(' + i + ')">' +
+      label(o.field) + ' <span style="font-size:.72rem;">' + (o.dir === 'ASC' ? '&#9650;' : '&#9660;') + '</span>' +
+      '<span class="rb-remove" onclick="event.stopPropagation();removeSort(' + i + ')">&#10005;</span></span>'
+    ).join('');
+  }
+
+  // Filters zone
+  var fz = document.getElementById('zoneFilters');
+  var filterHTML = filters.map((f, i) => {
+    var opts = FIELDS.filter(x => x.is_filterable).map(x =>
+      '<option value="' + x.field_code + '"' + (x.field_code === f.field ? ' selected' : '') + '>' + x.field_label + '</option>'
+    ).join('');
+    var opOpts = ['=','!=','>','<','>=','<=','LIKE','ILIKE','IS NULL','IS NOT NULL'].map(op =>
+      '<option' + (op === f.op ? ' selected' : '') + '>' + op + '</option>'
+    ).join('');
+    var needsValue = !['IS NULL','IS NOT NULL'].includes(f.op);
+    return '<div class="rb-filter">' +
+      '<select onchange="updateFilter(' + i + ',\'field\',this.value)">' + opts + '</select>' +
+      '<select onchange="updateFilter(' + i + ',\'op\',this.value);render()">' + opOpts + '</select>' +
+      (needsValue ? '<input value="' + (f.value||'').replace(/"/g,'&quot;') + '" placeholder="Value..." onchange="updateFilter(' + i + ',\'value\',this.value)">' : '<span></span>') +
+      '<button class="rb-filter-rm" onclick="removeFilter(' + i + ')">&#10005;</button></div>';
+  }).join('');
+  fz.innerHTML = filterHTML || '<div class="rb-zone-hint">Drag fields here to add filter criteria</div>';
+
+  // Palette: highlight used fields
+  document.querySelectorAll('.rb-field').forEach(el => {
+    var code = el.dataset.code;
+    var inUse = columns.includes(code) || groupBy.includes(code);
+    el.style.borderColor = inUse ? '#818cf8' : '#e2e8f0';
+    el.style.background = inUse ? '#eef2ff' : '#fff';
+    var dot = el.querySelector('.rb-dot');
+    if (dot) dot.style.background = inUse ? '#818cf8' : '#cbd5e1';
+  });
+
+  syncHidden();
+}
+
+/* ── Preview ────────────────────────────────────────── */
+function runPreview() {
+  syncHidden();
+  var btn = document.getElementById('previewBtn');
+  btn.disabled = true; btn.textContent = 'Loading...';
+  fetch('/reports/builder/preview', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ source_id: SOURCE_ID, config: getConfig() })
+  }).then(r => r.json()).then(data => {
+    btn.disabled = false; btn.textContent = 'Run Preview';
+    var panel = document.getElementById('previewPanel');
+    if (data.status === 'error') { panel.innerHTML = '<div class="rb-error">' + data.message + '</div>'; return; }
+    if (!data.rows.length) { panel.innerHTML = '<div style="padding:2rem;text-align:center;color:#94a3b8;">No data found for this configuration.</div>'; return; }
+    // Use server-provided column order (matches drag order)
+    var keys = data.columns || Object.keys(data.rows[0]);
+    var numCols = new Set();
+    data.rows.slice(0,3).forEach(r => keys.forEach(k => { if (typeof r[k] === 'number') numCols.add(k); }));
+    var html = '<div class="rb-preview"><table><thead><tr>' +
+      keys.map(k => '<th>' + label(k) + '</th>').join('') +
+      '</tr></thead><tbody>' +
+      data.rows.map(r => '<tr>' + keys.map(k => {
+        var v = r[k]; if (v === null || v === undefined) v = '';
+        var cls = numCols.has(k) ? ' class="num"' : '';
+        if (typeof v === 'number') v = v.toLocaleString(undefined, {maximumFractionDigits:2});
+        return '<td' + cls + '>' + v + '</td>';
+      }).join('') + '</tr>').join('') +
+      '</tbody></table></div>' +
+      '<div style="padding:.5rem .75rem;font-size:.75rem;color:#94a3b8;background:#f8fafc;border-top:1px solid #f1f5f9;">Showing ' + data.rows.length + ' rows (preview capped at 50)</div>';
+    panel.innerHTML = html;
+  }).catch(e => {
+    btn.disabled = false; btn.textContent = 'Run Preview';
+    document.getElementById('previewPanel').innerHTML = '<div class="rb-error">Request failed: ' + e.message + '</div>';
+  });
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Report Builder</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/reports/saved" class="rb-btn rb-btn-outline" style="padding:6px 14px;text-decoration:none;font-size:.82rem;">My Reports</a>
+    <a href="/reports/scheduled" class="rb-btn rb-btn-outline" style="padding:6px 14px;text-decoration:none;font-size:.82rem;">Scheduled</a>
+  </div>
+</div>
+
+{# Data Source Picker #}
+<section class="card" style="padding:.75rem 1rem;margin-bottom:1rem;">
+  <div style="display:flex;gap:.6rem;align-items:center;">
+    <label style="font-size:.78rem;font-weight:700;color:#64748b;white-space:nowrap;">Data Source</label>
+    <select id="sourceSelect" onchange="selectSource()"
+            data-hint="Choose which underlying data set your report is built from — 25+ sources cover every module."
+            style="flex:1;border:1px solid #d1d5db;border-radius:7px;padding:8px 12px;font-size:.875rem;">
+      <option value="">-- Select a data source --</option>
+      {% set ns = namespace(current='') %}
+      {% for s in sources|sort(attribute='module,sort_order') %}
+        {% if s.module != ns.current %}
+          {% if ns.current %}</optgroup>{% endif %}
+          <optgroup label="{{ s.module|upper }}">
+          {% set ns.current = s.module %}
+        {% endif %}
+      <option value="{{ s.id }}" {% if source_id == s.id %}selected{% endif %}>{{ s.source_label }}</option>
+      {% endfor %}
+      {% if ns.current %}</optgroup>{% endif %}
+    </select>
+  </div>
+  {% if source_id %}
+  {% set src = sources|selectattr('id','eq',source_id)|first %}
+  {% if src %}<div style="margin-top:.3rem;font-size:.78rem;color:#94a3b8;">{{ src.description }}</div>{% endif %}
+  {% endif %}
+</section>
+
+{% if source_id and fields %}
+<div class="rb-layout">
+  {# ── Left: Field Palette ─────────────────────────── #}
+  <aside class="rb-palette" data-hint="Drag any field to one of the zones on the right. Type badges: TEX=text, NUM=number, DAT=date, CUR=currency, BOO=boolean.">
+    <h3>Available Fields</h3>
+    <div style="font-size:.72rem;color:#94a3b8;margin-bottom:.6rem;">Drag fields to the zones on the right</div>
+    {% for f in fields %}
+    <div class="rb-field" draggable="true" data-code="{{ f.field_code }}"
+         ondragstart="onDragStartField(event,'{{ f.field_code }}')" ondragend="onDragEnd(event)">
+      <span class="rb-dot" style="width:6px;height:6px;border-radius:50%;background:#cbd5e1;flex-shrink:0;"></span>
+      <span style="flex:1;">{{ f.field_label }}</span>
+      <span class="ft ft-{{ f.field_type }}">{{ f.field_type[:3] }}</span>
+    </div>
+    {% endfor %}
+  </aside>
+
+  {# ── Right: Drop Zones + Preview ─────────────────── #}
+  <div class="rb-canvas">
+    {# Columns #}
+    <section class="card" style="padding:.75rem;">
+      <div class="rb-zone-header">
+        <span class="rb-zone-title">Columns <span style="font-weight:400;color:#cbd5e1;">(drag to reorder)</span></span>
+        <span style="font-size:.72rem;color:#94a3b8;">{{ '{{' }} columns.length {{ '}}' }} selected</span>
+      </div>
+      <div class="rb-zone" id="zoneColumns"
+           data-hint="Fields dropped here appear as columns in the output, in the order shown."
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropColumns(event)">
+        <div class="rb-zone-hint">Drag fields here to add columns</div>
+      </div>
+    </section>
+
+    {# Filters #}
+    <section class="card" style="padding:.75rem;">
+      <div class="rb-zone-header">
+        <span class="rb-zone-title">Filter Criteria</span>
+        <button class="rb-btn rb-btn-outline" style="padding:3px 10px;font-size:.75rem;" onclick="filters.push({field:FIELDS[0]?.field_code||'',op:'=',value:''});render();">+ Add</button>
+      </div>
+      <div class="rb-zone" id="zoneFilters"
+           data-hint="Narrow the result set. Operators: =, !=, >, <, >=, <=, LIKE, IN, IS NULL, IS NOT NULL."
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropFilter(event)">
+        <div class="rb-zone-hint">Drag fields here to add filter criteria</div>
+      </div>
+    </section>
+
+    {# Group By #}
+    <section class="card" style="padding:.75rem;">
+      <div class="rb-zone-header">
+        <span class="rb-zone-title"
+              data-hint="Grouped columns are kept verbatim; non-grouped numeric columns auto-aggregate with their default function.">Group By <span style="font-weight:400;color:#cbd5e1;">(optional)</span></span>
+        <span style="font-size:.72rem;color:#94a3b8;">Non-grouped columns auto-aggregate</span>
+      </div>
+      <div class="rb-zone" id="zoneGroup"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropGroup(event)">
+        <div class="rb-zone-hint">Drag fields here to group</div>
+      </div>
+    </section>
+
+    {# Sort #}
+    <section class="card" style="padding:.75rem;">
+      <div class="rb-zone-header">
+        <span class="rb-zone-title">Sort Order <span style="font-weight:400;color:#cbd5e1;">(click to toggle ASC/DESC)</span></span>
+      </div>
+      <div class="rb-zone" id="zoneSort"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDropSort(event)">
+        <div class="rb-zone-hint">Drag fields here to sort</div>
+      </div>
+    </section>
+
+    {# Actions #}
+    <section class="card rb-actions">
+      <button id="previewBtn" onclick="runPreview()" class="rb-btn rb-btn-primary">Run Preview</button>
+
+      <div style="height:24px;width:1px;background:#e2e8f0;"></div>
+
+      <form method="post" action="/reports/builder/export" style="display:flex;gap:.4rem;align-items:center;">
+        <input type="hidden" name="source_id" value="{{ source_id }}">
+        <input type="hidden" name="config" class="cfg-sync" value="{}">
+        <input type="hidden" name="report_id" value="{{ saved_report.id if saved_report else '' }}">
+        <input id="reportName" name="report_name"
+               value="{{ saved_report.name if saved_report else 'Custom Report' }}"
+               placeholder="Report name"
+               style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.85rem;width:160px;">
+        <select name="fmt" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.85rem;">
+          <option value="xlsx">Excel</option>
+          <option value="csv">CSV</option>
+          <option value="pdf">PDF</option>
+        </select>
+        <button type="submit" class="rb-btn rb-btn-success">Export</button>
+      </form>
+
+      <div style="height:24px;width:1px;background:#e2e8f0;"></div>
+
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <label style="font-size:.78rem;color:#64748b;font-weight:600;">Rows:</label>
+        <input id="rowLimit" type="number" value="500" min="1" max="10000"
+               style="width:80px;border:1px solid #d1d5db;border-radius:6px;padding:5px 8px;font-size:.85rem;">
+      </div>
+
+      <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center;">
+        <form method="post" action="/reports/saved/save" style="display:flex;gap:.4rem;align-items:center;">
+          <input type="hidden" name="report_id" value="{{ saved_report.id if saved_report else '' }}">
+          <input type="hidden" name="source_id" value="{{ source_id }}">
+          <input type="hidden" name="config" class="cfg-sync" value="{}">
+          <input type="hidden" name="name" class="name-sync" value="">
+          <label style="font-size:.78rem;display:flex;align-items:center;gap:.3rem;color:#64748b;">
+            <input type="checkbox" name="is_shared"> Share
+          </label>
+          <button type="submit" class="rb-btn rb-btn-outline" onclick="syncHidden()">Save</button>
+        </form>
+      </div>
+    </section>
+
+    {# Preview Results #}
+    <section class="card" style="padding:0;overflow:hidden;" id="previewPanel">
+      <div style="padding:2.5rem;text-align:center;color:#cbd5e1;">
+        <div style="font-size:2rem;margin-bottom:.5rem;">&#128202;</div>
+        <div style="font-size:.9rem;font-weight:600;">Configure your report above, then click "Run Preview"</div>
+        <div style="font-size:.78rem;margin-top:.25rem;">Drag fields from the left panel into Columns, Filters, Group By, or Sort zones</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* Sync forms before submit */
+document.querySelectorAll('form').forEach(f => {
+  f.addEventListener('submit', syncHidden);
+});
+</script>
+{% endif %}
+
+{% endblock %}

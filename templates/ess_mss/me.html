@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% block page_title %}My Portal{% endblock %}
+{% block content %}
+
+{% set emp = profile.employee %}
+{% set today = import('datetime').date.today() if false else none %}
+
+{# ── Profile Header ──────────────────────────────────────────────── #}
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;">
+  <div style="width:56px;height:56px;border-radius:50%;background:var(--primary,#4f46e5);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#fff;flex-shrink:0;">
+    {{ emp.full_name[:1] if emp else '?' }}
+  </div>
+  <div style="flex:1;">
+    <div style="font-size:1.2rem;font-weight:700;">{{ emp.full_name if emp else 'Employee' }}</div>
+    <div style="font-size:.85rem;color:#6b7280;">{{ emp.position_title or '—' }} · {{ emp.department or '—' }}</div>
+    <div style="font-size:.8rem;color:#9ca3af;margin-top:.15rem;">{{ emp.employee_no }} · {{ emp.employment_type or '' }} · Hired {{ emp.date_hired }}</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.4rem;align-items:flex-end;">
+    <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;
+      background:{% if emp and emp.employment_status=='ACTIVE' %}#dcfce7{% else %}#fee2e2{% endif %};
+      color:{% if emp and emp.employment_status=='ACTIVE' %}#166534{% else %}#991b1b{% endif %};">
+      {{ emp.employment_status if emp else '—' }}
+    </span>
+    <a href="/me/profile" style="font-size:.8rem;color:var(--primary,#4f46e5);">View Profile →</a>
+  </div>
+</div>
+
+{# ── Quick Actions ────────────────────────────────────────────────── #}
+<div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+  <a href="/me/inbox" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;background:var(--primary,#4f46e5);color:#fff;display:flex;align-items:center;gap:.35rem;">
+    Inbox
+    {% if inbox_counts and inbox_counts.unread %}
+    <span style="background:#fff;color:var(--primary,#4f46e5);font-size:.7rem;font-weight:800;padding:1px 6px;border-radius:999px;">{{ inbox_counts.unread }}</span>
+    {% endif %}
+  </a>
+  <a href="/leave/requests/new" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">File Leave</a>
+  <a href="/me/certificates" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">Request Certificate</a>
+  <a href="/me/compensation" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">Compensation</a>
+  <a href="/me/benefits" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">My Benefits</a>
+  {% if onboarding %}
+  <a href="/me/onboarding" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #f59e0b;color:#92400e;background:#fffbeb;">Onboarding</a>
+  {% endif %}
+</div>
+
+{# ── Onboarding Banner (if active) ───────────────────────────────── #}
+{% if onboarding and onboarding.checklist and onboarding.checklist.stage != 'ACTIVATED' %}
+{% set ob_items = onboarding.get('checklist_items', []) %}
+<a href="/me/onboarding" class="card" style="padding:1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;text-decoration:none;color:inherit;border-left:4px solid #f59e0b;background:linear-gradient(135deg,#fffbeb,#fff);">
+  <div style="font-size:1.5rem;">🎉</div>
+  <div style="flex:1;">
+    <div style="font-size:.9rem;font-weight:700;color:#92400e;">Welcome! Your onboarding is in progress</div>
+    <div style="font-size:.8rem;color:#6b7280;">
+      Stage: <strong>{{ onboarding.checklist.stage }}</strong>
+      {% set done = ob_items|selectattr('is_completed')|list|length %}
+      {% set total = ob_items|length %}
+      · {{ done }}/{{ total }} tasks completed
+    </div>
+  </div>
+  <div style="font-size:.8rem;color:var(--primary,#4f46e5);font-weight:600;">View Details →</div>
+</a>
+{% endif %}
+
+{# ── KPI Cards Grid ───────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.25rem;">
+
+  {# Attendance Card #}
+  <a href="/me/attendance" class="card" style="padding:1rem;text-decoration:none;color:inherit;transition:box-shadow .15s;"
+     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.4rem;">Attendance This Month</div>
+    {% if att_summary %}
+    <div style="display:flex;gap:.75rem;align-items:baseline;">
+      <span style="font-size:1.5rem;font-weight:800;color:#16a34a;">{{ att_summary.present_days or 0 }}</span>
+      <span style="font-size:.8rem;color:#6b7280;">present</span>
+    </div>
+    <div style="display:flex;gap:1rem;font-size:.78rem;color:#6b7280;margin-top:.3rem;">
+      <span>{{ att_summary.late_days or 0 }} late</span>
+      <span>{{ att_summary.absent_days or 0 }} absent</span>
+      <span>{{ att_summary.total_hours or 0 }}h total</span>
+    </div>
+    {% else %}
+    <div style="font-size:1rem;font-weight:700;color:#9ca3af;">No records</div>
+    {% endif %}
+    <div style="font-size:.75rem;color:var(--primary,#4f46e5);margin-top:.5rem;">View DTR →</div>
+  </a>
+
+  {# Leave Card #}
+  <a href="/me/leaves" class="card" style="padding:1rem;text-decoration:none;color:inherit;transition:box-shadow .15s;"
+     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.4rem;">Leave Balances</div>
+    {% for b in balances[:3] %}
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:1px 0;">
+      <span>{{ b.leave_type_name }}</span>
+      <strong style="color:{% if b.balance <= 0 %}#dc2626{% elif b.balance < 3 %}#d97706{% else %}#166534{% endif %};">
+        {{ '%.1f'|format(b.balance) }}d
+      </strong>
+    </div>
+    {% endfor %}
+    <div style="font-size:.75rem;color:var(--primary,#4f46e5);margin-top:.5rem;">File Leave →</div>
+  </a>
+
+  {# Compensation Card #}
+  <a href="/me/compensation" class="card" style="padding:1rem;text-decoration:none;color:inherit;transition:box-shadow .15s;"
+     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.4rem;">Last Net Pay</div>
+    {% if comp and comp.latest_payslip %}
+    <div style="font-size:1.5rem;font-weight:800;color:#374151;font-family:monospace;">
+      ₱{{ '{:,.2f}'.format(comp.latest_payslip.net_pay) }}
+    </div>
+    <div style="font-size:.78rem;color:#6b7280;">{{ comp.latest_payslip.date_from }} – {{ comp.latest_payslip.date_to }}</div>
+    {% else %}
+    <div style="font-size:1rem;font-weight:700;color:#9ca3af;">No payslip yet</div>
+    {% endif %}
+    {% if comp and comp.loans %}
+    <div style="font-size:.75rem;color:#d97706;margin-top:.25rem;">{{ comp.loans|length }} active loan(s)</div>
+    {% endif %}
+    <div style="font-size:.75rem;color:var(--primary,#4f46e5);margin-top:.5rem;">View Details →</div>
+  </a>
+
+  {# Task Inbox Card #}
+  <a href="/me/inbox" class="card" style="padding:1rem;text-decoration:none;color:inherit;transition:box-shadow .15s;
+     {% if inbox_counts and inbox_counts.urgent %}border-left:3px solid #dc2626;{% endif %}"
+     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.4rem;">Action Items</div>
+    {% if inbox_counts %}
+    <div style="display:flex;gap:.75rem;align-items:baseline;">
+      <span style="font-size:1.5rem;font-weight:800;color:{% if inbox_counts.unread %}#dc2626{% else %}#16a34a{% endif %};">{{ inbox_counts.total or 0 }}</span>
+      <span style="font-size:.8rem;color:#6b7280;">pending</span>
+    </div>
+    {% if inbox_counts.unread %}
+    <div style="font-size:.78rem;color:#dc2626;font-weight:600;">{{ inbox_counts.unread }} unread</div>
+    {% endif %}
+    {% else %}
+    <div style="font-size:1rem;font-weight:700;color:#16a34a;">All clear!</div>
+    {% endif %}
+    <div style="font-size:.75rem;color:var(--primary,#4f46e5);margin-top:.5rem;">View Inbox →</div>
+  </a>
+
+  {# Benefits Card #}
+  <a href="/me/benefits" class="card" style="padding:1rem;text-decoration:none;color:inherit;transition:box-shadow .15s;"
+     onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.4rem;">Benefits</div>
+    {% if my_enrollments %}
+    <div style="display:flex;gap:.75rem;align-items:baseline;">
+      <span style="font-size:1.5rem;font-weight:800;color:#2563eb;">{{ my_enrollments|length }}</span>
+      <span style="font-size:.8rem;color:#6b7280;">active plan(s)</span>
+    </div>
+    {% set total_ee = my_enrollments|sum(attribute='employee_cost') %}
+    <div style="font-size:.78rem;color:#6b7280;margin-top:.25rem;">₱{{ '{:,.0f}'.format(total_ee) }}/mo your cost</div>
+    {% else %}
+    <div style="font-size:1rem;font-weight:700;color:#9ca3af;">No plans</div>
+    <div style="font-size:.78rem;color:#6b7280;">Contact HR to enroll</div>
+    {% endif %}
+    <div style="font-size:.75rem;color:var(--primary,#4f46e5);margin-top:.5rem;">View Benefits →</div>
+  </a>
+
+</div>
+
+{# ── Inbox Preview ────────────────────────────────────────────────── #}
+{% if inbox_items %}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Pending Actions</strong>
+    <a href="/me/inbox" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+  </div>
+  {% for item in inbox_items %}
+  <a href="{{ item.action_url or '/me/inbox' }}" style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.05);text-decoration:none;color:inherit;">
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      {% if not item.is_read %}<span style="width:6px;height:6px;border-radius:50%;background:#dc2626;flex-shrink:0;"></span>{% endif %}
+      <div>
+        <div style="font-size:.85rem;font-weight:{% if not item.is_read %}600{% else %}400{% endif %};">{{ item.title }}</div>
+        <div style="font-size:.72rem;color:#9ca3af;">{{ item.task_type }}</div>
+      </div>
+    </div>
+    <span style="font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:4px;
+      background:{% if item.priority=='URGENT' %}#fef2f2{% elif item.priority=='HIGH' %}#fffbeb{% else %}#f1f5f9{% endif %};
+      color:{% if item.priority=='URGENT' %}#991b1b{% elif item.priority=='HIGH' %}#92400e{% else %}#64748b{% endif %};">
+      {{ item.priority }}
+    </span>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ── Recent Leave Requests ────────────────────────────────────────── #}
+{% if leave_history %}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Recent Leave Requests</strong>
+    <a href="/me/leaves" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+  </div>
+  {% for lr in leave_history %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    <div>
+      <span style="font-size:.85rem;font-weight:500;">{{ lr.leave_type_name }}</span>
+      <span style="font-size:.8rem;color:#6b7280;margin-left:.5rem;">{{ lr.date_from }} – {{ lr.date_to }}</span>
+    </div>
+    <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;
+      background:{% if lr.status=='PENDING' %}#fef9c3{% elif lr.status=='APPROVED' %}#dcfce7{% else %}#fee2e2{% endif %};
+      color:{% if lr.status=='PENDING' %}#854d0e{% elif lr.status=='APPROVED' %}#166534{% else %}#991b1b{% endif %};">
+      {{ lr.status }}
+    </span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# ── Recent Attendance ────────────────────────────────────────────── #}
+{% if logs %}
+<section class="card" style="padding:1rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Recent Attendance</strong>
+    <a href="/me/attendance" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+        <th style="padding:4px 8px;text-align:left;">Date</th>
+        <th style="padding:4px 8px;">In</th>
+        <th style="padding:4px 8px;">Out</th>
+        <th style="padding:4px 8px;">Hours</th>
+        <th style="padding:4px 8px;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in logs %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:5px 8px;font-family:monospace;">{{ r.work_date }}</td>
+        <td style="padding:5px 8px;text-align:center;font-family:monospace;">{{ r.time_in.strftime('%H:%M') if r.time_in else '—' }}</td>
+        <td style="padding:5px 8px;text-align:center;font-family:monospace;">{{ r.time_out.strftime('%H:%M') if r.time_out else '—' }}</td>
+        <td style="padding:5px 8px;text-align:center;">{{ '%.1f'|format(r.worked_hours) if r.worked_hours else '—' }}</td>
+        <td style="padding:5px 8px;text-align:center;font-size:.75rem;font-weight:600;
+          color:{% if r.is_absent %}#dc2626{% elif r.is_late %}#d97706{% else %}#16a34a{% endif %};">
+          {% if r.is_absent %}Absent{% elif r.is_late %}Late{% else %}Present{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% endblock %}

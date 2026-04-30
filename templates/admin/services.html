@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block page_title %}Service Monitor{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:1rem;">
+  <h3 style="margin:0 0 0.25rem;">Service Monitor</h3>
+  <p class="small" style="margin:0;color:#6b7280;">Status of connected application services. Only visible to Super Admin.</p>
+</div>
+
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem;">
+  {% for svc in services %}
+  <div class="card" id="svc-card-{{ svc.name }}" style="border-left:4px solid {% if svc.status == 'up' %}#16a34a{% else %}#dc2626{% endif %};">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <strong>{{ svc.label }}</strong>
+        <div class="small" style="margin-top:0.25rem;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{% if svc.status == 'up' %}#16a34a{% else %}#dc2626{% endif %};margin-right:4px;"></span>
+          {% if svc.status == 'up' %}Running{% else %}Down / Unreachable{% endif %}
+        </div>
+        {% if svc.error %}
+        <div class="small" style="color:#6b7280;margin-top:0.25rem;word-break:break-all;">{{ svc.error }}</div>
+        {% endif %}
+      </div>
+      {% if svc.status != 'up' %}
+      <form method="post" action="/admin/services/{{ svc.name }}/start" style="margin-left:1rem;">
+        <button type="submit" class="btn-start" data-name="{{ svc.name }}" style="background:var(--primary);color:#fff;border:none;padding:0.4rem 0.9rem;border-radius:var(--radius);cursor:pointer;font-size:0.85rem;">
+          Start Service
+        </button>
+      </form>
+      {% else %}
+      <span style="font-size:0.8rem;color:#16a34a;font-weight:600;padding:0.4rem 0.6rem;">&#x2713; Online</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div style="margin-top:1rem;">
+  <a href="/admin/services" style="font-size:0.85rem;color:var(--primary);">&#x21bb; Refresh status</a>
+</div>
+
+<script>
+// AJAX start so the user stays on the page
+document.querySelectorAll('.btn-start').forEach(function(btn) {
+  btn.closest('form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var name = btn.dataset.name;
+    btn.disabled = true;
+    btn.textContent = 'Starting…';
+    fetch('/admin/services/' + name + '/start', {
+      method: 'POST',
+      headers: {'X-Requested-With': 'XMLHttpRequest'}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var card = document.getElementById('svc-card-' + name);
+      var msg = document.createElement('div');
+      msg.style.cssText = 'margin-top:0.5rem;font-size:0.85rem;color:' + (data.success ? '#166534' : '#991b1b') + ';';
+      msg.textContent = data.message;
+      card.appendChild(msg);
+      if (data.success) {
+        setTimeout(function() { location.reload(); }, 2000);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Start Service';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

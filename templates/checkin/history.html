@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}Check-In History{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">📜 My Check-In History</h2>
+    <div style="font-size:.85rem;color:#6b7280;">Recent check-in and check-out events</div>
+  </div>
+  <a href="/checkin/" style="padding:7px 14px;background:#4f46e5;color:#fff;border-radius:7px;text-decoration:none;font-size:.85rem;font-weight:600;">← Check-In</a>
+</div>
+
+{% if rows %}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
+    <thead>
+      <tr style="background:#f8fafc;border-bottom:1.5px solid #e5e7eb;">
+        <th style="text-align:left;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">When</th>
+        <th style="text-align:left;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Type</th>
+        <th style="text-align:left;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Activity</th>
+        <th style="text-align:center;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Face</th>
+        <th style="text-align:center;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Geo</th>
+        <th style="text-align:left;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Location</th>
+        <th style="text-align:left;padding:.6rem 1rem;color:#6b7280;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">Device</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid #f1f5f9;">
+        <td style="padding:.6rem 1rem;font-family:monospace;font-size:.82rem;">{{ r.checked_at.strftime('%b %d, %Y %I:%M:%S %p') }}</td>
+        <td style="padding:.6rem 1rem;">
+          <span style="padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:700;
+                 background:{% if r.check_type=='IN' %}#dcfce7{% else %}#fef3c7{% endif %};
+                 color:{% if r.check_type=='IN' %}#166534{% else %}#92400e{% endif %};">
+            {{ r.check_type }}
+          </span>
+        </td>
+        <td style="padding:.6rem 1rem;color:#374151;">{{ r.activity or 'regular' }}</td>
+        <td style="padding:.6rem 1rem;text-align:center;">
+          {% if r.face_verified is none %}
+            <span style="color:#9ca3af;">—</span>
+          {% elif r.face_verified %}
+            <span title="match score {{ '%.2f'|format(r.face_match_score or 0) }}" style="color:#16a34a;font-weight:700;">✓</span>
+            <span style="font-size:.75rem;color:#6b7280;">{{ '%.0f'|format((r.face_match_score or 0)*100) }}%</span>
+          {% else %}
+            <span style="color:#dc2626;font-weight:700;">✗</span>
+          {% endif %}
+        </td>
+        <td style="padding:.6rem 1rem;text-align:center;">
+          {% if r.geo_verified is none %}
+            <span style="color:#9ca3af;">—</span>
+          {% elif r.geo_verified %}
+            <span style="color:#16a34a;font-weight:700;">✓</span>
+          {% else %}
+            <span style="color:#dc2626;font-weight:700;">✗</span>
+          {% endif %}
+        </td>
+        <td style="padding:.6rem 1rem;color:#6b7280;font-family:monospace;font-size:.78rem;">
+          {% if r.latitude and r.longitude %}
+            {{ '%.5f'|format(r.latitude|float) }}, {{ '%.5f'|format(r.longitude|float) }}
+            {% if r.accuracy_m %}<br><span style="font-size:.7rem;">±{{ '%.0f'|format(r.accuracy_m|float) }}m</span>{% endif %}
+          {% else %}
+            <span style="color:#d1d5db;">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:.6rem 1rem;color:#6b7280;font-size:.8rem;">{{ r.device_kind or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<div class="card" style="padding:2.5rem;text-align:center;color:#9ca3af;">
+  <div style="font-size:2rem;margin-bottom:.5rem;">📭</div>
+  <div style="font-weight:600;">No check-ins yet.</div>
+  <div style="font-size:.85rem;margin-top:.25rem;">Go to <a href="/checkin/" style="color:#4f46e5;">Check-In</a> to record your first entry.</div>
+</div>
+{% endif %}
+{% endblock %}

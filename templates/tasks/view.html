@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ task.title }}{% endblock %}
+{% block extra_css %}{% include 'tasks/_shared.html' %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ task.title }}</h2>
+    <div class="sub">
+      <span class="status-badge s-{{ task.status }}">{{ task.status.replace('_',' ') }}</span>
+      <span class="prio-badge p-{{ task.priority }}">{{ task.priority }}</span>
+      <span class="cat-chip">{{ (task.task_category or 'WORK').replace('_',' ') }}</span>
+      {% if task.is_overdue %}
+      <span class="status-badge" style="background:#fee2e2;color:#991b1b;">⚠ Overdue</span>
+      {% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    <a href="{{ url_for('tasks.my_tasks') }}" class="btn btn-ghost">← Back</a>
+    {% if task.status in ('PENDING','IN_PROGRESS') %}
+    <form method="post" action="{{ url_for('tasks.task_complete', task_id=task.id) }}" style="display:inline;">
+      <button type="submit" class="btn btn-green">✓ Complete</button>
+    </form>
+    <form method="post" action="{{ url_for('tasks.task_dismiss', task_id=task.id) }}" style="display:inline;">
+      <button type="submit" class="btn btn-ghost">Dismiss</button>
+    </form>
+    {% else %}
+    <form method="post" action="{{ url_for('tasks.task_reopen', task_id=task.id) }}" style="display:inline;">
+      <button type="submit" class="btn btn-amber">↺ Reopen</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div>
+    <div class="card">
+      <h3>📝 Description</h3>
+      {% if task.description %}
+      <div style="white-space:pre-wrap;font-size:.9rem;line-height:1.5;color:#111827;">{{ task.description }}</div>
+      {% else %}
+      <p style="color:#9ca3af;font-size:.85rem;margin:0;">No description.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>💬 Comments</h3>
+      <div class="comments" id="commentList">
+        {% if task.comments %}
+          {% for c in task.comments %}
+          <div class="comment-row">
+            <div class="comment-meta">
+              <strong>{{ c.author_name }}</strong>
+              <span>· {{ c.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+              {% if c.edited_at %}<span>· edited</span>{% endif %}
+            </div>
+            <div class="comment-body">{{ c.body_html | safe }}</div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <p style="color:#9ca3af;font-size:.85rem;margin:0;" id="noComments">
+          No comments yet. Be the first — use @username to mention someone.
+        </p>
+        {% endif %}
+      </div>
+
+      <div style="margin-top:.85rem;">
+        <textarea id="commentBody" placeholder="Write a comment… Use @username to tag a colleague."
+                  style="width:100%;min-height:80px;padding:.55rem .7rem;border:1.5px solid #d1d5db;
+                         border-radius:8px;font-family:inherit;font-size:.88rem;"></textarea>
+        <div style="display:flex;justify-content:flex-end;margin-top:.4rem;">
+          <button type="button" onclick="postComment()" class="btn btn-primary btn-xs">Post</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>👥 Meta</h3>
+      <table style="width:100%;font-size:.85rem;">
+        <tbody>
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Assigned to</td>
+              <td style="text-align:right;font-weight:600;">{{ task.assignee_name or '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Department</td>
+              <td style="text-align:right;">{{ task.assignee_department or '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Assigned by</td>
+              <td style="text-align:right;">{{ task.assigner_name or 'System' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Created</td>
+              <td style="text-align:right;">{{ task.created_at.strftime('%b %d, %Y %H:%M') if task.created_at else '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Due Date</td>
+              <td style="text-align:right;
+                  {% if task.is_overdue %}color:#dc2626;font-weight:700;{% endif %}">
+                  {% if task.due_date %}{{ task.due_date.strftime('%b %d, %Y') }}
+                  {% if task.is_overdue %} ⚠{% endif %}
+                  {% else %}—{% endif %}
+              </td></tr>
+          {% if task.completed_at %}
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Completed</td>
+              <td style="text-align:right;">{{ task.completed_at.strftime('%b %d, %Y %H:%M') }}</td></tr>
+          {% endif %}
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Type</td>
+              <td style="text-align:right;font-family:monospace;font-size:.78rem;">{{ task.task_type or '—' }}</td></tr>
+          {% if task.source_table %}
+          <tr><td style="color:#6b7280;padding:.3rem 0;">Source</td>
+              <td style="text-align:right;font-family:monospace;font-size:.78rem;">{{ task.source_table }}{% if task.source_id %}:{{ task.source_id }}{% endif %}</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+      {% if task.action_url %}
+      <div style="margin-top:.6rem;">
+        <a href="{{ task.action_url }}" class="btn btn-ghost btn-xs">Go to source →</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+async function postComment(){
+  const body = document.getElementById('commentBody').value.trim();
+  if (!body) return;
+  const r = await fetch('{{ url_for("tasks.task_add_comment", task_id=task.id) }}', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({body: body}),
+  });
+  const d = await r.json();
+  if (!d.ok) { alert('Failed: ' + (d.message || 'unknown')); return; }
+  const c = d.comment;
+  const noMsg = document.getElementById('noComments');
+  if (noMsg) noMsg.remove();
+  const when = new Date(c.created_at).toLocaleString(undefined, {
+    year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+  const row = document.createElement('div');
+  row.className = 'comment-row';
+  row.innerHTML = `
+    <div class="comment-meta">
+      <strong>${c.author_name}</strong>
+      <span>· ${when}</span>
+    </div>
+    <div class="comment-body">${c.body_html}</div>`;
+  document.getElementById('commentList').appendChild(row);
+  document.getElementById('commentBody').value = '';
+}
+</script>
+{% endblock %}

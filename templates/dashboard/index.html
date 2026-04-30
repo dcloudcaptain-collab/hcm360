@@ -1,0 +1,477 @@
+{% extends 'base.html' %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+
+{# ── Feather icon-name → emoji map ── #}
+{% set ico = {
+  'users':'👥','user-check':'✅','user-plus':'🆕','user-x':'❌','user':'👤',
+  'clock':'🕐','alert-circle':'⚠️','alert-triangle':'⚠️',
+  'umbrella':'☂️','calendar':'📅','calendar-check':'📅',
+  'file':'📄','file-text':'📄','file-x':'📁','file-minus':'📁','file-plus':'📄',
+  'folder':'📂','clipboard':'📋','check-circle':'✅','check-square':'☑️',
+  'award':'🏆','star':'⭐','target':'🎯','trending-up':'📈','trending-down':'📉',
+  'bar-chart':'📊','bar-chart-2':'📊','pie-chart':'📊','activity':'📈',
+  'dollar-sign':'💰','credit-card':'💳','briefcase':'💼',
+  'heart':'❤️','thermometer':'🌡️','shield':'🛡️',
+  'mail':'✉️','bell':'🔔','send':'📤','inbox':'📥',
+  'settings':'⚙️','tool':'🔧','layers':'📚','grid':'📦',
+  'map-pin':'📍','home':'🏠','building':'🏢',
+  'book':'📖','book-open':'📖','edit':'✏️','edit-3':'✏️',
+  'search':'🔍','eye':'👁️','lock':'🔒','unlock':'🔓',
+  'refresh-cw':'🔄','rotate-cw':'🔄','x-circle':'🚫',
+  'zap':'⚡','cpu':'🖥️','database':'🗄️','server':'🖥️',
+  'download':'⬇️','upload':'⬆️','external-link':'🔗','link':'🔗',
+  'log-in':'🚪','log-out':'🚪','power':'🔌',
+  'plus':'➕','minus':'➖','trash':'🗑️','trash-2':'🗑️',
+  'message-square':'💬','message-circle':'💬','phone':'📞',
+  'image':'🖼️','camera':'📷','video':'🎬','music':'🎵',
+  'sun':'☀️','moon':'🌙','cloud':'☁️',
+  'flag':'🚩','tag':'🏷️','bookmark':'🔖',
+  'list':'📃','check':'✔️','x':'✖️','info':'ℹ️','help-circle':'❓',
+  'smile':'😊','frown':'😞','meh':'😐',
+  'gift':'🎁','coffee':'☕','feather':'🪶',
+  'move':'↔️','maximize':'⬜','minimize':'▪️',
+  'navigation':'🧭','compass':'🧭','crosshair':'⊕',
+} %}
+
+{# ── Role-aware greeting ── #}
+<div style="margin-bottom:1.25rem;">
+  <h2 style="margin:0 0 .25rem;font-size:1.4rem;font-weight:700;">
+    Good {% if now.hour < 12 %}morning{% elif now.hour < 17 %}afternoon{% else %}evening{% endif %},
+    {{ current_user.display_name.split()[0] if current_user else 'there' }}
+  </h2>
+  <p style="margin:0;color:#6b7280;font-size:0.9rem;">
+    {{ now.strftime('%A, %B %-d, %Y') if now else '' }}
+    &nbsp;·&nbsp; {{ current_user.role_code if current_user else '' }}
+  </p>
+</div>
+
+{# ── Quick actions bar — role-gated (MANAGER+). ARIA Chat + Report Builder always pinned. ── #}
+{% if current_user and current_user.role_code in ('SUPER_ADMIN','HR_ADMIN','EXECUTIVE','MANAGER') %}
+{% set role = current_user.role_code %}
+{% set role_actions = {
+    'SUPER_ADMIN': [
+        ('/admin/access-matrix',  '🔐', 'Access Matrix'),
+        ('/admin/users',          '👥', 'Users'),
+        ('/admin/tasks',          '🗂️', 'All Tasks'),
+        ('/rsp/requisitions/',    '📋', 'Requisitions'),
+        ('/payroll/',             '💰', 'Payroll'),
+        ('/admin/reminders',      '⏰', 'Reminders'),
+    ],
+    'HR_ADMIN': [
+        ('/employees',            '👥', 'Employees'),
+        ('/rsp/requisitions/',    '📋', 'Requisitions'),
+        ('/admin/task-templates', '📑', 'Task Templates'),
+        ('/payroll/',             '💰', 'Payroll'),
+        ('/leave/requests',       '☂️', 'Leave Requests'),
+        ('/admin/tasks',          '🗂️', 'All Tasks'),
+    ],
+    'EXECUTIVE': [
+        ('/workflow',             '🔀', 'Approvals'),
+        ('/me/inbox',             '📥', 'My Inbox'),
+        ('/rsp/requisitions/',    '📋', 'Requisitions'),
+        ('/workforce-planning/',  '📈', 'Workforce Planning'),
+    ],
+    'MANAGER': [
+        ('/tasks/team',           '👥', 'Team Tasks'),
+        ('/me/team',              '🏢', 'My Team'),
+        ('/leave/requests?status=PENDING', '☂️', 'Leave Approvals'),
+        ('/me/inbox',             '📥', 'My Inbox'),
+    ],
+} %}
+<div class="quick-actions" data-quick-actions style="margin-bottom:1.25rem;"
+     data-hint="Role-aware shortcuts to the tasks you run most. Report Builder + ARIA are always pinned.">
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;padding:0 0 .4rem;">
+    ⚡ Quick Actions
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+    {# Role-specific actions first #}
+    {% for url, icon, label in role_actions.get(role, []) %}
+    <a href="{{ url }}"
+       data-hint="Open {{ label }}"
+       style="display:inline-flex;align-items:center;gap:.4rem;padding:8px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;font-size:.82rem;font-weight:600;color:#374151;text-decoration:none;transition:all .15s;"
+       onmouseover="this.style.borderColor='#4f46e5';this.style.color='#4f46e5';this.style.transform='translateY(-1px)';this.style.boxShadow='0 2px 8px rgba(0,0,0,.06)';"
+       onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151';this.style.transform='';this.style.boxShadow='';">
+      <span>{{ icon }}</span><span>{{ label }}</span>
+    </a>
+    {% endfor %}
+    {# Always-pinned: Report Builder + ARIA Chat — visible to MANAGER+ on every login #}
+    <a href="/reports/builder"
+       data-hint="Drag-drop Report Builder — 32 data sources, 300+ fields. Save, schedule, export to CSV/XLSX/PDF."
+       style="display:inline-flex;align-items:center;gap:.4rem;padding:8px 14px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:#fff;border-radius:8px;font-size:.82rem;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(79,70,229,.25);transition:all .15s;"
+       onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 14px rgba(79,70,229,.4)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(79,70,229,.25)';">
+      <span>📊</span><span>Report Builder</span>
+    </a>
+    <a href="/ai"
+       data-hint="Ask ARIA natural-language questions. Answers cite live data with traceable SQL."
+       style="display:inline-flex;align-items:center;gap:.4rem;padding:8px 14px;background:linear-gradient(135deg,#0891b2 0%,#0ea5e9 100%);color:#fff;border-radius:8px;font-size:.82rem;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(8,145,178,.25);transition:all .15s;"
+       onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 14px rgba(8,145,178,.4)';"
+       onmouseout="this.style.transform='';this.style.boxShadow='0 2px 6px rgba(8,145,178,.25)';">
+      <span>🤖</span><span>ARIA Chat</span>
+    </a>
+  </div>
+</div>
+{% endif %}
+
+{# ── Manage Dashboard — library-toggle bar ── #}
+<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.55rem;"
+     data-hint="Your KPI tiles are curated. Click Manage Dashboard to pin/unpin from the industry-standard HR library.">
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;">
+    📊 Key Metrics
+    {% if pin_count and pin_count > 0 %}
+      <span style="text-transform:none;color:#4f46e5;letter-spacing:0;font-weight:600;margin-left:.4rem;">
+        · {{ pin_count }} pinned
+      </span>
+    {% else %}
+      <span style="text-transform:none;color:#9ca3af;letter-spacing:0;font-weight:500;margin-left:.4rem;font-style:italic;">
+        · showing role defaults
+      </span>
+    {% endif %}
+  </div>
+  <a href="{{ url_for('dashboard.manage') }}"
+     data-hint="Open the KPI Library — pick exactly which tiles you want on your Dashboard."
+     style="display:inline-flex;align-items:center;gap:.35rem;padding:5px 11px;
+            background:#fff;color:#4f46e5;border:1.5px solid #e0e7ff;border-radius:7px;
+            font-size:.75rem;font-weight:700;text-decoration:none;transition:all .15s;"
+     onmouseover="this.style.background='#eef2ff';this.style.borderColor='#c7d2fe';"
+     onmouseout="this.style.background='#fff';this.style.borderColor='#e0e7ff';">
+    ⚙️ Manage Dashboard
+  </a>
+</div>
+
+{# ── KPI Widget Grid — grouped by category ── #}
+{% if metrics %}
+{% set categories = {
+  'Workforce': ['core','attendance','leave_mgmt','analytics'],
+  'Talent & Performance': ['feedback','goals','calibration','onboarding','recruitment','performance','learning'],
+  'Compensation & Benefits': ['benefits','comp_review','payroll','wfp'],
+  'Compliance & Risk': ['certifications','discipline','health','skills'],
+  'Operations': ['workflow','reminders','ld','ess_mss','rewards']
+} %}
+
+{% for cat_name, cat_modules in categories.items() %}
+{% set cat_metrics = metrics|selectattr('module','in',cat_modules)|list %}
+{% if cat_metrics %}
+<div style="margin-bottom:.35rem;">
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;padding:0 0 .35rem;">{{ cat_name }}</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.75rem;margin-bottom:1.25rem;">
+    {% for m in cat_metrics %}
+    <a href="{{ m.filter_url or '#' }}" class="card"
+       style="display:flex;flex-direction:column;gap:.2rem;padding:.85rem 1rem;text-decoration:none;color:inherit;transition:box-shadow .15s,transform .1s;"
+       onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)';this.style.transform='translateY(-1px)'"
+       onmouseout="this.style.boxShadow='';this.style.transform=''">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;">
+          {{ m.label }}
+        </span>
+        <span style="font-size:1rem;opacity:.5;">{{ ico.get(m.icon, '📊') }}</span>
+      </div>
+      <strong style="font-size:1.6rem;font-weight:800;color:var(--primary,#4f46e5);line-height:1;">
+        {{ m.value if m.value is not none else '—' }}
+      </strong>
+      {% if m.trend is not none %}
+      <small style="font-size:.72rem;color:{{ '#16a34a' if m.trend >= 0 else '#dc2626' }};">
+        {{ '▲' if m.trend >= 0 else '▼' }} {{ m.trend|abs }}%
+      </small>
+      {% endif %}
+      <small style="font-size:.68rem;color:#b0bec5;">→ details</small>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{# ── Widget grid — user-pinnable panels (Today's Attendance Board, etc.) ── #}
+<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin:1rem 0 .55rem;"
+     data-hint="Widgets are compact panels powered by live data. Pin/unpin them from the library.">
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;">
+    🧩 Widgets
+    {% if widget_pin_count and widget_pin_count > 0 %}
+      <span style="text-transform:none;color:#4f46e5;letter-spacing:0;font-weight:600;margin-left:.4rem;">
+        · {{ widget_pin_count }} pinned
+      </span>
+    {% else %}
+      <span style="text-transform:none;color:#9ca3af;letter-spacing:0;font-weight:500;margin-left:.4rem;font-style:italic;">
+        · showing defaults
+      </span>
+    {% endif %}
+  </div>
+  <a href="{{ url_for('dashboard.widgets') }}"
+     data-hint="Open the Widget Library — pick from 20 industry-standard HR widgets."
+     style="display:inline-flex;align-items:center;gap:.35rem;padding:5px 11px;
+            background:#fff;color:#4f46e5;border:1.5px solid #e0e7ff;border-radius:7px;
+            font-size:.75rem;font-weight:700;text-decoration:none;transition:all .15s;"
+     onmouseover="this.style.background='#eef2ff';this.style.borderColor='#c7d2fe';"
+     onmouseout="this.style.background='#fff';this.style.borderColor='#e0e7ff';">
+    🧩 Manage Widgets
+  </a>
+</div>
+
+{% set badge_cls = {
+  'green':'background:#dcfce7;color:#166534;',
+  'amber':'background:#fef9c3;color:#854d0e;',
+  'red':  'background:#fee2e2;color:#991b1b;',
+  'blue': 'background:#dbeafe;color:#1e40af;',
+  'gray': 'background:#f3f4f6;color:#374151;',
+} %}
+
+{% if widgets %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:1rem;">
+  {% for w in widgets %}
+  <section class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem;">
+      <h3 style="margin:0;font-size:.95rem;font-weight:700;">
+        <span style="margin-right:.35rem;">{{ w.icon }}</span>{{ w.title }}
+      </h3>
+      {% if w.link_url %}
+      <a href="{{ w.link_url }}" style="font-size:.78rem;color:var(--primary,#4f46e5);white-space:nowrap;font-weight:600;">
+        {{ w.link_label or 'View all →' }}
+      </a>
+      {% endif %}
+    </div>
+
+    {% if w.error %}
+      <p style="color:#b91c1c;font-size:.8rem;background:#fee2e2;border-radius:6px;padding:.5rem .7rem;">
+        ⚠ Widget couldn't load: {{ w.error|e }}
+      </p>
+    {% elif not w.rows %}
+      <p style="color:#9ca3af;font-size:.82rem;margin:.5rem 0;">No data to show yet.</p>
+    {% elif w.render_mode == 'kv' %}
+      {# Key-value — one row, many cols (e.g., Payroll Snapshot) #}
+      {% set row = w.rows[0] %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;">
+        {% for k, v in row.items() %}
+        <div>
+          <div style="font-size:.7rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">{{ k }}</div>
+          <div style="font-weight:700;font-size:.95rem;color:#111827;">{{ v or '—' }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {# list / table mode — use columns_meta for labels + types #}
+      <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+        <thead>
+          <tr style="color:#6b7280;text-transform:uppercase;font-size:.65rem;letter-spacing:.04em;">
+            {% for col in w.columns_meta %}
+            <th style="padding:4px 6px;text-align:left;font-weight:600;">{{ col.label }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in w.rows[:w.max_rows] %}
+          <tr style="border-top:1px solid rgba(0,0,0,.05);">
+            {% for col in w.columns_meta %}
+              {% set val = row.get(col.field) %}
+              {% set ctype = col.type or 'text' %}
+              <td style="padding:5px 6px;
+                    {% if ctype=='muted' %}color:#6b7280;
+                    {% elif ctype=='mono' %}font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#374151;
+                    {% elif ctype=='int' %}font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-align:right;color:#111827;
+                    {% else %}color:#111827;font-weight:500;{% endif %}">
+                {% if ctype == 'badge' and val is not none %}
+                  {% set key = val|string %}
+                  {% set tone = (col.badge_map or {}).get(key, 'gray') %}
+                  <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.65rem;font-weight:700;
+                               {{ badge_cls.get(tone, badge_cls['gray']) }}">{{ val }}</span>
+                {% else %}
+                  {{ val if val is not none and val != '' else '—' }}
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<div style="background:#fff;border:2px dashed #e5e7eb;border-radius:11px;padding:2.5rem;text-align:center;color:#6b7280;">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">🧩</div>
+  <div style="font-weight:600;margin-bottom:.35rem;color:#111827;">No widgets pinned.</div>
+  <div style="font-size:.85rem;margin-bottom:.8rem;">
+    Open the library and tick what you want to see here.
+  </div>
+  <a href="{{ url_for('dashboard.widgets') }}"
+     style="display:inline-flex;align-items:center;gap:.35rem;padding:7px 16px;
+            background:#4f46e5;color:#fff;border-radius:7px;font-size:.82rem;font-weight:600;text-decoration:none;">
+    🧩 Open Widget Library →
+  </a>
+</div>
+{% endif %}
+
+{# ── (legacy contextual panels — disabled; replaced by widget grid above) ── #}
+{% if False %}
+<div class="grid two" style="gap:1.25rem;">
+
+  {# Left column #}
+  <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+    {# HR Admin / Executive — today board #}
+    {% if current_user and current_user.role_code in ('HR_ADMIN','SUPER_ADMIN','EXECUTIVE','PAYROLL_OFFICER') %}
+    <section class="card" style="padding:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="margin:0;font-size:1rem;font-weight:700;">Today's Attendance Board</h3>
+        <a href="/attendance/dtr" style="font-size:0.8rem;color:var(--primary,#4f46e5);">View all →</a>
+      </div>
+      {% if today_board %}
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead><tr style="color:#6b7280;text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;">
+          <th style="padding:4px 6px;text-align:left;">Employee</th>
+          <th style="padding:4px 6px;">Dept</th>
+          <th style="padding:4px 6px;">In</th>
+          <th style="padding:4px 6px;">Status</th>
+        </tr></thead>
+        <tbody>
+          {% for r in today_board[:10] %}
+          <tr style="border-top:1px solid rgba(0,0,0,.05);">
+            <td style="padding:5px 6px;font-weight:500;">{{ r.full_name }}</td>
+            <td style="padding:5px 6px;color:#6b7280;">{{ r.department or '—' }}</td>
+            <td style="padding:5px 6px;font-family:monospace;">{{ r.time_in.strftime('%H:%M') if r.time_in else '—' }}</td>
+            <td style="padding:5px 6px;">
+              {% if r.is_absent %}<span style="color:#dc2626;font-weight:600;">Absent</span>
+              {% elif r.is_late %}<span style="color:#d97706;font-weight:600;">Late</span>
+              {% elif r.is_present %}<span style="color:#16a34a;font-weight:600;">Present</span>
+              {% else %}<span style="color:#9ca3af;">—</span>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#9ca3af;font-size:.875rem;margin:.5rem 0;">No attendance records for today yet.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {# Employee self-service panel #}
+    {% if current_user and current_user.role_code in ('EMPLOYEE','MANAGER') %}
+    <section class="card" style="padding:1rem;">
+      <h3 style="margin:0 0 .75rem;font-size:1rem;font-weight:700;">My Today</h3>
+      {% if my_today %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Time In</div>
+          <div style="font-size:1.1rem;font-weight:700;font-family:monospace;">
+            {{ my_today.time_in.strftime('%H:%M') if my_today.time_in else '—' }}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Time Out</div>
+          <div style="font-size:1.1rem;font-weight:700;font-family:monospace;">
+            {{ my_today.time_out.strftime('%H:%M') if my_today.time_out else '—' }}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Hours</div>
+          <div style="font-size:1.1rem;font-weight:700;">
+            {{ '%.1f'|format(my_today.worked_hours) if my_today.worked_hours else '—' }}h
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Status</div>
+          <div style="font-size:1rem;font-weight:700;">
+            {% if my_today.is_late %}<span style="color:#d97706;">Late</span>
+            {% elif my_today.is_present %}<span style="color:#16a34a;">Present</span>
+            {% else %}<span style="color:#9ca3af;">No record</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <p style="color:#9ca3af;font-size:.875rem;">No attendance record yet today.</p>
+      {% endif %}
+      <div style="margin-top:.75rem;display:flex;gap:.5rem;">
+        <a href="/me/attendance" class="btn-small">My DTR</a>
+        <a href="/me/leaves" class="btn-small">My Leaves</a>
+        <a href="/me/payslips" class="btn-small">My Payslips</a>
+      </div>
+    </section>
+    {% endif %}
+
+    {# Pending approvals (Manager / HR) #}
+    {% if pending_approvals %}
+    <section class="card" style="padding:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="margin:0;font-size:1rem;font-weight:700;">
+          Pending Approvals
+          <span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.7rem;padding:1px 7px;margin-left:4px;">{{ pending_approvals|length }}</span>
+        </h3>
+        <a href="/my-team/approvals" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+      </div>
+      {% for a in pending_approvals[:5] %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.06);">
+        <div>
+          <div style="font-size:.85rem;font-weight:600;">{{ a.workflow_name }}</div>
+          <div style="font-size:.775rem;color:#6b7280;">{{ a.initiated_by }} · {{ '%.0f'|format(a.hours_pending) }}h pending</div>
+        </div>
+        <a href="/workflow/instances/{{ a.instance_id }}" style="font-size:.775rem;color:var(--primary,#4f46e5);white-space:nowrap;">Review →</a>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+  </div>
+
+  {# Right column #}
+  <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+    {# Leave requests pending #}
+    {% if recent_leave %}
+    <section class="card" style="padding:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="margin:0;font-size:1rem;font-weight:700;">Recent Leave Requests</h3>
+        <a href="/leave/requests" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+      </div>
+      {% for lr in recent_leave[:6] %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem 0;border-top:1px solid rgba(0,0,0,.06);">
+        <div>
+          <div style="font-size:.85rem;font-weight:500;">{{ lr.full_name or lr.employee_name }}</div>
+          <div style="font-size:.775rem;color:#6b7280;">{{ lr.leave_type_name }} · {{ lr.date_from }} – {{ lr.date_to }}</div>
+        </div>
+        <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;
+          background:{% if lr.status=='PENDING' %}#fef9c3{% elif lr.status=='APPROVED' %}#dcfce7{% else %}#fee2e2{% endif %};
+          color:{% if lr.status=='PENDING' %}#854d0e{% elif lr.status=='APPROVED' %}#166534{% else %}#991b1b{% endif %};">
+          {{ lr.status }}
+        </span>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {# Payroll snapshot #}
+    {% if payroll_snapshot %}
+    <section class="card" style="padding:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="margin:0;font-size:1rem;font-weight:700;">Payroll Snapshot</h3>
+        <a href="/payroll/runs" style="font-size:.8rem;color:var(--primary,#4f46e5);">View runs →</a>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Cutoff</div>
+          <div style="font-weight:700;">{{ payroll_snapshot.cutoff_label or '—' }}</div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Status</div>
+          <div style="font-weight:700;">{{ payroll_snapshot.run_status or '—' }}</div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Employees</div>
+          <div style="font-weight:700;">{{ payroll_snapshot.employee_count or '—' }}</div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Total Net Pay</div>
+          <div style="font-weight:700;">₱ {{ '{:,.0f}'.format(payroll_snapshot.total_net or 0) }}</div>
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+  </div>
+</div>
+{% endif %}{# ── close legacy contextual-panels block (replaced by widget grid) ── #}
+
+{% endblock %}

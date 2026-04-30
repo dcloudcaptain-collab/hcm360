@@ -1,0 +1,350 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ branding.company_name if branding else 'HCM Clean Build' }}</title>
+  {# Google Fonts — loaded once so any theme can reference these faces. #}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    :root {
+      --primary:      {{ theme.properties.primary_color }};
+      --secondary:    {{ theme.properties.secondary_color }};
+      --accent:       {{ theme.properties.accent_color }};
+      --bg:           {{ theme.properties.bg_color }};
+      --card:         {{ theme.properties.card_color }};
+      --sidebar:      {{ theme.properties.sidebar_color }};
+      --sidebar-text: {{ theme.properties.sidebar_text }};
+      --text:         {{ theme.properties.text_color }};
+      --radius:       {{ theme.properties.border_radius }};
+      --font:         {{ theme.properties.font_family }};
+    }
+    html, body {
+      background: var(--bg);
+      color:      var(--text);
+      font-family: var(--font);
+      font-weight: 400;
+    }
+    body { font-feature-settings: "ss01", "cv11"; }
+    h1, h2, h3, h4, h5, h6 { color: var(--text); font-weight: 700; letter-spacing: -0.01em; }
+    strong, b { font-weight: 600; }
+    .tiny  { font-size: 0.77rem; }
+    .small { font-size: 0.82rem; }
+  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hris-tour.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body{% if landing_layout == 'portal' %} data-portal-mode="1"{% endif %}>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">{{ branding.company_name if branding else 'HCM Clean Build' }}</div>
+    <div class="small">Metadata-driven platform</div>
+    <nav id="sidenav">
+      {# Group order and icons #}
+      {% set group_meta = {
+        'Core':          {'icon': '🏠', 'open': true},
+        'Workforce':     {'icon': '👥', 'open': true},
+        'Payroll':       {'icon': '💰', 'open': true},
+        'Self-Service':  {'icon': '🙋', 'open': true},
+        'Recruitment':   {'icon': '📋', 'open': false},
+        'Performance':   {'icon': '📝', 'open': false},
+        'Learning':      {'icon': '📚', 'open': false},
+        'Awards':        {'icon': '🏆', 'open': false},
+        '201 File':      {'icon': '📁', 'open': false},
+        'Discipline':    {'icon': '⚖️', 'open': false},
+        'Health':        {'icon': '🏥', 'open': false},
+        'Org Chart':     {'icon': '🏛️', 'open': false},
+        'Analytics':     {'icon': '📊', 'open': false},
+        'AI':            {'icon': '✦',  'open': false},
+        'Admin':         {'icon': '🛡️', 'open': false},
+        'System':        {'icon': '🔌', 'open': false},
+      } %}
+      {# Build a dict of group → links from nav_links #}
+      {% set ns = namespace(grouped={}) %}
+      {% for link in nav_links %}
+        {% set g = link.nav_group %}
+        {% if g not in ns.grouped %}{% set _ = ns.grouped.update({g: []}) %}{% endif %}
+        {% set _ = ns.grouped[g].append(link) %}
+      {% endfor %}
+      {# Inject feature-flag-only links into virtual groups #}
+      {% if feature_flags.get('LNK_SCENARIOS') %}
+        {% if 'Admin' not in ns.grouped %}{% set _ = ns.grouped.update({'Admin': []}) %}{% endif %}
+        {% set _ = ns.grouped['Admin'].append({'label': 'Simulated Scenarios', 'route_url': '/admin/simulated-scenarios', 'page_code': '_SCENARIOS'}) %}
+      {% endif %}
+      {% if current_user and current_user.role_code == 'SUPER_ADMIN' %}
+        {% if 'System' not in ns.grouped %}{% set _ = ns.grouped.update({'System': []}) %}{% endif %}
+        {% set _ = ns.grouped['System'].append({'label': 'Services', 'route_url': '/admin/services', 'page_code': '_SERVICES'}) %}
+      {% endif %}
+
+      {# Render groups in defined order #}
+      {% for group_name in ['Core', 'Workforce', 'Payroll', 'Self-Service', 'Recruitment', 'Performance', 'Learning', 'Awards', '201 File', 'Discipline', 'Health', 'Org Chart', 'Analytics', 'AI', 'Admin', 'System'] %}
+        {% if group_name in ns.grouped %}
+          {% set meta = group_meta[group_name] %}
+          {% set links = ns.grouped[group_name] %}
+          {% if group_name == 'Core' %}
+            {# Core links always visible, no collapse #}
+            <div class="nav-group-label">{{ meta.icon }} {{ group_name }}</div>
+            {% for link in links %}
+              <a href="{{ link.route_url }}" class="nav-link{{ ' active' if request.path == link.route_url }}"><span class="nav-ico">{{ link.nav_icon or '•' }}</span>{{ link.label }}</a>
+            {% endfor %}
+          {% else %}
+            <details class="nav-group" id="navg-{{ group_name }}" {% if meta.open %}open{% endif %}>
+              <summary class="nav-group-summary">{{ meta.icon }} {{ group_name }}</summary>
+              {% for link in links %}
+                <a href="{{ link.route_url }}" class="nav-link{{ ' active' if request.path == link.route_url }}"><span class="nav-ico">{{ link.nav_icon or '•' }}</span>{{ link.label }}</a>
+              {% endfor %}
+            </details>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+    </nav>
+  </aside>
+  <style>
+    .nav-group-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.6);
+      padding: 14px 16px 4px;
+      user-select: none;
+    }
+    details.nav-group { border: none; }
+    details.nav-group summary.nav-group-summary {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.6);
+      padding: 14px 16px 4px;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    details.nav-group summary.nav-group-summary::-webkit-details-marker { display: none; }
+    details.nav-group summary.nav-group-summary::after {
+      content: '›';
+      font-size: 1rem;
+      transition: transform .2s;
+      opacity: .5;
+    }
+    details.nav-group[open] summary.nav-group-summary::after {
+      transform: rotate(90deg);
+    }
+    .sidebar .nav-link {
+      display: block;
+      padding: 7px 16px 7px 22px;
+      color: var(--sidebar-text, #f8fafc);
+      text-decoration: none;
+      font-size: 0.875rem;
+      border-radius: 6px;
+      margin: 1px 8px;
+      opacity: .9;
+      transition: background .15s, opacity .15s;
+    }
+    .sidebar .nav-link:hover { background: rgba(255,255,255,.12); opacity: 1; }
+    .sidebar .nav-link.active { background: rgba(255,255,255,.18); opacity: 1; font-weight: 600; }
+    .sidebar .nav-link .nav-ico {
+      display: inline-block; width: 1.2em; margin-right: .5em;
+      text-align: center; font-style: normal;
+    }
+
+    /* ── Portal mode: hide sidebar, single-column layout.
+       The "🏠 Portal" button in the topbar is the way back to /portal.       */
+    body[data-portal-mode] .layout { grid-template-columns: 1fr; }
+    body[data-portal-mode] .sidebar { display: none; }
+
+    /* "Back to Portal" button — only visible when in portal mode + off /portal */
+    .portal-home-btn {
+      display: inline-flex; align-items: center; gap: .35rem;
+      background: var(--primary, #4f46e5); color: #fff;
+      border: 1px solid var(--primary, #4f46e5); border-radius: 8px;
+      padding: 6px 12px; font-size: .82rem; font-weight: 700;
+      text-decoration: none; cursor: pointer;
+      transition: filter .15s, transform .12s;
+    }
+    .portal-home-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  </style>
+  <script>
+    /* Persist open/closed state per group in localStorage */
+    (function() {
+      document.querySelectorAll('details.nav-group').forEach(function(el) {
+        var key = 'navg_' + el.id;
+        var saved = localStorage.getItem(key);
+        if (saved !== null) el.open = saved === '1';
+        el.addEventListener('toggle', function() {
+          localStorage.setItem(key, el.open ? '1' : '0');
+        });
+      });
+    })();
+  </script>
+  <main class="main">
+    <header class="topbar card">
+      <div>
+        <div class="title">{% block page_title %}HCM{% endblock %}</div>
+        <div class="small">{% if current_user %}Current view: {{ current_user.display_name }} ({{ current_user.role_code }}){% else %}Simulated login required{% endif %}</div>
+      </div>
+      <div class="top-actions">
+        {% if landing_layout == 'portal' and request.path != '/portal' %}
+        <a href="/portal" class="portal-home-btn"
+           title="Back to Portal"
+           data-hint="You're in Portal mode — the sidebar is hidden. Use this button anytime to return to the Portal launcher.">
+          🏠 Portal
+        </a>
+        {% endif %}
+        <form action="/search" method="get" class="searchbox">
+          <input name="q" placeholder="Search employee, workflow, transaction, page">
+          <button type="submit">Search</button>
+        </form>
+        {% if current_user %}
+        {# ── Notification Bell ── #}
+        <div class="notif-bell" id="notifBell" style="position:relative;display:inline-flex;align-items:center;">
+          <button id="notifBtn" onclick="toggleNotifPanel()" title="Notifications"
+            style="background:none;border:none;cursor:pointer;font-size:1.25rem;position:relative;padding:4px 8px;color:var(--sidebar-text,#f8fafc);">
+            🔔
+            <span id="notifBadge" style="display:none;position:absolute;top:0;right:0;background:#ef4444;color:#fff;font-size:0.65rem;font-weight:700;border-radius:999px;padding:1px 5px;min-width:18px;text-align:center;line-height:1.4;"></span>
+          </button>
+          <div id="notifPanel" style="display:none;position:absolute;top:calc(100% + 4px);right:0;width:320px;background:var(--card,#fff);border:1px solid rgba(0,0,0,.1);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:1000;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px 8px;border-bottom:1px solid rgba(0,0,0,.08);">
+              <strong style="font-size:0.875rem;">Notifications</strong>
+              <a href="#" onclick="markAllRead();return false;" style="font-size:0.75rem;color:#6366f1;text-decoration:none;">Mark all read</a>
+            </div>
+            <div id="notifList" style="max-height:300px;overflow-y:auto;"></div>
+            <div style="padding:8px 14px;border-top:1px solid rgba(0,0,0,.08);text-align:center;">
+              <a href="/notifications" style="font-size:0.8rem;color:#6366f1;">View all</a>
+            </div>
+          </div>
+        </div>
+        <a href="/me/theme" title="Theme Preference" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 8px;text-decoration:none;">🎨</a>
+        {# ── Landing-mode toggle: Portal ↔ Dashboard ── #}
+        {% set _portal_path = '/portal' %}
+        {% set _on_portal = (request.path == _portal_path) %}
+        <form method="post" action="/me/preferences/landing" class="inline compact"
+              data-hint="Switch between Portal mode (tile-grid launcher) and Dashboard mode (KPI cards). Saved as your default landing.">
+          <input type="hidden" name="layout" value="{{ 'dashboard' if _on_portal else 'portal' }}">
+          <button type="submit"
+                  title="{{ 'Switch to Dashboard mode' if _on_portal else 'Switch to Portal mode' }}"
+                  style="background:none;border:1px solid var(--sidebar-text,rgba(255,255,255,.3));color:var(--sidebar-text,#f8fafc);cursor:pointer;font-size:.78rem;font-weight:600;padding:5px 10px;border-radius:6px;">
+            {{ '📑 Dashboard' if _on_portal else '🧩 Portal' }}
+          </button>
+        </form>
+        <form method="post" action="/switch-user" class="inline compact">
+          <select name="user_id" onchange="this.form.submit()">
+            {% for u in users %}
+            <option value="{{ u.id }}" {% if current_user.id == u.id %}selected{% endif %}>{{ u.display_name }} ({{ u.role_code }})</option>
+            {% endfor %}
+          </select>
+        </form>
+        <form method="post" action="/logout" class="compact">
+          <button type="submit">Logout</button>
+        </form>
+        {% endif %}
+      </div>
+    </header>
+    {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for cat, msg in messages %}<div class="alert alert-{{ cat }}" style="margin:0.75rem 0;padding:0.75rem 1rem;border-radius:var(--radius);background:{% if cat=='success' %}#dcfce7{% elif cat=='error' %}#fee2e2{% else %}#dbeafe{% endif %};color:{% if cat=='success' %}#166534{% elif cat=='error' %}#991b1b{% else %}#1e40af{% endif %};font-size:0.9rem;border-left:4px solid {% if cat=='success' %}#16a34a{% elif cat=='error' %}#dc2626{% else %}#2563eb{% endif %};">{{ msg }}</div>{% endfor %}{% endif %}{% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% if current_user %}
+<script>
+(function() {
+  var badge = document.getElementById('notifBadge');
+  var list  = document.getElementById('notifList');
+  var panel = document.getElementById('notifPanel');
+
+  function loadNotifs() {
+    fetch('/api/v1/notifications/unread')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var count = data.count || 0;
+        if (count > 0) {
+          badge.textContent = count > 99 ? '99+' : count;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+        if (!list) return;
+        if (!data.notifications || data.notifications.length === 0) {
+          list.innerHTML = '<p style="padding:16px;text-align:center;color:#9ca3af;font-size:0.875rem;">No new notifications</p>';
+          return;
+        }
+        list.innerHTML = data.notifications.map(function(n) {
+          /* Whole card is click-through to action_url; fallback to /notifications.
+             The click handler also marks the notification read (fire-and-forget). */
+          var href = n.action_url || '/notifications';
+          var esc = function(s){
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+              return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+            });
+          };
+          return '<a href="' + esc(href) + '"' +
+            ' onclick="markRead(' + n.id + ',event)"' +
+            ' style="display:block;text-decoration:none;color:inherit;' +
+            'padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(0,0,0,.05);' +
+            'background:' + (n.is_read ? 'transparent' : 'rgba(99,102,241,.05)') + ';' +
+            'transition:background .15s;"' +
+            ' onmouseover="this.style.background=\'rgba(0,0,0,.04)\'"' +
+            ' onmouseout="this.style.background=\'' + (n.is_read ? 'transparent' : 'rgba(99,102,241,.05)') + '\'">' +
+            '<div style="font-size:0.825rem;font-weight:' + (n.is_read ? '400' : '600') + ';margin-bottom:2px;">' + esc(n.title) + '</div>' +
+            '<div style="font-size:0.775rem;color:#6b7280;margin-bottom:3px;">' + esc(n.body) + '</div>' +
+            '<div style="font-size:0.7rem;color:#6366f1;font-weight:600;">View details &rarr;</div>' +
+            '</a>';
+        }).join('');
+      })
+      .catch(function() {});
+  }
+
+  window.toggleNotifPanel = function() {
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
+      loadNotifs();
+    } else {
+      panel.style.display = 'none';
+    }
+  };
+
+  window.markRead = function(id, ev) {
+    /* Fire-and-forget — browser follows the <a href> in parallel.
+       `keepalive` ensures the request completes even after navigation. */
+    try {
+      fetch('/api/v1/notifications/' + id + '/read', {
+        method: 'POST',
+        keepalive: true,
+      });
+    } catch (e) { /* no-op */ }
+    /* Do NOT prevent default — the <a href> must navigate. */
+    return true;
+  };
+
+  window.markAllRead = function() {
+    fetch('/api/v1/notifications/read-all', { method: 'POST' })
+      .then(function() { loadNotifs(); });
+  };
+
+  /* Close panel when clicking outside */
+  document.addEventListener('click', function(e) {
+    var bell = document.getElementById('notifBell');
+    if (bell && !bell.contains(e.target)) {
+      if (panel) panel.style.display = 'none';
+    }
+  });
+
+  /* Poll every 60 seconds for badge count */
+  loadNotifs();
+  setInterval(loadNotifs, 60000);
+})();
+</script>
+{% endif %}
+{% block extra_js %}{% endblock %}
+{% if session.get('user_id') %}
+<script src="{{ url_for('static', filename='js/hris-tour.js') }}" defer></script>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block page_title %}New Locator Slip{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📍 New Locator Slip</h2><div class="sub">Brief out-of-office notification</div></div>
+  <a href="/locator-slips/" class="btn btn-ghost">← Cancel</a>
+</div>
+
+<form method="POST">
+  <div class="card">
+    <div class="grid-2">
+      <div class="f-group">
+        <label>Date</label>
+        <input type="date" name="slip_date" value="{{ today }}" />
+      </div>
+      <div class="f-group">
+        <label>Time Out *</label>
+        <input type="time" name="time_out" required />
+      </div>
+      <div class="f-group">
+        <label>Expected Return</label>
+        <input type="time" name="expected_return" />
+      </div>
+      <div class="f-group">
+        <label>Destination *</label>
+        <input type="text" name="destination" required placeholder="e.g., City Hall Annex" />
+      </div>
+    </div>
+    <div class="f-group" style="margin-top:.8rem;">
+      <label>Purpose *</label>
+      <textarea name="purpose" required minlength="5" placeholder="e.g., Submit endorsement letter to mayor's office"></textarea>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem;">
+    <a href="/locator-slips/" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">📨 Submit</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block page_title %}Report Builder{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Report Builder & Export</h2>
+  <a href="/reports" style="font-size:.85rem;color:var(--primary,#4f46e5);">← KPI Dashboard</a>
+</div>
+
+<div class="grid two" style="gap:1.25rem;align-items:start;">
+
+  {# Export form #}
+  <section class="card" style="padding:1.25rem;">
+    <h3 style="margin:0 0 1rem;font-size:1rem;font-weight:700;">Build & Export Report</h3>
+    <form method="post" action="/reports/export">
+      <div style="display:flex;flex-direction:column;gap:.85rem;">
+
+        <div>
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Report Type</label>
+          <select name="report_type" id="reportType"
+                  style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:7px 10px;font-size:.875rem;"
+                  onchange="toggleParams(this.value)">
+            {% for rt in report_types %}
+            <option value="{{ rt }}">{{ rt.replace('_',' ').title() }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div id="dateParams">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+            <div>
+              <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Date From</label>
+              <input type="date" name="date_from"
+                     style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+            </div>
+            <div>
+              <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Date To</label>
+              <input type="date" name="date_to"
+                     style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+            </div>
+          </div>
+        </div>
+
+        <div id="payrunParam" style="display:none;">
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Pay Run ID</label>
+          <input type="number" name="pay_run_id" placeholder="e.g. 12"
+                 style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        </div>
+
+        <div>
+          <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.3rem;color:#374151;">Format</label>
+          <div style="display:flex;gap:.5rem;">
+            <label style="flex:1;display:flex;align-items:center;gap:.4rem;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;">
+              <input type="radio" name="fmt" value="xlsx" checked> Excel (.xlsx)
+            </label>
+            <label style="flex:1;display:flex;align-items:center;gap:.4rem;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;">
+              <input type="radio" name="fmt" value="csv"> CSV (.csv)
+            </label>
+          </div>
+        </div>
+
+        <button type="submit"
+                style="width:100%;padding:9px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:7px;font-size:.9rem;font-weight:600;cursor:pointer;">
+          ↓ Generate & Download
+        </button>
+      </div>
+    </form>
+  </section>
+
+  {# Report catalog #}
+  <div style="display:flex;flex-direction:column;gap:.75rem;">
+    <h3 style="margin:0;font-size:1rem;font-weight:700;">Available Reports</h3>
+
+    {% set catalog = [
+      ('headcount','Headcount Report','Active employees by department, type, and status','attendance'),
+      ('attendance_summary','Attendance Summary','Present, late, absent counts with OT hours by period','attendance'),
+      ('leave_utilization','Leave Utilization','Days taken per leave type and department','leave_mgmt'),
+      ('payroll_register','Payroll Register','Full per-employee payslip breakdown for a pay run','payroll'),
+      ('loan_tracker','Loan Tracker','All active loans with balance and deduction schedule','payroll'),
+      ('government_remittances','Government Remittances','SSS / PhilHealth / HDMF summary per pay run','payroll'),
+    ] %}
+
+    {% for code, title, desc, module in catalog %}
+    <div class="card" style="padding:.85rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+      <div>
+        <div style="font-size:.9rem;font-weight:600;">{{ title }}</div>
+        <div style="font-size:.8rem;color:#6b7280;margin-top:.15rem;">{{ desc }}</div>
+        <span style="font-size:.68rem;font-weight:600;padding:1px 7px;border-radius:999px;background:rgba(99,102,241,.08);color:var(--primary,#4f46e5);margin-top:.3rem;display:inline-block;">
+          {{ module }}
+        </span>
+      </div>
+      <div style="display:flex;gap:.4rem;flex-shrink:0;">
+        <a href="/reports/export?report_type={{ code }}&fmt=xlsx" method="post"
+           onclick="this.closest('form') && this.closest('form').submit(); return false;"
+           style="padding:5px 12px;background:#16a34a;color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;white-space:nowrap;">
+          Excel
+        </a>
+        <a href="/reports/export?report_type={{ code }}&fmt=csv"
+           style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.8rem;color:#374151;text-decoration:none;white-space:nowrap;">
+          CSV
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="card" style="padding:1rem;background:rgba(99,102,241,.04);border:1px dashed rgba(99,102,241,.25);">
+      <div style="font-size:.875rem;font-weight:600;color:var(--primary,#4f46e5);">Need a custom report?</div>
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">
+        Use ARIA AI assistant to describe what you need — it can query the analytics schema and generate a tailored export.
+      </div>
+      <a href="/ai/chat" style="font-size:.8rem;color:var(--primary,#4f46e5);margin-top:.35rem;display:inline-block;">Ask ARIA →</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleParams(reportType) {
+  var needsPayRun = ['payroll_register','government_remittances'].indexOf(reportType) !== -1;
+  document.getElementById('dateParams').style.display  = needsPayRun ? 'none' : 'block';
+  document.getElementById('payrunParam').style.display = needsPayRun ? 'block' : 'none';
+}
+</script>
+
+{% endblock %}

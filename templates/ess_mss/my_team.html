@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block page_title %}My Team{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">My Team</h2>
+  <span style="font-size:.875rem;color:#6b7280;">{{ team|length }} direct report{{ 's' if team|length != 1 }}</span>
+</div>
+
+{# Quick stats #}
+<div style="display:flex;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#16a34a;">
+      {{ today|selectattr('is_present')|list|length }}
+    </div>
+    <div style="font-size:.75rem;color:#6b7280;">Present Today</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#d97706;">
+      {{ today|selectattr('is_late')|list|length }}
+    </div>
+    <div style="font-size:.75rem;color:#6b7280;">Late Today</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#dc2626;">
+      {{ today|selectattr('is_absent')|list|length }}
+    </div>
+    <div style="font-size:.75rem;color:#6b7280;">Absent Today</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#7c3aed;">{{ on_leave|length }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">On Leave Today</div>
+  </div>
+  {% if pending %}
+  <a href="/my-team/approvals" class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;text-decoration:none;background:#fef9c3;">
+    <div style="font-size:1.5rem;font-weight:800;color:#854d0e;">{{ pending|length }}</div>
+    <div style="font-size:.75rem;color:#854d0e;">Pending Approvals</div>
+  </a>
+  {% endif %}
+</div>
+
+{# Today's attendance board #}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Today's Attendance</strong>
+    <a href="/my-team/attendance" style="font-size:.8rem;color:var(--primary,#4f46e5);">Full view →</a>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
+    {% for e in today %}
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .85rem;border-radius:8px;min-width:180px;
+      background:{% if e.is_absent %}#fee2e2{% elif e.is_late %}#fef9c3{% elif e.is_present %}#dcfce7{% else %}#f1f5f9{% endif %};">
+      <div style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0;">
+        {{ e.full_name[:1] }}
+      </div>
+      <div>
+        <div style="font-size:.85rem;font-weight:600;">{{ e.full_name }}</div>
+        <div style="font-size:.72rem;color:#6b7280;">
+          {% if e.is_absent %}Absent
+          {% elif e.location_status %}{{ e.location_status.replace('_',' ') }}
+          {% elif e.time_in %}In: {{ e.time_in.strftime('%H:%M') }}
+          {% else %}No record{% endif %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p style="color:#9ca3af;font-size:.875rem;">No team members found.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{# On leave today #}
+{% if on_leave %}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.6rem;">On Leave Today</strong>
+  {% for e in on_leave %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    <span style="font-size:.875rem;font-weight:500;">{{ e.full_name }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">{{ e.leave_type }} · {{ e.total_days }}d</span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# Pending approvals #}
+{% if pending %}
+<section class="card" style="padding:1rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Pending Approvals
+      <span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 6px;margin-left:4px;">{{ pending|length }}</span>
+    </strong>
+    <a href="/my-team/approvals" style="font-size:.8rem;color:var(--primary,#4f46e5);">View all →</a>
+  </div>
+  {% for a in pending %}
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.06);">
+    <div>
+      <div style="font-size:.875rem;font-weight:600;">{{ a.workflow_name }}</div>
+      <div style="font-size:.775rem;color:#6b7280;">
+        {{ a.initiated_by }} · {{ '%.0f'|format(a.hours_pending) }}h ago
+      </div>
+    </div>
+    <a href="/workflow/instances/{{ a.instance_id }}"
+       style="padding:5px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;">
+      Review
+    </a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# Full roster #}
+<section class="card" style="padding:1rem;margin-top:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Team Roster</strong>
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;">
+        <th style="padding:6px 8px;text-align:left;">Name</th>
+        <th style="padding:6px 8px;">Position</th>
+        <th style="padding:6px 8px;">Type</th>
+        <th style="padding:6px 8px;">Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in team %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:7px 8px;font-weight:500;">
+          <a href="/employees/{{ e.id }}" style="color:inherit;text-decoration:none;">{{ e.full_name }}</a>
+        </td>
+        <td style="padding:7px 8px;text-align:center;color:#6b7280;">{{ e.position_title or '—' }}</td>
+        <td style="padding:7px 8px;text-align:center;font-size:.8rem;color:#6b7280;">{{ e.employment_type or '—' }}</td>
+        <td style="padding:7px 8px;text-align:center;font-size:.8rem;color:#6b7280;">{{ e.work_email or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

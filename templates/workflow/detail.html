@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block page_title %}Workflow Detail{% endblock %}
+{% block content %}
+<section class="card"><h3>{{ workflow.workflow_name }}</h3><p>Module: {{ workflow.module_code }}</p></section>
+<div class="grid two">
+<section class="card"><h3>Steps</h3><table><thead><tr><th>Order</th><th>Step</th><th>Role</th><th>Gate</th></tr></thead><tbody>{% for s in steps %}<tr><td>{{ s.step_order }}</td><td>{{ s.step_name }}</td><td>{{ s.approver_role_code }}</td><td>{{ s.is_gate }}</td></tr>{% endfor %}</tbody></table></section>
+<section class="card"><h3>Routes</h3><table><thead><tr><th>From</th><th>Action</th><th>To</th><th>Type</th></tr></thead><tbody>{% for r in routes %}<tr><td>{{ r.from_step }}</td><td>{{ r.action_code }}</td><td>{{ r.to_step or 'Terminal' }}</td><td>{{ r.route_type }}</td></tr>{% endfor %}</tbody></table></section>
+</div>
+{% endblock %}

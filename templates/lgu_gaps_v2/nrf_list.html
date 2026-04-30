@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block page_title %}Narrative Reports{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📝 Narrative Report Forms (NRF)</h2>
+       <div class="sub">Post-training reports submitted by employees</div></div>
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead><tr><th>Training</th><th>Employee</th><th>Dates</th>
+      <th>Facilitator</th><th>Rating</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td><strong>{{ r.training_title or '—' }}</strong></td>
+      <td>{{ r.employee_name }}</td>
+      <td style="font-size:.8rem;">{{ r.training_dates or '—' }}</td>
+      <td style="font-size:.8rem;">{{ r.facilitator or '—' }}</td>
+      <td>{% if r.evaluation_rating %}{{ '⭐' * (r.evaluation_rating|int) }} ({{ r.evaluation_rating }}){% else %}—{% endif %}</td>
+      <td><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></td>
+      <td><a href="/learning/nrf/{{ r.id }}" class="btn-xs btn-ghost" style="color:#4f46e5;border:1px solid #4f46e5;">View</a></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">📝</div>
+  <div style="font-weight:600;">No narrative reports yet.</div>
+  <div style="font-size:.85rem;margin-top:.25rem;">After completing a training session, employees can file a narrative report.</div>
+</div>
+{% endif %}
+{% endblock %}

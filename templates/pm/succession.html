@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block page_title %}Succession Planning{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Succession Planning Matrix</h2>
+  <a href="/pm/cycles" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Cycles</a>
+</div>
+
+{# Readiness legend #}
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for code, label, bg, fg in [
+    ('READY_NOW','Ready Now','#dcfce7','#166534'),
+    ('READY_1_2YR','1–2 Years','#dbeafe','#1e40af'),
+    ('READY_3_5YR','3–5 Years','#fef9c3','#854d0e'),
+    ('LONG_TERM','Long Term','#f1f5f9','#374151')
+  ] %}
+  <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;background:{{ bg }};color:{{ fg }};">
+    {{ label }}
+  </span>
+  {% endfor %}
+</div>
+
+{% if matrix %}
+{# Group by position #}
+{% set ns = namespace(grouped={}) %}
+{% for m in matrix %}
+  {% if m.position_title not in ns.grouped %}
+    {% set _ = ns.grouped.update({m.position_title: []}) %}
+  {% endif %}
+  {% set _ = ns.grouped[m.position_title].append(m) %}
+{% endfor %}
+
+<div style="display:flex;flex-direction:column;gap:1rem;">
+  {% for position, successors in ns.grouped.items() %}
+  <section class="card" style="padding:1rem;">
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;">
+      <span style="font-size:.95rem;font-weight:700;">{{ position }}</span>
+      <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(99,102,241,.08);color:var(--primary,#4f46e5);">
+        {{ successors|length }} successor{{ 's' if successors|length != 1 }}
+      </span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem;">
+      {% for s in successors %}
+      <div style="padding:.75rem;border-radius:8px;border:1px solid rgba(0,0,0,.08);
+                  background:{% if s.readiness == 'READY_NOW' %}rgba(22,163,74,.05){% elif s.readiness == 'READY_1_2YR' %}rgba(37,99,235,.05){% elif s.readiness == 'READY_3_5YR' %}rgba(217,119,6,.05){% else %}rgba(0,0,0,.02){% endif %};">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+          <span style="font-size:.875rem;font-weight:600;">{{ s.successor_name }}</span>
+          <span style="font-size:.68rem;font-weight:600;padding:1px 7px;border-radius:999px;
+            background:{% if s.readiness == 'READY_NOW' %}#dcfce7{% elif s.readiness == 'READY_1_2YR' %}#dbeafe{% elif s.readiness == 'READY_3_5YR' %}#fef9c3{% else %}#f1f5f9{% endif %};
+            color:{% if s.readiness == 'READY_NOW' %}#166534{% elif s.readiness == 'READY_1_2YR' %}#1e40af{% elif s.readiness == 'READY_3_5YR' %}#854d0e{% else %}#374151{% endif %};">
+            {{ s.readiness.replace('_',' ') }}
+          </span>
+        </div>
+        <div style="font-size:.78rem;color:#6b7280;">
+          {{ s.department_name or '—' }} &nbsp;·&nbsp; SG {{ s.salary_grade }}
+        </div>
+        {% if s.development_needs %}
+        <div style="margin-top:.35rem;font-size:.75rem;color:#374151;padding:.3rem .5rem;background:rgba(0,0,0,.03);border-radius:4px;">
+          {{ s.development_needs[:100] }}{% if s.development_needs|length > 100 %}…{% endif %}
+        </div>
+        {% endif %}
+        <div style="margin-top:.3rem;font-size:.7rem;color:#9ca3af;">
+          Assessed: {{ s.assessed_on.strftime('%b %d, %Y') if s.assessed_on else '—' }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No succession planning data available. Add successors for key positions to populate this matrix.
+</div>
+{% endif %}
+
+{% endblock %}

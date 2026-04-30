@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block page_title %}Leave Balance Detail{% endblock %}
+{% block content %}
+
+{% set emp = data[0] if data else None %}
+
+<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+  <a href="/leave/balances" style="font-size:.825rem;color:#6b7280;text-decoration:none;">← Leave Balances</a>
+  <span style="color:#d1d5db;">/</span>
+  <h2 style="margin:0;font-size:1.15rem;font-weight:700;">
+    {% if emp %}{{ emp.employee_no }} — {{ year }} Leave Balances{% else %}Leave Balances{% endif %}
+  </h2>
+</div>
+
+{# ── Balance cards ───────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem;">
+  {% for b in data %}
+  <div class="card" style="padding:1.25rem;">
+    <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.5rem;">
+      {{ b.leave_type_name }}
+    </div>
+    <div style="font-size:2rem;font-weight:800;
+      color:{% if b.balance <= 0 %}#dc2626{% elif b.balance < 3 %}#d97706{% else %}#16a34a{% endif %};">
+      {{ '%.1f'|format(b.balance) }}
+    </div>
+    <div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">
+      of {{ '%.0f'|format(b.entitled_days) }} entitled days
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:.75rem;font-size:.78rem;color:#9ca3af;">
+      <span>Used: <b style="color:#374151;">{{ '%.1f'|format(b.used_days) }}</b></span>
+      <span>Pending: <b style="color:#374151;">{{ '%.1f'|format(b.pending_days) }}</b></span>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;grid-column:1/-1;">
+    No leave balances found for this employee.
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Manual Adjustment Form ──────────────────────────────────────── #}
+{% if can_adjust %}
+<section class="card" style="padding:1.25rem;margin-bottom:1.5rem;border-left:4px solid #d97706;">
+  <h3 style="margin:0 0 .875rem;font-size:.95rem;font-weight:700;color:#92400e;">
+    Manual Balance Adjustment
+  </h3>
+  <p style="margin:0 0 1rem;font-size:.825rem;color:#6b7280;">
+    Enter a positive number to credit days, or a negative number to debit days.
+    Every adjustment is logged with your name, timestamp, and reason.
+  </p>
+  <form method="post" action="/leave/balances/{{ employee_id }}/adjust"
+        style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;min-width:180px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Leave Type <span style="color:#dc2626;">*</span></label>
+      <select name="leave_type_id" required
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="">— select —</option>
+        {% for lt in leave_types %}
+        <option value="{{ lt.id }}">{{ lt.name }} ({{ lt.code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;width:100px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Year <span style="color:#dc2626;">*</span></label>
+      <input type="number" name="year" value="{{ year }}" required
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;width:140px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Days <span style="color:#dc2626;">*</span></label>
+      <input type="number" name="adjustment_days" required step="0.5"
+             placeholder="e.g. +2 or -1"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;font-family:monospace;">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:240px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Reason <span style="color:#dc2626;">*</span></label>
+      <input type="text" name="reason" required placeholder="State the reason for this adjustment…"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+
+    <button type="submit"
+            style="padding:7px 18px;background:#d97706;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      Apply
+    </button>
+  </form>
+</section>
+{% endif %}
+
+{# ── Adjustment history ──────────────────────────────────────────── #}
+{% if adjustments %}
+<section class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:.875rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.06);">
+    <h3 style="margin:0;font-size:.9rem;font-weight:700;">Adjustment History</h3>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 14px;text-align:left;">Date</th>
+        <th style="padding:8px 14px;text-align:left;">Leave Type</th>
+        <th style="padding:8px 14px;text-align:left;">Year</th>
+        <th style="padding:8px 14px;text-align:right;">Days</th>
+        <th style="padding:8px 14px;text-align:left;">Reason</th>
+        <th style="padding:8px 14px;text-align:left;">By</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in adjustments %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 14px;color:#6b7280;font-size:.8rem;white-space:nowrap;">
+          {{ a.adjusted_at.strftime('%Y-%m-%d %H:%M') }}
+        </td>
+        <td style="padding:8px 14px;font-weight:500;">
+          {{ a.leave_type_name }}
+          <span style="font-size:.72rem;color:#9ca3af;">({{ a.leave_type_code }})</span>
+        </td>
+        <td style="padding:8px 14px;color:#6b7280;">{{ a.year }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;font-weight:700;
+          color:{% if a.adjustment_days >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+          {% if a.adjustment_days >= 0 %}+{% endif %}{{ '%.2f'|format(a.adjustment_days) }}
+        </td>
+        <td style="padding:8px 14px;color:#374151;">{{ a.reason }}</td>
+        <td style="padding:8px 14px;color:#6b7280;font-size:.8rem;">{{ a.adjusted_by_name }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block page_title %}Apply for Loan{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee-picker.css') }}">
+<script src="{{ url_for('static', filename='js/employee-picker.js') }}"></script>
+<style>
+  .form-wrap   { max-width: 640px; }
+  .form-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-full   { grid-column: 1 / -1; }
+  .form-group  { display: flex; flex-direction: column; gap: .35rem; }
+  .form-group label { font-size: .75rem; font-weight: 600; color: #6b7280;
+                      text-transform: uppercase; letter-spacing: .04em; }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: .9rem; color: #111827; background: #fff;
+    transition: border-color .15s;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none; border-color: var(--primary, #4f46e5);
+    box-shadow: 0 0 0 3px rgba(79,70,229,.1);
+  }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .hint { font-size: .72rem; color: #9ca3af; margin-top: .15rem; }
+  .btn-row { display: flex; gap: .75rem; margin-top: 1.25rem; }
+  .btn-primary {
+    padding: 9px 22px; background: var(--primary, #4f46e5); color: #fff;
+    border: none; border-radius: 8px; font-size: .875rem; font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-primary:hover { opacity: .9; }
+  .btn-cancel {
+    padding: 9px 22px; background: #f3f4f6; color: #374151;
+    border: 1px solid #d1d5db; border-radius: 8px; font-size: .875rem;
+    font-weight: 600; text-decoration: none; display: inline-block;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-wrap">
+
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+    <a href="/payroll/loans"
+       style="color:#9ca3af;font-size:.85rem;text-decoration:none;">← Back to Loans</a>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 1.25rem;font-size:1.1rem;font-weight:700;">Apply for Loan</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+      <div style="padding:10px 14px;border-radius:8px;margin-bottom:1rem;font-size:.875rem;
+                  background:{% if cat=='danger' %}#fee2e2{% else %}#dcfce7{% endif %};
+                  color:{% if cat=='danger' %}#991b1b{% else %}#166534{% endif %};">
+        {{ msg }}
+      </div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="post" action="/payroll/loans/new">
+      <div class="form-grid">
+
+        {% if current_user and current_user.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER') %}
+        <div class="form-group form-full">
+          <label>Employee *</label>
+          <div id="loanEmpPicker"></div>
+          <span class="hint">Search by name, employee number, or email. Pick exactly one employee — adding a second replaces the first.</span>
+        </div>
+        {% else %}
+        <input type="hidden" name="employee_id" value="{{ session.get('employee_id','') }}">
+        {% endif %}
+
+        <div class="form-group">
+          <label>Loan Type</label>
+          <select name="loan_type" required>
+            <option value="COMPANY">Company Loan</option>
+            <option value="GSIS">GSIS</option>
+            <option value="PAGIBIG">Pag-IBIG (HDMF)</option>
+            <option value="SSS">SSS</option>
+            <option value="COOP">Cooperative</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Start Cutoff Period</label>
+          <select name="start_cutoff_id">
+            <option value="">— Not yet assigned —</option>
+            {% for p in periods %}
+            <option value="{{ p.id }}">{{ p.period_code }} ({{ p.date_from }} – {{ p.date_to }})</option>
+            {% endfor %}
+          </select>
+          <span class="hint">Leave blank if period is not yet confirmed.</span>
+        </div>
+
+        <div class="form-group">
+          <label>Principal Amount (₱)</label>
+          <input type="number" name="principal" step="0.01" min="1" placeholder="e.g. 50000.00" required>
+        </div>
+
+        <div class="form-group">
+          <label>Monthly Deduction (₱)</label>
+          <input type="number" name="monthly_deduction" step="0.01" min="0" placeholder="e.g. 2500.00">
+          <span class="hint">Leave blank to compute automatically from terms.</span>
+        </div>
+
+        <div class="form-group form-full">
+          <label>Purpose / Remarks</label>
+          <textarea name="purpose" placeholder="Brief description of loan purpose…"></textarea>
+        </div>
+
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn-primary" id="loanSubmitBtn">Submit Application</button>
+        <a href="/payroll/loans" class="btn-cancel">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+{% if current_user and current_user.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER') %}
+<script>
+(function(){
+  const mountEl = document.getElementById('loanEmpPicker');
+  if (!mountEl) return;
+  /* Single-select mode: name="employee_id" (not array). The picker's `single`
+     mode internally clears any previous selection when a new one is added,
+     so choosing a second employee overwrites the first instead of adding
+     to the list. The hidden input then carries exactly one id. */
+  const picker = new EmployeePicker(mountEl, {
+    mode: 'single',
+    inputName: 'employee_id',
+    allowDepartments: false,  // Loans go to ONE employee — dept/group makes no sense
+    allowGroups: false,
+    placeholder: 'Start typing employee name, number, or email…',
+  });
+  /* Guard submit — require exactly one employee picked */
+  document.querySelector('form[action="/payroll/loans/new"]').addEventListener('submit', function(e){
+    if (picker.getSelectedIds().length !== 1) {
+      e.preventDefault();
+      alert('Please pick exactly one employee.');
+    }
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

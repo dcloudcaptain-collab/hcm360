@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block page_title %}Goal — {{ goal.title }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ goal.title }}</h2>
+    <div style="font-size:.8rem;color:#6b7280;margin-top:.15rem;">
+      <!-- Parent breadcrumb -->
+      {% if goal.parent_title %}
+      <a href="{{ url_for('goals.detail', goal_id=goal.parent_id) }}" style="color:var(--primary,#4f46e5);text-decoration:none;">{{ goal.parent_title }}</a>
+      &nbsp;&rarr;&nbsp;
+      {% endif %}
+      {{ goal.title }}
+    </div>
+  </div>
+  <a href="{{ url_for('goals.index') }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.85rem;color:#374151;text-decoration:none;">&larr; All Goals</a>
+</div>
+
+<!-- Goal Info -->
+<div class="card" style="padding:1.25rem;margin-bottom:1rem;">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Owner</div>
+      <div style="font-size:.85rem;">
+        <span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:.65rem;font-weight:600;margin-right:.3rem;
+          background:{% if goal.owner_type == 'ORGANIZATION' %}rgba(79,70,229,.1){% elif goal.owner_type == 'DEPARTMENT' %}rgba(5,150,105,.1){% else %}rgba(107,114,128,.1){% endif %};
+          color:{% if goal.owner_type == 'ORGANIZATION' %}var(--primary,#4f46e5){% elif goal.owner_type == 'DEPARTMENT' %}#059669{% else %}#6b7280{% endif %};">
+          {{ goal.owner_type }}
+        </span>
+        {{ goal.owner_name or 'N/A' }}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Status</div>
+      <div>
+        <span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:600;
+          background:{% if goal.status == 'COMPLETED' %}#dcfce7{% elif goal.status == 'ACTIVE' %}#dbeafe{% else %}#f1f5f9{% endif %};
+          color:{% if goal.status == 'COMPLETED' %}#166534{% elif goal.status == 'ACTIVE' %}#1e40af{% else %}#374151{% endif %};">
+          {{ goal.status }}
+        </span>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Due Date</div>
+      <div style="font-size:.85rem;">{{ goal.due_date.strftime('%b %d, %Y') if goal.due_date else 'Not set' }}</div>
+    </div>
+  </div>
+
+  {% if goal.description %}
+  <div style="margin-bottom:1rem;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Description</div>
+    <div style="font-size:.85rem;color:#374151;">{{ goal.description }}</div>
+  </div>
+  {% endif %}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem;">
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Metric</div>
+      <div style="font-size:.85rem;">{{ goal.metric or 'N/A' }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Current / Target</div>
+      <div style="font-size:.85rem;">{{ goal.current_value or 0 }} / {{ goal.target_value or 0 }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.2rem;">Weight</div>
+      <div style="font-size:.85rem;">{{ goal.weight or 1.0 }}</div>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div style="margin-bottom:.5rem;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.3rem;">Progress</div>
+    <div style="display:flex;align-items:center;gap:.6rem;">
+      <div style="flex:1;height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+        <div style="height:100%;width:{{ goal.progress_pct or 0 }}%;background:{% if (goal.progress_pct or 0) >= 100 %}#059669{% elif (goal.progress_pct or 0) >= 50 %}#d97706{% else %}var(--primary,#4f46e5){% endif %};border-radius:999px;transition:width .3s;"></div>
+      </div>
+      <span style="font-size:.9rem;font-weight:800;color:#374151;">{{ goal.progress_pct or 0 }}%</span>
+    </div>
+  </div>
+</div>
+
+<!-- Update Progress Form -->
+{% if goal.status != 'COMPLETED' %}
+<div class="card" style="padding:1rem;margin-bottom:1.5rem;max-width:500px;">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:.6rem;">Update Progress</div>
+  <form method="POST" action="{{ url_for('goals.update_progress', goal_id=goal.id) }}" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+    <div>
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Current Value</label>
+      <input type="number" name="current_value" step="0.01" value="{{ goal.current_value or 0 }}"
+             style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:120px;">
+    </div>
+    <div>
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Progress %</label>
+      <input type="number" name="progress_pct" step="1" min="0" max="100" value="{{ goal.progress_pct or 0 }}"
+             style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:100px;">
+    </div>
+    <button type="submit"
+            style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+      Update
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Child Goals -->
+{% if children %}
+<div>
+  <h3 style="font-size:1rem;font-weight:700;margin-bottom:.6rem;">Child Goals ({{ children|length }})</h3>
+  <div style="display:flex;flex-direction:column;gap:.4rem;">
+    {% for c in children %}
+    <div class="card" style="padding:.75rem 1rem;margin-left:{{ c.depth * 1.2 if c.depth is defined else 0 }}rem;border-left:3px solid {% if c.owner_type == 'DEPARTMENT' %}#059669{% elif c.owner_type == 'EMPLOYEE' %}#6b7280{% else %}var(--primary,#4f46e5){% endif %};">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <a href="{{ url_for('goals.detail', goal_id=c.id) }}" style="font-size:.85rem;font-weight:600;color:#1f2937;text-decoration:none;">{{ c.title }}</a>
+          <span style="display:inline-block;padding:1px 6px;border-radius:999px;font-size:.62rem;font-weight:600;margin-left:.3rem;
+            background:{% if c.status == 'COMPLETED' %}#dcfce7{% elif c.status == 'ACTIVE' %}#dbeafe{% else %}#f1f5f9{% endif %};
+            color:{% if c.status == 'COMPLETED' %}#166534{% elif c.status == 'ACTIVE' %}#1e40af{% else %}#374151{% endif %};">
+            {{ c.status }}
+          </span>
+          <div style="font-size:.75rem;color:#9ca3af;">{{ c.owner_name or '' }}</div>
+        </div>
+        <div style="min-width:120px;margin-left:1rem;">
+          <div style="display:flex;align-items:center;gap:.4rem;">
+            <div style="flex:1;height:6px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+              <div style="height:100%;width:{{ c.progress_pct or 0 }}%;background:{% if (c.progress_pct or 0) >= 100 %}#059669{% elif (c.progress_pct or 0) >= 50 %}#d97706{% else %}var(--primary,#4f46e5){% endif %};border-radius:999px;"></div>
+            </div>
+            <span style="font-size:.72rem;font-weight:700;">{{ c.progress_pct or 0 }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

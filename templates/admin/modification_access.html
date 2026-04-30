@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block page_title %}Modification Access Control{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Modification Access Control</h2>
+    <p style="margin:.25rem 0 0;font-size:.825rem;color:#6b7280;">
+      Configure which roles or users can directly edit/override transactional records per module.
+    </p>
+  </div>
+  <a href="/admin/access-matrix" style="font-size:.825rem;color:var(--primary,#4f46e5);">← Access Matrix</a>
+</div>
+
+{# ── Grant new permission ───────────────────────────────────────── #}
+<section class="card" style="padding:1.25rem;margin-bottom:1.5rem;">
+  <h3 style="margin:0 0 1rem;font-size:.95rem;font-weight:700;">Grant Modification Access</h3>
+  <form method="post" action="/admin/modification-access/grant"
+        style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;min-width:160px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Module</label>
+      <select name="module_code" required
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        {% for m in modules %}
+        <option value="{{ m }}">{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Grantee Type</label>
+      <select name="grantee_type" id="granteeType"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;"
+              onchange="toggleGrantee(this.value)">
+        <option value="ROLE">Role</option>
+        <option value="USER">Specific User</option>
+      </select>
+    </div>
+
+    <div id="roleField" style="display:flex;flex-direction:column;gap:.25rem;min-width:160px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Role</label>
+      <select name="grantee_role"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="">— select —</option>
+        {% for r in roles %}
+        <option value="{{ r }}">{{ r }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="userField" style="display:none;flex-direction:column;gap:.25rem;min-width:200px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">User</label>
+      <select name="grantee_user_id"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="">— select —</option>
+        {% for u in users %}
+        <option value="{{ u.id }}">{{ u.display_name }} ({{ u.role_code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Access</label>
+      <select name="can_modify"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="true">Allow</option>
+        <option value="false">Deny</option>
+      </select>
+    </div>
+
+    <button type="submit"
+            style="padding:7px 18px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      Save
+    </button>
+  </form>
+</section>
+
+{# ── Current permissions table ──────────────────────────────────── #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:.875rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;">
+    <h3 style="margin:0;font-size:.95rem;font-weight:700;">Current Grants</h3>
+    <span style="font-size:.775rem;color:#9ca3af;">{{ permissions|length }} rule(s)</span>
+  </div>
+  {% if permissions %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:9px 14px;text-align:left;">Module</th>
+        <th style="padding:9px 14px;text-align:left;">Type</th>
+        <th style="padding:9px 14px;text-align:left;">Grantee</th>
+        <th style="padding:9px 14px;text-align:center;">Access</th>
+        <th style="padding:9px 14px;text-align:left;">Granted</th>
+        <th style="padding:9px 14px;text-align:left;">By</th>
+        <th style="padding:9px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in permissions %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:600;font-family:monospace;font-size:.8rem;">{{ p.module_code }}</td>
+        <td style="padding:9px 14px;">
+          <span style="font-size:.72rem;padding:2px 8px;border-radius:4px;font-weight:600;
+            background:{% if p.grantee_type=='ROLE' %}rgba(99,102,241,.1);color:#4f46e5{% else %}rgba(16,185,129,.1);color:#059669{% endif %};">
+            {{ p.grantee_type }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;font-weight:500;">
+          {{ p.grantee_role or p.grantee_name or '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          {% if p.can_modify %}
+          <span style="color:#16a34a;font-weight:700;font-size:.75rem;">ALLOW</span>
+          {% else %}
+          <span style="color:#dc2626;font-weight:700;font-size:.75rem;">DENY</span>
+          {% endif %}
+        </td>
+        <td style="padding:9px 14px;color:#6b7280;font-size:.8rem;">
+          {{ p.granted_at.strftime('%Y-%m-%d') if p.granted_at else '—' }}
+        </td>
+        <td style="padding:9px 14px;color:#6b7280;font-size:.8rem;">{{ p.granted_by_name or '—' }}</td>
+        <td style="padding:9px 14px;text-align:right;">
+          <form method="post" action="/admin/modification-access/{{ p.id }}/delete"
+                onsubmit="return confirm('Remove this permission?');" style="display:inline;">
+            <button type="submit"
+                    style="font-size:.75rem;color:#dc2626;background:none;border:none;cursor:pointer;padding:2px 6px;">
+              Remove
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:2.5rem;text-align:center;color:#9ca3af;">
+    No modification permissions configured. Add the first grant above.
+  </div>
+  {% endif %}
+</section>
+
+<div style="margin-top:.75rem;font-size:.775rem;color:#9ca3af;">
+  SUPER_ADMIN always has full modification access regardless of grants here.
+  User-level grants override role-level grants for the same module.
+</div>
+
+<script>
+function toggleGrantee(type) {
+  document.getElementById('roleField').style.display = type === 'ROLE' ? 'flex' : 'none';
+  document.getElementById('userField').style.display = type === 'USER' ? 'flex' : 'none';
+}
+</script>
+
+{% endblock %}

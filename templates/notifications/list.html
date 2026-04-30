@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block extra_css %}
+<style>
+.notif-container { max-width:860px; margin:0 auto; }
+.notif-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; flex-wrap:wrap; gap:.5rem; }
+.notif-hdr h2 { margin:0; font-size:1.4rem; font-weight:700; }
+.notif-hdr-sub { margin:.25rem 0 0; color:#6b7280; font-size:.9rem; }
+.notif-filters { display:flex; gap:.5rem; }
+.notif-filter-btn {
+  padding:.45rem .95rem; border:1px solid rgba(0,0,0,.14); border-radius:8px;
+  background:var(--card,#fff); cursor:pointer; font-size:.82rem; font-weight:600;
+  color:var(--text,#111827); transition:background .1s; text-decoration:none;
+}
+.notif-filter-btn:hover { background:#f1f5f9; }
+.notif-filter-btn.active { background:var(--primary,#0f6f8f); color:#fff; border-color:var(--primary,#0f6f8f); }
+
+.notif-list { display:flex; flex-direction:column; gap:.65rem; }
+.notif-item {
+  background:var(--card,#fff); border:1px solid rgba(0,0,0,.07);
+  border-radius:var(--radius,10px); padding:1rem 1.15rem; display:flex; gap:.85rem;
+  align-items:flex-start; cursor:pointer; text-decoration:none; color:inherit;
+  transition:box-shadow .15s, border-color .15s;
+}
+.notif-item:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
+.notif-item.unread { border-left:3px solid var(--primary,#0f6f8f); background:#fafbfd; }
+
+.notif-icon {
+  width:38px; height:38px; border-radius:50%; display:flex; align-items:center;
+  justify-content:center; font-size:1rem; flex-shrink:0;
+}
+.ni-core       { background:#eff6ff; }
+.ni-attendance { background:#fef3c7; }
+.ni-leave_mgmt { background:#d1fae5; }
+.ni-payroll    { background:#ede9fe; }
+.ni-workflow   { background:#fce7f3; }
+.ni-dms        { background:#e0f2fe; }
+.ni-default    { background:#f1f5f9; }
+
+.notif-content { flex:1; min-width:0; }
+.notif-title { font-size:.88rem; font-weight:700; color:var(--text,#111827); margin-bottom:.2rem; }
+.notif-body  { font-size:.82rem; color:#6b7280; line-height:1.5; margin-bottom:.3rem;
+               overflow:hidden; text-overflow:ellipsis; display:-webkit-box;
+               -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.notif-meta  { display:flex; align-items:center; gap:.7rem; font-size:.73rem; color:#9ca3af; }
+.notif-mod   { background:#f1f5f9; padding:1px 7px; border-radius:4px; font-weight:600;
+               text-transform:uppercase; font-size:.62rem; letter-spacing:.04em; }
+.notif-dot   { width:7px; height:7px; border-radius:50%; background:var(--primary,#0f6f8f); flex-shrink:0; }
+
+.notif-empty { text-align:center; padding:3rem 1rem; color:#9ca3af;
+               background:var(--card,#fff); border:1px dashed rgba(0,0,0,.1);
+               border-radius:14px; }
+.notif-empty h3 { font-size:1rem; color:#6b7280; margin:.5rem 0 .3rem; }
+
+.pager { display:flex; align-items:center; justify-content:center; gap:.4rem; margin-top:1.5rem; flex-wrap:wrap; }
+.pg { padding:.38rem .72rem; border-radius:7px; border:1px solid rgba(0,0,0,.12);
+      background:var(--card,#fff); cursor:pointer; font-size:.79rem; font-weight:500;
+      transition:background .1s; text-decoration:none; color:inherit; display:inline-block; }
+.pg:hover:not(.pg-dis):not(.pga) { background:#f1f5f9; }
+.pga { background:var(--primary,#0f6f8f); color:#fff; border-color:var(--primary,#0f6f8f); }
+.pg-dis { opacity:.35; cursor:default; pointer-events:none; }
+.pg-inf { font-size:.77rem; color:#9ca3af; padding:0 .3rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set mod_icon = {
+  'core':'👥', 'attendance':'🕐', 'leave_mgmt':'🌴', 'payroll':'💰',
+  'workflow':'📋', 'dms':'📁', 'discipline':'⚖️', 'health':'🏥',
+  'onboarding':'🆕', 'recruitment':'📝', 'pm':'📊', 'ld':'📚',
+  'benefits':'🎁', 'comp_review':'💳', 'certifications':'🏆',
+  'feedback':'💬', 'goals':'🎯', 'skills':'⭐', 'analytics':'📈',
+} %}
+
+<div class="notif-container">
+  <div class="notif-hdr">
+    <div>
+      <h2>🔔 Notifications</h2>
+      <p class="notif-hdr-sub">{{ total }} notification{{ 's' if total != 1 else '' }}</p>
+    </div>
+    <div class="notif-filters">
+      <a href="{{ url_for('notifications.list_notifications', status='all') }}"
+         class="notif-filter-btn{% if status_filter=='all' %} active{% endif %}">All</a>
+      <a href="{{ url_for('notifications.list_notifications', status='unread') }}"
+         class="notif-filter-btn{% if status_filter=='unread' %} active{% endif %}">Unread</a>
+      <a href="{{ url_for('notifications.list_notifications', status='read') }}"
+         class="notif-filter-btn{% if status_filter=='read' %} active{% endif %}">Read</a>
+    </div>
+  </div>
+
+  {% if notifications %}
+  <div class="notif-list">
+    {% for n in notifications %}
+    {# Click takes user straight to the exact detail (action_url); falls
+       back to the intermediate /notifications/<id> view if no url set.
+       markRead fires async via keepalive so read-state updates even
+       after the page navigates away. #}
+    <a href="{{ n.action_url or url_for('notifications.view_notification', notif_id=n.id) }}"
+       onclick="fetch('/api/v1/notifications/{{ n.id }}/read', {method:'POST', keepalive:true});"
+       class="notif-item{% if not n.is_read %} unread{% endif %}">
+      {% if not n.is_read %}<span class="notif-dot"></span>{% endif %}
+      <div class="notif-icon ni-{{ n.module or 'default' }}">
+        {{ mod_icon.get(n.module, 'ℹ️') }}
+      </div>
+      <div class="notif-content">
+        <div class="notif-title">{{ n.title }}</div>
+        <div class="notif-body">{{ n.body }}</div>
+        <div class="notif-meta">
+          <span>{{ n.created_at.strftime('%b %d, %Y · %I:%M %p') if n.created_at else '' }}</span>
+          {% if n.module %}
+          <span class="notif-mod">{{ n.module|replace('_',' ') }}</span>
+          {% endif %}
+          {% if n.action_url %}
+          <span style="color:#6366f1;font-weight:600;">View details →</span>
+          {% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if total_pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}
+    <a href="{{ url_for('notifications.list_notifications', page=page-1, status=status_filter) }}" class="pg">‹</a>
+    {% else %}
+    <span class="pg pg-dis">‹</span>
+    {% endif %}
+
+    {% for p in range(1, total_pages + 1) %}
+      {% if p == page %}
+        <span class="pg pga">{{ p }}</span>
+      {% elif p <= 2 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
+        <a href="{{ url_for('notifications.list_notifications', page=p, status=status_filter) }}" class="pg">{{ p }}</a>
+      {% elif p == 3 or p == total_pages - 2 %}
+        <span class="pg-inf">…</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if page < total_pages %}
+    <a href="{{ url_for('notifications.list_notifications', page=page+1, status=status_filter) }}" class="pg">›</a>
+    {% else %}
+    <span class="pg pg-dis">›</span>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="notif-empty">
+    <div style="font-size:2.2rem;">🔕</div>
+    <h3>No notifications</h3>
+    <p style="font-size:.9rem;margin:0;">You're all caught up!</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

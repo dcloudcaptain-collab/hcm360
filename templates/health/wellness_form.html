@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block page_title %}{{ 'Edit Program' if program else 'New Wellness Program' }}{% endblock %}
+{% block content %}
+<style>
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1rem; }
+  .form-full { grid-column:1/-1; }
+  .field { display:flex; flex-direction:column; gap:.3rem; }
+  .field label { font-size:.72rem; font-weight:700; color:#6b7280;
+                 text-transform:uppercase; letter-spacing:.05em; }
+  .field input, .field select, .field textarea {
+     border:1.5px solid #d1d5db; border-radius:8px; padding:.55rem .7rem;
+     font-size:.9rem; font-family:inherit; background:#fff;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+     outline:none; border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.15);
+  }
+  .field textarea { min-height:70px; resize:vertical; }
+  .hint { font-size:.72rem; color:#6b7280; font-style:italic; margin-top:.15rem; }
+  .form-actions { display:flex; gap:.5rem; margin-top:1.5rem;
+                  padding-top:1rem; border-top:1px solid #e5e7eb; justify-content:flex-end; }
+  .btn { padding:8px 18px; border:none; border-radius:8px; font-size:.85rem;
+         font-weight:600; cursor:pointer; text-decoration:none; font-family:inherit; }
+  .btn-primary   { background:var(--primary,#4f46e5); color:#fff; }
+  .btn-secondary { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .required::after { content:" *"; color:#ef4444; }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:800;">
+    {{ '✏️ Edit Wellness Program' if program else '🏃 New Wellness Program' }}
+  </h2>
+  <a href="{{ url_for('health.wellness') }}"
+     style="padding:6px 12px;font-size:.85rem;color:#6b7280;text-decoration:none;">
+    ← Back to programs
+  </a>
+</div>
+
+<form method="post" class="card" style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem;">
+  <div class="form-grid">
+    <div class="field form-full">
+      <label class="required">Program Name</label>
+      <input name="name" required maxlength="150"
+             value="{{ program.name if program else '' }}"
+             placeholder="e.g., Mental Health Awareness Month · Flu Shot Drive · Zumba Fridays">
+    </div>
+
+    <div class="field">
+      <label class="required">Program Type</label>
+      <select name="program_type" required>
+        {% for t in ['MENTAL_HEALTH','FITNESS','NUTRITION','VACCINATION','SCREENING','SEMINAR'] %}
+        <option value="{{ t }}"
+          {% if program and program.program_type == t %}selected{% endif %}>
+          {{ t|replace('_',' ')|title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Status</label>
+      <select name="status">
+        {% for s in ['PLANNED','ACTIVE','COMPLETED','CANCELLED'] %}
+        <option value="{{ s }}"
+          {% if (program.status if program else 'PLANNED') == s %}selected{% endif %}>
+          {{ s|title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="required">Start Date</label>
+      <input type="date" name="start_date" required
+             value="{{ program.start_date if program else '' }}">
+    </div>
+
+    <div class="field">
+      <label class="required">End Date</label>
+      <input type="date" name="end_date" required
+             value="{{ program.end_date if program else '' }}">
+    </div>
+
+    <div class="field">
+      <label>Provider / Facilitator</label>
+      <input name="provider" maxlength="150"
+             value="{{ program.provider if program else '' }}"
+             placeholder="e.g., City Health Office · Dr. Santos">
+    </div>
+
+    <div class="field">
+      <label>Max Participants</label>
+      <input type="number" name="max_participants" min="0" max="9999"
+             value="{{ program.max_participants if program and program.max_participants else '' }}"
+             placeholder="Leave blank for unlimited">
+      <div class="hint">Registrations beyond this cap will still be recorded; cap is for budgeting.</div>
+    </div>
+
+    <div class="field form-full">
+      <label>Location</label>
+      <input name="location" maxlength="300"
+             value="{{ program.location if program else '' }}"
+             placeholder="e.g., LGU Conference Hall · Virtual (Zoom)">
+    </div>
+
+    <div class="field form-full">
+      <label>Schedule Notes</label>
+      <textarea name="schedule_notes" rows="2"
+                placeholder="Specific dates/times, what to bring, pre-requisites…">{{ program.schedule_notes if program else '' }}</textarea>
+    </div>
+
+    <div class="field form-full">
+      <label>Description</label>
+      <textarea name="description" rows="3"
+                placeholder="What is this program about? Who benefits? Learning outcomes?">{{ program.description if program else '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="{{ url_for('health.wellness') }}" class="btn btn-secondary">Cancel</a>
+    <button type="submit" class="btn btn-primary">
+      {{ '💾 Save changes' if program else '+ Create Program' }}
+    </button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% block page_title %}My Onboarding{% endblock %}
+{% block content %}
+
+{% set ck = checklist %}
+{% set stage_list = ['REQUIREMENTS','WELCOME','TRANSITION','SIGNOFF','READY','ACTIVATED'] %}
+{% set stage_idx = stage_list.index(ck.stage) if ck.stage in stage_list else 0 %}
+
+{# ── Header ──────────────────────────────────────────────────────── #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">My Onboarding</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Welcome! Track your onboarding progress below.</p>
+  </div>
+  <a href="/me" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Back to Portal</a>
+</div>
+
+{# ── Welcome Banner ──────────────────────────────────────────────── #}
+{% if ck.stage in ('REQUIREMENTS','WELCOME') %}
+<div class="card" style="padding:1.5rem;margin-bottom:1.25rem;background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left:4px solid #f59e0b;">
+  <div style="font-size:1.1rem;font-weight:700;color:#92400e;margin-bottom:.35rem;">Welcome to the team! 🎉</div>
+  <div style="font-size:.88rem;color:#78716c;">
+    Complete your onboarding requirements and orientation tasks to get fully set up.
+    {% if buddy %}Your buddy <strong>{{ buddy.buddy_name }}</strong> ({{ buddy.buddy_position or '' }}) is here to help.{% endif %}
+  </div>
+</div>
+{% elif ck.stage == 'ACTIVATED' %}
+<div class="card" style="padding:1.5rem;margin-bottom:1.25rem;background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-left:4px solid #16a34a;">
+  <div style="font-size:1.1rem;font-weight:700;color:#065f46;">Onboarding Complete! ✅</div>
+  <div style="font-size:.88rem;color:#6b7280;">You are now fully activated. Welcome aboard!</div>
+</div>
+{% endif %}
+
+{# ── Stage Progress ──────────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;gap:0;align-items:center;">
+    {% for s in stage_list %}
+    {% set si = loop.index0 %}
+    {% set is_done = si < stage_idx %}
+    {% set is_current = si == stage_idx %}
+    <div style="flex:1;text-align:center;">
+      <div style="width:26px;height:26px;border-radius:50%;margin:0 auto .25rem;display:flex;align-items:center;justify-content:center;
+        font-size:.68rem;font-weight:800;
+        {% if is_done %}background:#16a34a;color:#fff;{% elif is_current %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:#e5e7eb;color:#9ca3af;{% endif %}">
+        {% if is_done %}✓{% else %}{{ si + 1 }}{% endif %}
+      </div>
+      <div style="font-size:.6rem;font-weight:{% if is_current %}700{% else %}400{% endif %};color:{% if is_current %}var(--primary,#4f46e5){% elif is_done %}#16a34a{% else %}#9ca3af{% endif %};text-transform:uppercase;">{{ s }}</div>
+    </div>
+    {% if not loop.last %}
+    <div style="flex:.4;height:2px;background:{% if si < stage_idx %}#16a34a{% else %}#e5e7eb{% endif %};margin-bottom:1rem;"></div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+{# ── Buddy Card ──────────────────────────────────────────────────── #}
+{% if buddy %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;">
+  <div style="width:44px;height:44px;border-radius:50%;background:#e0e7ff;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:#4f46e5;flex-shrink:0;">
+    {{ buddy.buddy_name[:1] }}
+  </div>
+  <div>
+    <div style="font-size:.72rem;text-transform:uppercase;color:#9ca3af;">Your Buddy</div>
+    <div style="font-size:.95rem;font-weight:600;">{{ buddy.buddy_name }}</div>
+    <div style="font-size:.8rem;color:#6b7280;">{{ buddy.buddy_position or '' }} · {{ buddy.buddy_department or '' }}</div>
+    {% if buddy.buddy_email %}<div style="font-size:.78rem;color:var(--primary,#4f46e5);">{{ buddy.buddy_email }}</div>{% endif %}
+  </div>
+  {% if buddy.signed_off_at %}
+  <div style="margin-left:auto;text-align:right;">
+    <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;background:#dcfce7;color:#166534;">Signed Off</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Requirements ─────────────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Pre-Employment Requirements</strong>
+    {% set verified = requirements|selectattr('status','equalto','VERIFIED')|list|length %}
+    <span style="font-size:.78rem;color:#6b7280;">{{ verified }}/{{ requirements|length }} verified</span>
+  </div>
+  {% for r in requirements %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    {% if r.status == 'VERIFIED' %}
+    <span style="color:#16a34a;font-size:.9rem;">✅</span>
+    {% elif r.status == 'SUBMITTED' %}
+    <span style="color:#2563eb;font-size:.9rem;">📤</span>
+    {% elif r.status == 'REJECTED' %}
+    <span style="color:#dc2626;font-size:.9rem;">❌</span>
+    {% else %}
+    <span style="color:#9ca3af;font-size:.9rem;">⬜</span>
+    {% endif %}
+    <div style="flex:1;">
+      <div style="font-size:.85rem;font-weight:500;">{{ r.requirement_type|replace('_',' ') }}</div>
+      {% if r.remarks %}<div style="font-size:.72rem;color:#dc2626;">{{ r.remarks }}</div>{% endif %}
+    </div>
+    <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:4px;
+      {% set sc = {'PENDING':'background:#f1f5f9;color:#6b7280;','SUBMITTED':'background:#dbeafe;color:#1d4ed8;','VERIFIED':'background:#dcfce7;color:#166534;','REJECTED':'background:#fee2e2;color:#991b1b;'} %}
+      {{ sc.get(r.status,'background:#f1f5f9;color:#6b7280;') }}">{{ r.status }}</span>
+    {% if r.status in ('PENDING','REJECTED') %}
+    <form method="post" action="/onboarding/req/{{ r.id }}/submit">
+      <button style="font-size:.75rem;padding:4px 12px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">Submit</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Welcome Items ────────────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Welcome & Orientation</strong>
+    {% set wdone = welcome_items|selectattr('is_completed')|list|length %}
+    <span style="font-size:.78rem;color:#6b7280;">{{ wdone }}/{{ welcome_items|length }}</span>
+  </div>
+  {% for wi in welcome_items %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    {% if wi.is_completed %}
+    <span style="width:22px;height:22px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.65rem;flex-shrink:0;">✓</span>
+    {% else %}
+    <span style="width:22px;height:22px;border-radius:50%;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:#9ca3af;flex-shrink:0;">{{ loop.index }}</span>
+    {% endif %}
+    <div style="flex:1;">
+      <div style="font-size:.85rem;font-weight:500;{% if wi.is_completed %}text-decoration:line-through;color:#9ca3af;{% endif %}">{{ wi.title }}</div>
+      {% if wi.description %}<div style="font-size:.75rem;color:#9ca3af;">{{ wi.description }}</div>{% endif %}
+    </div>
+    {% if not wi.is_completed %}
+    <form method="post" action="/onboarding/welcome/{{ wi.id }}/complete">
+      <button style="font-size:.75rem;padding:4px 12px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">Complete</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Checklist ────────────────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Transition Checklist</strong>
+    {% set cdone = items|selectattr('is_completed')|list|length %}
+    <span style="font-size:.78rem;color:#6b7280;">{{ cdone }}/{{ items|length }}</span>
+  </div>
+  {% for item in items %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    {% if item.is_completed %}
+    <span style="color:#16a34a;font-size:.85rem;">✅</span>
+    {% else %}
+    <span style="color:#d1d5db;font-size:.85rem;">⬜</span>
+    {% endif %}
+    <div style="flex:1;">
+      <div style="font-size:.85rem;{% if item.is_completed %}text-decoration:line-through;color:#9ca3af;{% endif %}">{{ item.item_name }}</div>
+      <div style="font-size:.72rem;color:#9ca3af;">{{ item.category }} · Owner: {{ item.owner_role }}{% if item.due_date %} · Due {{ item.due_date }}{% endif %}</div>
+    </div>
+    {% if not item.is_completed and item.owner_role == 'EMPLOYEE' %}
+    <form method="post" action="/onboarding/item/{{ item.id }}/complete">
+      <button style="font-size:.75rem;padding:4px 12px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">Done</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Sign-off Status ─────────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Sign-off Status</strong>
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+    {% for so in signoffs %}
+    <div style="flex:1;min-width:140px;border:1px solid {% if so.status=='APPROVED' %}#16a34a{% elif so.status=='REJECTED' %}#dc2626{% else %}#d1d5db{% endif %};border-radius:8px;padding:.75rem;text-align:center;">
+      <div style="font-size:.68rem;text-transform:uppercase;color:#6b7280;">{{ so.signoff_type }}</div>
+      <div style="font-size:1.2rem;margin:.3rem 0;">{% if so.status == 'APPROVED' %}✅{% elif so.status == 'REJECTED' %}❌{% else %}⏳{% endif %}</div>
+      <div style="font-size:.78rem;font-weight:600;color:{% if so.status=='APPROVED' %}#16a34a{% elif so.status=='REJECTED' %}#dc2626{% else %}#6b7280{% endif %};">{{ so.status }}</div>
+      {% if so.signed_by_name %}
+      <div style="font-size:.72rem;color:#9ca3af;">{{ so.signed_by_name }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

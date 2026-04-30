@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ plan.name }}{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ plan.name }}</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">{{ plan.type_name }} · {{ plan.category }} · {{ plan.provider or 'No provider' }}</p>
+  </div>
+  <a href="/benefits/plans" style="font-size:.82rem;color:var(--primary,#4f46e5);">← All Plans</a>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+  <div class="card" style="padding:1rem;">
+    <div style="font-size:.72rem;text-transform:uppercase;color:#9ca3af;margin-bottom:.5rem;">Plan Details</div>
+    <div style="font-size:.88rem;"><strong>Code:</strong> {{ plan.code }}</div>
+    <div style="font-size:.88rem;"><strong>Coverage:</strong> {{ plan.coverage_level or 'INDIVIDUAL' }}</div>
+    <div style="font-size:.88rem;"><strong>Employer Cost:</strong> ₱{{ '{:,.2f}'.format(plan.employer_cost) }}/mo</div>
+    <div style="font-size:.88rem;"><strong>Employee Cost:</strong> ₱{{ '{:,.2f}'.format(plan.employee_cost) }}/mo</div>
+    <div style="font-size:.88rem;"><strong>Effective:</strong> {{ plan.effective_from }}{% if plan.effective_to %} – {{ plan.effective_to }}{% endif %}</div>
+    {% if plan.description %}<div style="font-size:.82rem;color:#6b7280;margin-top:.5rem;">{{ plan.description }}</div>{% endif %}
+  </div>
+  <div class="card" style="padding:1rem;">
+    <div style="font-size:.72rem;text-transform:uppercase;color:#9ca3af;margin-bottom:.5rem;">Enrollment Summary</div>
+    <div style="font-size:2rem;font-weight:800;color:var(--primary,#4f46e5);">{{ enrollees|length }}</div>
+    <div style="font-size:.82rem;color:#6b7280;">employees enrolled</div>
+  </div>
+</div>
+{% if enrollees %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:#f8fafc;color:#6b7280;font-size:.72rem;text-transform:uppercase;">
+      <th style="padding:10px 12px;text-align:left;">Employee</th>
+      <th style="padding:10px 12px;">Coverage</th>
+      <th style="padding:10px 12px;text-align:right;">EE Cost</th>
+      <th style="padding:10px 12px;text-align:right;">ER Cost</th>
+      <th style="padding:10px 12px;">Status</th>
+      <th style="padding:10px 12px;">Enrolled</th>
+    </tr></thead>
+    <tbody>
+      {% for e in enrollees %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:8px 12px;font-weight:500;">{{ e.employee_name }}<div style="font-size:.72rem;color:#9ca3af;">{{ e.employee_no }}</div></td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;">{{ e.coverage_level }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(e.employee_cost) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;">₱{{ '{:,.2f}'.format(e.employer_cost) }}</td>
+        <td style="padding:8px 12px;text-align:center;"><span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:{% if e.status=='ACTIVE' %}#dcfce7;color:#166534{% else %}#fee2e2;color:#991b1b{% endif %};">{{ e.status }}</span></td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;">{{ e.enrolled_at.strftime('%b %d, %Y') if e.enrolled_at else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

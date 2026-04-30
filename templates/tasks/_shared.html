@@ -1,0 +1,131 @@
+{#
+  Shared styles for all tasks/ templates.
+  Include via:  {% include 'tasks/_shared.html' %}
+#}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between;
+       flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .page-head .sub { font-size:.85rem; color:#6b7280; }
+
+  .btn { display:inline-flex; align-items:center; gap:.35rem; padding:8px 16px;
+     border-radius:8px; font-size:.85rem; font-weight:600; text-decoration:none;
+     cursor:pointer; border:none; font-family:inherit; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .btn-green   { background:#16a34a; color:#fff; }
+  .btn-amber   { background:#f59e0b; color:#fff; }
+  .btn-red     { background:#dc2626; color:#fff; }
+  .btn-xs      { padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px; }
+
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:11px;
+          padding:1.1rem 1.25rem; margin-bottom:1rem; }
+  .card h3 { margin:0 0 .6rem; font-size:.95rem; color:#111827;
+             display:flex; align-items:center; gap:.35rem; }
+
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:.9rem; }
+  @media (max-width:720px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  .f-group { display:flex; flex-direction:column; gap:.3rem; }
+  .f-group label { font-size:.72rem; color:#6b7280; text-transform:uppercase;
+                   letter-spacing:.05em; font-weight:600; }
+  .f-group input, .f-group select, .f-group textarea {
+     width:100%; padding:.55rem .7rem; border:1.5px solid #d1d5db; border-radius:8px;
+     font-size:.9rem; font-family:inherit; background:#fff; }
+  .f-group input:focus, .f-group select:focus, .f-group textarea:focus {
+     border-color:#4f46e5; outline:none; box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+  .f-group textarea { min-height:80px; resize:vertical; }
+
+  /* Filter chips + search row */
+  .filters { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem;
+             padding:.5rem .85rem; background:#fff; border:1px solid #e5e7eb;
+             border-radius:11px; margin-bottom:1rem; }
+  .filters a {
+     display:inline-flex; align-items:center; padding:5px 11px; font-size:.78rem;
+     font-weight:600; color:#374151; text-decoration:none; border-radius:6px;
+     background:transparent; }
+  .filters a:hover { background:#f3f4f6; }
+  .filters a.active { background:#4f46e5; color:#fff; }
+
+  /* Tasks table */
+  table.dt { width:100%; border-collapse:collapse; font-size:.87rem; background:#fff;
+     border-radius:11px; overflow:hidden; border:1px solid #e5e7eb; }
+  table.dt th { text-align:left; padding:.6rem .85rem; background:#f9fafb; color:#6b7280;
+     font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;
+     border-bottom:1.5px solid #e5e7eb; }
+  table.dt td { padding:.65rem .85rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  table.dt tbody tr:last-child td { border-bottom:none; }
+  table.dt tbody tr:hover td { background:#f9fafb; }
+
+  /* Status chip */
+  .status-badge { display:inline-block; padding:2px 10px; border-radius:999px;
+                  font-size:.72rem; font-weight:700; white-space:nowrap; }
+  .s-PENDING     { background:#fef3c7; color:#92400e; }
+  .s-IN_PROGRESS { background:#dbeafe; color:#1d4ed8; }
+  .s-COMPLETED   { background:#dcfce7; color:#166534; }
+  .s-DISMISSED   { background:#f3f4f6; color:#6b7280; }
+
+  /* Priority chip */
+  .prio-badge { display:inline-block; padding:2px 9px; border-radius:6px;
+                font-size:.7rem; font-weight:700; }
+  .p-URGENT { background:#fee2e2; color:#991b1b; }
+  .p-HIGH   { background:#fed7aa; color:#9a3412; }
+  .p-NORMAL { background:#e0f2fe; color:#075985; }
+  .p-LOW    { background:#f3f4f6; color:#6b7280; }
+
+  /* Category chip */
+  .cat-chip { display:inline-block; padding:2px 8px; border-radius:6px;
+              font-size:.68rem; font-weight:700; background:#ede9fe; color:#5b21b6; }
+
+  /* Overdue */
+  .due-overdue { color:#991b1b; font-weight:700; }
+  .due-today   { color:#92400e; font-weight:600; }
+
+  /* Summary tiles */
+  .stats-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));
+               gap:.6rem; margin-bottom:1rem; }
+  .stat-tile { background:#fff; border:1px solid #e5e7eb; border-radius:10px;
+               padding:.75rem .9rem; }
+  .stat-tile .n { font-size:1.5rem; font-weight:800; color:#111827; line-height:1; }
+  .stat-tile .l { font-size:.72rem; color:#6b7280; text-transform:uppercase;
+                  letter-spacing:.05em; font-weight:700; margin-top:.3rem; }
+  .stat-red .n    { color:#dc2626; }
+  .stat-green .n  { color:#16a34a; }
+  .stat-blue .n   { color:#2563eb; }
+
+  /* Mention highlight */
+  .mention {
+     background:#ede9fe; color:#5b21b6; padding:1px 4px; border-radius:4px;
+     font-weight:600; font-size:.9em;
+  }
+
+  /* Comments timeline */
+  .comments { display:flex; flex-direction:column; gap:.6rem; }
+  .comment-row { padding:.65rem .85rem; background:#f9fafb; border-radius:8px;
+                 border-left:3px solid #4f46e5; }
+  .comment-meta { font-size:.72rem; color:#6b7280; margin-bottom:.25rem;
+                  display:flex; align-items:center; gap:.4rem; }
+  .comment-body { font-size:.88rem; color:#111827; line-height:1.45; }
+
+  /* Employee autocomplete */
+  .ac-wrap { position:relative; }
+  .ac-results {
+     position:absolute; left:0; right:0; top:100%;
+     background:#fff; border:1px solid #d1d5db; border-radius:8px;
+     max-height:240px; overflow-y:auto; z-index:30;
+     box-shadow:0 4px 14px rgba(0,0,0,.08);
+     margin-top:2px;
+  }
+  .ac-item { padding:.45rem .7rem; cursor:pointer; font-size:.85rem; }
+  .ac-item:hover, .ac-item.selected { background:#eef2ff; }
+  .ac-item .sec { font-size:.72rem; color:#6b7280; }
+  .ac-chip { display:inline-flex; align-items:center; gap:.3rem; padding:4px 9px;
+             background:#ede9fe; color:#5b21b6; border-radius:999px;
+             font-size:.8rem; font-weight:600; }
+  .ac-chip button { border:none; background:transparent; cursor:pointer;
+                    color:#5b21b6; font-size:.9rem; line-height:1; }
+
+  /* Data-hint tooltips (used by tour engine if present) */
+  [data-hint] { cursor:help; }
+</style>

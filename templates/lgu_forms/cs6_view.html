@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block page_title %}CS Form No. 6 #{{ r.id }}{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>📄 CS Form No. 6 — #{{ r.id }}</h2>
+    <div class="sub">Status: <span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span></div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <a href="/leave/cs-form-6" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+<div class="print-form">
+  <div class="header">
+    <div style="font-size:.72rem;color:#6b7280;">CS Form No. 6 (Revised 2020)</div>
+    <h1>APPLICATION FOR LEAVE</h1>
+  </div>
+
+  <div class="sec-title">1. OFFICE/AGENCY</div>
+  <div class="kv">
+    <span>Department</span><span>{{ r.department_name or '—' }}</span>
+    <span>Position</span><span>{{ r.position_title or '—' }}</span>
+    <span>Salary Grade</span><span>{{ r.salary_grade or '—' }}</span>
+  </div>
+
+  <div class="sec-title">2. NAME &amp; DATE OF FILING</div>
+  <div class="kv">
+    <span>Name</span><span>{{ r.full_name }}</span>
+    <span>Employee No.</span><span>{{ r.employee_no }}</span>
+    <span>Date of Birth</span><span>{{ r.date_of_birth or '—' }}</span>
+    <span>Civil Status</span><span>{{ r.civil_status or '—' }}</span>
+    <span>Date of Filing</span><span>{{ r.date_of_filing.strftime('%B %d, %Y') if r.date_of_filing else r.created_at.strftime('%B %d, %Y') }}</span>
+    <span>Salary (at time of filing)</span><span>{{ '₱{:,.2f}'.format(r.salary_at_time|float) if r.salary_at_time else '—' }}</span>
+  </div>
+
+  <div class="sec-title">3. DETAILS OF APPLICATION</div>
+  <div class="kv">
+    <span>Type of Leave</span><span>{{ r.leave_type_name }} ({{ r.leave_type_code }}){% if r.legal_basis %} — {{ r.legal_basis }}{% endif %}</span>
+    <span>Where Leave Spent</span><span>{{ r.whereabouts or '—' }}{% if r.whereabouts_detail %} — {{ r.whereabouts_detail }}{% endif %}</span>
+    <span>Specification of Illness</span><span>{{ r.illness_specification or '—' }}</span>
+    <span>Inclusive Dates</span><span>{{ r.date_from.strftime('%B %d, %Y') }} to {{ r.date_to.strftime('%B %d, %Y') }}</span>
+    <span>No. of Working Days</span><span>{{ r.days }}</span>
+    <span>Commutation</span><span>{{ 'Requested' if r.commutation == 'REQUESTED' else 'Not Requested' }}</span>
+  </div>
+
+  <div class="sec-title">4. DETAILS OF ACTION</div>
+  <div class="kv">
+    <span>Recommending Approval</span><span>{{ r.recommend_action or 'Pending' }}{% if r.recommend_at %} — {{ r.recommend_at.strftime('%b %d, %Y') }}{% endif %}</span>
+    <span>Head of Office Action</span><span>{{ r.head_action or 'Pending' }}{% if r.head_action_at %} — {{ r.head_action_at.strftime('%b %d, %Y') }}{% endif %}</span>
+    <span>Remarks</span><span>{{ r.head_remarks or '—' }}</span>
+  </div>
+
+  <div class="signature">
+    <div class="box">Applicant<br><span style="font-size:.75rem;">{{ r.full_name }}</span></div>
+    <div class="box">Head of Office / HR</div>
+  </div>
+</div>
+
+{% if session.role_code in ('SUPER_ADMIN', 'HR_ADMIN') and r.status == 'PENDING' %}
+<div class="card" style="margin-top:1rem;max-width:760px;margin-left:auto;margin-right:auto;">
+  <h3>Take Action</h3>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    <button onclick="act('recommend','APPROVED')" class="btn btn-amber">📋 Recommend Approval</button>
+    <button onclick="act('head','APPROVED')"      class="btn btn-green">✓ Final Approve</button>
+    <button onclick="act('head','DISAPPROVED')"   class="btn btn-red">✗ Disapprove</button>
+  </div>
+  <textarea id="remarks" placeholder="Remarks (optional)" style="width:100%;margin-top:.6rem;padding:.5rem;border:1px solid #d1d5db;border-radius:7px;min-height:60px;"></textarea>
+</div>
+<script>
+  async function act(role, action) {
+    const remarks = document.getElementById('remarks').value;
+    const r = await fetch(`/leave/cs-form-6/{{ r.id }}/action`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({role, action, remarks}),
+    });
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endif %}
+{% endblock %}

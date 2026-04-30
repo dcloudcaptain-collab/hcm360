@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block page_title %}Incident {{ incident.incident_no }}{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Incident {{ incident.incident_no }}</h2>
+  <a href="/health/incidents" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Incidents</a>
+</div>
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;border-left:4px solid {% if incident.severity == 'FATAL' %}#991b1b{% elif incident.severity == 'MAJOR' %}#dc2626{% elif incident.severity == 'MODERATE' %}#d97706{% else %}#16a34a{% endif %};">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+        <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+          background:{% if incident.severity in ('FATAL','MAJOR') %}#fee2e2{% elif incident.severity == 'MODERATE' %}#fef9c3{% else %}#dcfce7{% endif %};
+          color:{% if incident.severity in ('FATAL','MAJOR') %}#991b1b{% elif incident.severity == 'MODERATE' %}#854d0e{% else %}#166534{% endif %};">{{ incident.severity }}</span>
+        <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#374151;">{{ incident.incident_type.replace('_',' ') }}</span>
+        {% if incident.dole_reportable %}<span style="font-size:.65rem;padding:1px 6px;border-radius:999px;background:#dbeafe;color:#1e40af;">DOLE Reportable</span>{% endif %}
+      </div>
+      <div style="font-size:.85rem;color:#6b7280;">
+        {{ incident.incident_date.strftime('%B %d, %Y %H:%M') if incident.incident_date else '—' }} · {{ incident.location }}
+      </div>
+    </div>
+    <span style="font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;background:#f1f5f9;color:#374151;">{{ incident.status }}</span>
+  </div>
+  <div style="margin-top:.75rem;font-size:.9rem;">{{ incident.description }}</div>
+  {% if incident.immediate_action_taken %}
+  <div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(22,163,74,.05);border-radius:6px;font-size:.82rem;">
+    <strong>Action Taken:</strong> {{ incident.immediate_action_taken }}
+  </div>
+  {% endif %}
+  <div style="font-size:.75rem;color:#9ca3af;margin-top:.5rem;">Reported by {{ incident.reported_by_name }}</div>
+</div>
+
+{# Persons Involved #}
+{% if persons %}
+<section class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Persons Involved ({{ persons|length }})</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem;">
+    {% for p in persons %}
+    <div style="padding:.6rem .75rem;border-radius:6px;border:1px solid rgba(0,0,0,.08);
+      background:{% if p.role == 'INJURED' %}rgba(220,38,38,.04){% else %}transparent{% endif %};">
+      <div style="display:flex;align-items:center;gap:.4rem;">
+        <span style="font-size:.85rem;font-weight:600;">{{ p.employee_name or p.person_name or '—' }}</span>
+        <span style="font-size:.68rem;font-weight:600;padding:1px 6px;border-radius:999px;
+          background:{% if p.role == 'INJURED' %}#fee2e2{% elif p.role == 'WITNESS' %}#fef9c3{% else %}#dbeafe{% endif %};
+          color:{% if p.role == 'INJURED' %}#991b1b{% elif p.role == 'WITNESS' %}#854d0e{% else %}#1e40af{% endif %};">{{ p.role }}</span>
+      </div>
+      {% if p.injury_type %}<div style="font-size:.78rem;color:#6b7280;">{{ p.injury_type }}{% if p.body_part_affected %} — {{ p.body_part_affected }}{% endif %}</div>{% endif %}
+      {% if p.days_lost %}<div style="font-size:.75rem;color:#dc2626;">{{ p.days_lost }} day(s) lost{% if p.hospitalized %} · Hospitalized{% endif %}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{# Investigations #}
+{% if investigations %}
+<section class="card" style="padding:1rem;">
+  <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Investigation</h3>
+  {% for inv in investigations %}
+  <div style="{% if not loop.first %}border-top:1px solid rgba(0,0,0,.06);padding-top:.75rem;margin-top:.75rem;{% endif %}">
+    <div style="display:flex;justify-content:space-between;margin-bottom:.3rem;">
+      <span style="font-size:.85rem;font-weight:600;">{{ inv.investigator_name }} — {{ inv.investigation_date.strftime('%b %d, %Y') if inv.investigation_date else '—' }}</span>
+      <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#374151;">{{ inv.status }}</span>
+    </div>
+    {% if inv.root_cause %}<div style="font-size:.82rem;margin-top:.2rem;"><strong>Root Cause:</strong> {{ inv.root_cause[:200] }}</div>{% endif %}
+    {% if inv.corrective_actions %}<div style="font-size:.82rem;margin-top:.2rem;"><strong>Corrective:</strong> {{ inv.corrective_actions[:200] }}</div>{% endif %}
+    {% if inv.preventive_actions %}<div style="font-size:.82rem;margin-top:.2rem;"><strong>Preventive:</strong> {{ inv.preventive_actions[:200] }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

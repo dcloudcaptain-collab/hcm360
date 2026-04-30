@@ -1,0 +1,440 @@
+{% extends 'base.html' %}
+{% set emp = profile.employee %}
+{% block page_title %}{{ emp.full_name }} — 201 File{% endblock %}
+{% block extra_css %}
+<style>
+  .hero-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:1.25rem 1.5rem; margin-bottom:1rem; }
+  .avatar-circle { width:80px; height:80px; border-radius:50%; background:var(--primary,#4f46e5); color:#fff; font-size:1.75rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; position:relative; }
+  .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
+  .avatar-circle .ph-edit {
+    position:absolute; left:0; right:0; bottom:0; height:22px; background:rgba(0,0,0,.55);
+    color:#fff; font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; transition:opacity .15s;
+  }
+  .avatar-circle:hover .ph-edit { opacity:1; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:.75rem; font-weight:600; }
+  .badge-green  { background:#d1fae5; color:#065f46; }
+  .badge-red    { background:#fee2e2; color:#991b1b; }
+  .badge-grey   { background:#f3f4f6; color:#6b7280; }
+  .badge-amber  { background:#fef3c7; color:#92400e; }
+  .kpi-strip { display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .kpi-card  { flex:1; min-width:130px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:.85rem 1rem; }
+  .kpi-val   { font-size:1.5rem; font-weight:800; color:var(--primary,#4f46e5); font-family:monospace; line-height:1.1; }
+  .kpi-lbl   { font-size:.72rem; color:#6b7280; margin-top:.2rem; }
+  .section-card { border:1px solid #e5e7eb; border-radius:8px; margin-bottom:.75rem; overflow:hidden; background:#fff; }
+  .section-card summary { padding:.85rem 1rem; font-weight:700; font-size:.9rem; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+  .section-card summary::-webkit-details-marker { display:none; }
+  .section-card summary::after { content:'›'; font-size:1.1rem; color:#9ca3af; transition:transform .2s; }
+  .section-card[open] summary::after { transform:rotate(90deg); }
+  .section-body { padding:1rem; border-top:1px solid #f3f4f6; }
+  dl.two-col { display:grid; grid-template-columns:1fr 1fr; gap:.35rem 1rem; }
+  dl.two-col dt { font-size:.78rem; color:#6b7280; }
+  dl.two-col dd { font-size:.88rem; font-weight:500; margin:0 0 .25rem; }
+  table.data-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+  table.data-table th { text-align:left; padding:.45rem .6rem; background:#f9fafb; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; }
+  table.data-table td { padding:.5rem .6rem; border-top:1px solid #f3f4f6; vertical-align:top; }
+  .balance-pill { display:inline-block; background:var(--primary,#4f46e5); color:#fff; border-radius:999px; padding:4px 12px; font-size:.8rem; font-weight:600; margin:.2rem; }
+  .doc-ok { color:#059669; font-weight:600; }
+  .doc-missing { color:#dc2626; font-weight:600; }
+  .doc-expired { color:#d97706; font-weight:600; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- Top bar -->
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem;">
+  <a href="/employees" style="font-size:.85rem; color:var(--primary,#4f46e5); text-decoration:none;">← Employees</a>
+  <div style="display:flex; gap:.5rem;">
+    <a href="{{ url_for('employees.employee_edit', employee_id=emp.id) }}"
+       style="padding:6px 16px; background:var(--primary,#4f46e5); color:#fff; border-radius:6px; font-size:.82rem; font-weight:600; text-decoration:none;">Edit Profile</a>
+    {% if emp.is_active %}
+    <form method="post" action="{{ url_for('employees.employee_delete', employee_id=emp.id) }}" style="display:inline;"
+          onsubmit="return confirm('Deactivate this employee? They will be marked as SEPARATED and their user account disabled.');">
+      <button type="submit"
+              style="padding:6px 16px; background:#dc2626; color:#fff; border:none; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer;">Deactivate</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Hero Card -->
+<div class="hero-card">
+  <div style="display:flex; align-items:flex-start; gap:1rem; justify-content:space-between; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:1rem;">
+      {% set can_edit_photo = (session.role_code in ('SUPER_ADMIN','HR_ADMIN')) or (session.employee_id == emp.id) %}
+      <div class="avatar-circle"
+           {% if can_edit_photo %}onclick="document.getElementById('photoFileInput').click();"
+           title="Click to {{ 'change' if emp.profile_photo_path else 'upload' }} profile picture"
+           data-hint="Click to upload a new profile picture (JPG/PNG/WebP, ≤ 5 MB)."{% endif %}>
+        {% if emp.profile_photo_path %}
+          <img src="/uploads/{{ emp.profile_photo_path }}" alt="{{ emp.full_name }}">
+        {% else %}
+          {{ ((emp.first_name or 'E')[0] ~ (emp.last_name or '')[0]) | upper }}
+        {% endif %}
+        {% if can_edit_photo %}<span class="ph-edit">{{ 'Change' if emp.profile_photo_path else 'Upload' }}</span>{% endif %}
+      </div>
+      {% if can_edit_photo %}
+      <form id="photoForm"
+            action="{{ url_for('employees.photo_upload', employee_id=emp.id) }}"
+            method="post" enctype="multipart/form-data"
+            style="display:none;">
+        <input type="hidden" name="next" value="{{ url_for('employees.employee_detail', employee_id=emp.id) }}">
+        <input id="photoFileInput" name="photo" type="file"
+               accept="image/png,image/jpeg,image/webp,image/gif"
+               onchange="document.getElementById('photoForm').submit();">
+      </form>
+      {% if emp.profile_photo_path %}
+      <form action="{{ url_for('employees.photo_delete', employee_id=emp.id) }}" method="post"
+            style="display:inline;"
+            onsubmit="return confirm('Remove the profile picture?');">
+        <input type="hidden" name="next" value="{{ url_for('employees.employee_detail', employee_id=emp.id) }}">
+        <button type="submit" title="Remove profile picture"
+                data-hint="Delete the current photo. Initials will show instead."
+                style="background:none;border:none;color:#9ca3af;font-size:.7rem;cursor:pointer;padding:0;text-decoration:underline;">
+          remove photo
+        </button>
+      </form>
+      {% endif %}
+      {% endif %}
+      <div>
+        <div style="font-size:1.15rem; font-weight:800;">{{ emp.full_name }}</div>
+        <div style="font-size:.85rem; color:#6b7280; margin-top:.15rem;">
+          {{ emp.position_title or '—' }}
+          {% if emp.department_name %} · {{ emp.department_name }}{% endif %}
+        </div>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      {% if emp.status == 'ACTIVE' %}
+        <span class="badge badge-green">{{ emp.status }}</span>
+      {% elif emp.status in ('RESIGNED', 'TERMINATED', 'SEPARATED') %}
+        <span class="badge badge-red">{{ emp.status }}</span>
+      {% else %}
+        <span class="badge badge-grey">{{ emp.status or '—' }}</span>
+      {% endif %}
+      <div style="font-size:.78rem; color:#9ca3af; margin-top:.3rem;">{{ emp.employee_no }}</div>
+    </div>
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:1.5rem; margin-top:.85rem; font-size:.82rem; color:#6b7280;">
+    <span><strong>Hired:</strong> {{ emp.date_hired or '—' }}</span>
+    <span><strong>Regularized:</strong> {{ emp.date_regularized or '—' }}</span>
+    {% if emp.supervisor_name %}<span><strong>Supervisor:</strong> {{ emp.supervisor_name }}</span>{% endif %}
+    {% if emp.work_arrangement %}<span><strong>Arrangement:</strong> {{ emp.work_arrangement }}</span>{% endif %}
+  </div>
+
+  <!-- Sub-table quick links -->
+  <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.85rem;">
+    {% for key, label in [('addresses','Addresses'),('emergency-contacts','Emergency Contacts'),('government-ids','Government IDs'),('bank-accounts','Bank Accounts'),('dependents','Dependents')] %}
+    <a href="{{ url_for('employees.sub_list', employee_id=emp.id, sub_key=key) }}"
+       style="padding:4px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:.78rem;font-weight:600;color:#475569;text-decoration:none;">{{ label }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- KPI Strip -->
+<div class="kpi-strip">
+  <div class="kpi-card">
+    <div class="kpi-val">₱{{ '{:,.0f}'.format(emp.basic_salary or 0) }}</div>
+    <div class="kpi-lbl">Basic Salary</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-val">{{ emp.years_of_service or '—' }}</div>
+    <div class="kpi-lbl">Years of Service</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-val">{{ extended.leave_balances | sum(attribute='balance') | round(1) }}</div>
+    <div class="kpi-lbl">Leave Days Balance</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-val">{{ extended.payroll_history | length }}</div>
+    <div class="kpi-lbl">Payroll Runs</div>
+  </div>
+</div>
+
+<!-- Employment Information -->
+<section class="section-card">
+  <details open>
+    <summary>Employment Information</summary>
+    <div class="section-body">
+      <dl class="two-col">
+        <dt>Employee No</dt><dd>{{ emp.employee_no or '—' }}</dd>
+        <dt>Employment Type</dt><dd>{{ emp.employment_type or '—' }}</dd>
+        <dt>Grade / Level</dt><dd>{{ emp.grade_code or '—' }}</dd>
+        <dt>Managerial</dt><dd>{{ 'Yes' if emp.is_managerial else 'No' }}</dd>
+        <dt>Work Arrangement</dt><dd>{{ emp.work_arrangement or '—' }}</dd>
+        <dt>Date Hired</dt><dd>{{ emp.date_hired or '—' }}</dd>
+        <dt>Date Regularized</dt><dd>{{ emp.date_regularized or '—' }}</dd>
+        <dt>Date Separated</dt><dd>{{ emp.date_separated or '—' }}</dd>
+        <dt>Basic Salary</dt><dd>₱{{ '{:,.2f}'.format(emp.basic_salary or 0) }}</dd>
+        <dt>Daily Rate</dt><dd>₱{{ '{:,.2f}'.format(emp.daily_rate or 0) }}</dd>
+        <dt>Status</dt><dd>{{ emp.status or '—' }}</dd>
+      </dl>
+    </div>
+  </details>
+</section>
+
+<!-- Personal Information -->
+<section class="section-card">
+  <details open>
+    <summary>Personal Information</summary>
+    <div class="section-body">
+      <dl class="two-col" style="margin-bottom:1rem;">
+        <dt>Gender</dt><dd>{{ emp.gender or '—' }}</dd>
+        <dt>Civil Status</dt><dd>{{ emp.civil_status or '—' }}</dd>
+        <dt>Date of Birth</dt><dd>{{ emp.date_of_birth or '—' }}</dd>
+        <dt>Mobile No</dt><dd>{{ emp.mobile_no or '—' }}</dd>
+        <dt>Work Email</dt><dd>{{ emp.work_email or '—' }}</dd>
+      </dl>
+
+      {% if profile.addresses %}
+      <div style="font-weight:700; font-size:.82rem; margin-bottom:.4rem; color:#374151;">Addresses</div>
+      <table class="data-table" style="margin-bottom:1rem;">
+        <thead><tr><th>Type</th><th>Address</th><th>Primary</th></tr></thead>
+        <tbody>
+        {% for a in profile.addresses %}
+          <tr>
+            <td>{{ a.address_type or '—' }}</td>
+            <td>{{ [a.street, a.city, a.province, a.zip_code] | select | join(', ') or '—' }}</td>
+            <td>{{ '✓' if a.is_primary else '' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if profile.emergency %}
+      <div style="font-weight:700; font-size:.82rem; margin-bottom:.4rem; color:#374151;">Emergency Contacts</div>
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Relationship</th><th>Mobile</th><th>Primary</th></tr></thead>
+        <tbody>
+        {% for c in profile.emergency %}
+          <tr>
+            <td>{{ c.full_name or '—' }}</td>
+            <td>{{ c.relationship or '—' }}</td>
+            <td>{{ c.mobile_no or '—' }}</td>
+            <td>{{ '✓' if c.is_primary else '' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Government IDs & Banking -->
+<section class="section-card">
+  <details open>
+    <summary>Government IDs &amp; Banking</summary>
+    <div class="section-body" style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+      <div style="flex:1; min-width:200px;">
+        <div style="font-weight:700; font-size:.82rem; margin-bottom:.4rem; color:#374151;">Government IDs</div>
+        {% if profile.gov_ids %}
+        <table class="data-table">
+          <thead><tr><th>Type</th><th>ID Number</th></tr></thead>
+          <tbody>
+          {% for g in profile.gov_ids %}
+            <tr><td>{{ g.id_type }}</td><td>{{ g.id_number }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}<p style="color:#9ca3af; font-size:.85rem;">No government IDs on file.</p>{% endif %}
+      </div>
+      <div style="flex:1; min-width:200px;">
+        <div style="font-weight:700; font-size:.82rem; margin-bottom:.4rem; color:#374151;">Bank Accounts</div>
+        {% if profile.banks %}
+        <table class="data-table">
+          <thead><tr><th>Bank</th><th>Account No</th><th>Primary</th></tr></thead>
+          <tbody>
+          {% for b in profile.banks %}
+            <tr>
+              <td>{{ b.bank_name }}</td>
+              <td>{{ b.account_number }}</td>
+              <td>{{ '✓' if b.is_primary else '' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}<p style="color:#9ca3af; font-size:.85rem;">No bank accounts on file.</p>{% endif %}
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- Dependents -->
+<section class="section-card">
+  <details>
+    <summary>Dependents</summary>
+    <div class="section-body">
+      {% if profile.dependents %}
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Relationship</th><th>Date of Birth</th><th>Beneficiary</th></tr></thead>
+        <tbody>
+        {% for d in profile.dependents %}
+          <tr>
+            <td>{{ d.full_name }}</td>
+            <td>{{ d.relationship }}</td>
+            <td>{{ d.date_of_birth or '—' }}</td>
+            <td>{{ '✓' if d.is_beneficiary else '' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No dependents on file.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Education -->
+<section class="section-card">
+  <details>
+    <summary>Education</summary>
+    <div class="section-body">
+      {% if extended.education %}
+      <table class="data-table">
+        <thead><tr><th>Level</th><th>Institution</th><th>Degree / Course</th><th>Period</th></tr></thead>
+        <tbody>
+        {% for e in extended.education %}
+          <tr {% if e.is_highest %}style="font-weight:700;"{% endif %}>
+            <td>{{ e.level or '—' }}</td>
+            <td>{{ e.institution or '—' }}</td>
+            <td>{{ e.degree or '' }}{% if e.field_of_study %} — {{ e.field_of_study }}{% endif %}</td>
+            <td>{{ e.year_from or '—' }}{% if e.year_to %} – {{ e.year_to }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No education records on file.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Work History -->
+<section class="section-card">
+  <details>
+    <summary>Work History</summary>
+    <div class="section-body">
+      {% if extended.work_history %}
+      <table class="data-table">
+        <thead><tr><th>Company</th><th>Position</th><th>Period</th><th>Reason for Leaving</th></tr></thead>
+        <tbody>
+        {% for w in extended.work_history %}
+          <tr>
+            <td>{{ w.company_name or '—' }}</td>
+            <td>{{ w.position_held or '—' }}</td>
+            <td>{{ w.date_from or '—' }}{% if w.date_to %} – {{ w.date_to }}{% else %} – Present{% endif %}</td>
+            <td>{{ w.reason_for_leaving or '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No previous work history on file.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Status History -->
+<section class="section-card">
+  <details>
+    <summary>Status History</summary>
+    <div class="section-body">
+      {% if extended.status_history %}
+      <table class="data-table">
+        <thead><tr><th>Effective Date</th><th>From</th><th>To</th><th>Reason</th><th>Changed By</th></tr></thead>
+        <tbody>
+        {% for s in extended.status_history %}
+          <tr>
+            <td>{{ s.effective_date }}</td>
+            <td><span class="badge badge-grey">{{ s.from_status or '—' }}</span></td>
+            <td><span class="badge {% if s.to_status == 'ACTIVE' %}badge-green{% elif s.to_status in ('RESIGNED','TERMINATED') %}badge-red{% else %}badge-grey{% endif %}">{{ s.to_status }}</span></td>
+            <td>{{ s.reason or '—' }}</td>
+            <td>{{ s.changed_by_name or '—' }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No status change history.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Leave Balances -->
+<section class="section-card">
+  <details>
+    <summary>Leave Balances</summary>
+    <div class="section-body">
+      {% if extended.leave_balances %}
+      <div style="display:flex; flex-wrap:wrap; gap:.75rem;">
+        {% for lb in extended.leave_balances %}
+        <div style="border:1px solid #e5e7eb; border-radius:8px; padding:.75rem 1rem; min-width:140px;">
+          <div style="font-size:.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:.04em;">{{ lb.leave_type_name }}</div>
+          <div style="font-size:1.4rem; font-weight:800; color:var(--primary,#4f46e5); margin:.2rem 0;">{{ lb.balance }}</div>
+          <div style="font-size:.75rem; color:#9ca3af;">{{ lb.used_days }} used / {{ lb.entitled_days }} entitled</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No leave balances for this year.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Payroll Summary -->
+<section class="section-card">
+  <details>
+    <summary>Payroll Summary</summary>
+    <div class="section-body">
+      {% if extended.payroll_history %}
+      <table class="data-table">
+        <thead><tr><th>Period</th><th>Type</th><th>Pay Date</th><th>Basic</th><th>Gross</th><th>Net Pay</th></tr></thead>
+        <tbody>
+        {% for p in extended.payroll_history %}
+          <tr>
+            <td>{{ p.date_from }} – {{ p.date_to }}</td>
+            <td>{{ p.period_type or '—' }}</td>
+            <td>{{ p.payment_date or '—' }}</td>
+            <td>₱{{ '{:,.2f}'.format(p.basic_pay or 0) }}</td>
+            <td>₱{{ '{:,.2f}'.format(p.gross_pay or 0) }}</td>
+            <td style="font-weight:700; color:var(--primary,#4f46e5);">₱{{ '{:,.2f}'.format(p.net_pay or 0) }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No completed payroll runs found.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+<!-- Documents (201 File) -->
+<section class="section-card">
+  <details>
+    <summary>Documents (201 File)</summary>
+    <div class="section-body">
+      {% if extended.documents %}
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Document</th><th>Expiry</th><th>Status</th></tr></thead>
+        <tbody>
+        {% for doc in extended.documents %}
+          <tr>
+            <td>{{ doc.document_type or '—' }}</td>
+            <td>{{ doc.document_name or '—' }}</td>
+            <td>{{ doc.expiry_date or '—' }}</td>
+            <td>
+              {% if doc.is_missing %}
+                <span class="badge badge-red doc-missing">MISSING</span>
+              {% elif doc.is_expired %}
+                <span class="badge badge-amber doc-expired">EXPIRED</span>
+              {% else %}
+                <span class="badge badge-green doc-ok">OK</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p style="color:#9ca3af; font-size:.85rem;">No document records on file.</p>{% endif %}
+    </div>
+  </details>
+</section>
+
+{% endblock %}

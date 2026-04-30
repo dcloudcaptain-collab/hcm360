@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block page_title %}Retirement Notices{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Retirement Notice Board</h2>
+  <form method="post" action="/rr/retirement-notices/schedule" style="display:inline;">
+    <button type="submit" style="padding:7px 14px;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      Schedule Alerts
+    </button>
+  </form>
+</div>
+
+{% if notices %}
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for n in notices %}
+  {% set days_left = (n.projected_retirement_date - today).days if n.projected_retirement_date else 0 %}
+  <div class="card" style="padding:1rem;border-left:4px solid {% if days_left <= 30 %}#dc2626{% elif days_left <= 90 %}#d97706{% elif days_left <= 180 %}#2563eb{% else %}#16a34a{% endif %};">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+      <div style="flex:1;">
+        <div style="font-size:.95rem;font-weight:700;">{{ n.employee_name }}</div>
+        <div style="font-size:.8rem;color:#6b7280;">
+          {{ n.department_name or '—' }}
+          &nbsp;·&nbsp; DOB: {{ n.birth_date.strftime('%b %d, %Y') if n.birth_date else '—' }}
+          &nbsp;·&nbsp; Retirement Age: {{ n.retirement_age }}
+        </div>
+        <div style="font-size:.8rem;margin-top:.2rem;">
+          <span style="font-weight:600;">Projected: {{ n.projected_retirement_date.strftime('%b %d, %Y') if n.projected_retirement_date else '—' }}</span>
+          {% if days_left > 0 %}
+          <span style="color:{% if days_left <= 30 %}#dc2626{% elif days_left <= 90 %}#d97706{% else %}#6b7280{% endif %};margin-left:.4rem;">
+            ({{ days_left }} days)
+          </span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+          background:{% if n.sent_at %}#dcfce7{% else %}#fef9c3{% endif %};
+          color:{% if n.sent_at %}#166534{% else %}#854d0e{% endif %};">
+          {{ n.alert_type.replace('_',' ') }}
+        </span>
+        <div style="font-size:.72rem;color:#9ca3af;margin-top:.2rem;">
+          {% if n.sent_at %}Sent: {{ n.sent_at.strftime('%b %d') }}{% else %}Scheduled: {{ n.scheduled_send_date.strftime('%b %d') if n.scheduled_send_date else '—' }}{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No retirement notices. Click "Schedule Alerts" to scan for upcoming retirements.
+</div>
+{% endif %}
+
+{% endblock %}

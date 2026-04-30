@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block page_title %}SALN Settings{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>⚙️ SALN Settings</h2>
+       <div class="sub">Configure Statement of Assets, Liabilities & Net Worth filing mode</div></div>
+  <a href="/dms/saln" class="btn btn-ghost">→ SALN Filings</a>
+</div>
+
+<form method="POST" id="salnSettingsForm">
+  <div class="card" style="margin-bottom:1rem;">
+    <h3 style="margin:0 0 .6rem;">Filing Mode</h3>
+    <p style="font-size:.85rem;color:#6b7280;margin:0 0 .6rem;">Choose how employees file their annual SALN:</p>
+    <div style="display:flex;flex-direction:column;gap:.6rem;">
+      {% for mode, label, desc in [
+         ('UPLOAD_ONLY', 'Upload Only',
+          'Employees upload a completed SALN PDF. The system only tracks filing status and year.'),
+         ('SIMPLE_FORM', 'Simple Form',
+          'Short form capturing totals (assets, liabilities, net worth), spouse info, and declared relatives. Generates a summary PDF.'),
+         ('FULL_CSC_210', 'Full CSC Form 210',
+          'Complete 5-page SALN matching the CSC-prescribed template (Real Property, Personal Property, Liabilities, Business Interests, Relatives in Government).')
+      ] %}
+      <label style="display:flex;gap:.6rem;padding:.8rem 1rem;border:1.5px solid #e5e7eb;border-radius:9px;cursor:pointer;{{ 'background:#ede9fe;border-color:#4f46e5;' if settings.mode == mode else '' }}">
+        <input type="radio" name="mode" value="{{ mode }}" {% if settings.mode == mode %}checked{% endif %} style="margin-top:.2rem;" />
+        <div>
+          <div style="font-weight:700;font-size:.9rem;">{{ label }}</div>
+          <div style="font-size:.8rem;color:#6b7280;margin-top:.2rem;">{{ desc }}</div>
+        </div>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3 style="margin:0 0 .6rem;">Filing Schedule</h3>
+    <div class="grid-2">
+      <div class="f-group">
+        <label>Filing Month</label>
+        <select name="filing_month">
+          {% for m, n in [(1,'January'),(2,'February'),(3,'March'),(4,'April (CSC default)'),(5,'May'),(6,'June'),(7,'July'),(8,'August'),(9,'September'),(10,'October'),(11,'November'),(12,'December')] %}
+          <option value="{{ m }}" {% if settings.filing_month == m %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label>Reminder Days Before Deadline</label>
+        <input type="number" name="reminder_days" min="1" max="90" value="{{ settings.reminder_days or 30 }}" />
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+    <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+  </div>
+</form>
+{% endblock %}

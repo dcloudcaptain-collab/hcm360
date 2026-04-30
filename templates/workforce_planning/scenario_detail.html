@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ scenario.name }}{% endblock %}
+{% block content %}
+
+{% set s = scenario %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ s.name }}</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">{{ s.scenario_type }} · {{ s.horizon_months }}mo horizon · Base: {{ s.base_date }}</p>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <span style="font-size:.75rem;font-weight:600;padding:3px 12px;border-radius:999px;
+      background:{% if s.status=='ACTIVE' %}#dcfce7;color:#166534{% elif s.status=='DRAFT' %}#fef9c3;color:#854d0e{% elif s.status=='APPROVED' %}#dbeafe;color:#1d4ed8{% else %}#f1f5f9;color:#64748b{% endif %};">{{ s.status }}</span>
+    <a href="/workforce-planning" style="font-size:.82rem;color:var(--primary,#4f46e5);">← All Scenarios</a>
+  </div>
+</div>
+
+{# Actions #}
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;">
+  <form method="post" action="/workforce-planning/scenarios/{{ s.id }}/regenerate" style="display:inline;">
+    <button style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:1px solid #d1d5db;background:#fff;cursor:pointer;">Regenerate Projections</button>
+  </form>
+  {% if s.status == 'DRAFT' %}
+  <form method="post" action="/workforce-planning/scenarios/{{ s.id }}/status" style="display:inline;">
+    <button name="status" value="ACTIVE" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;background:#16a34a;color:#fff;border:none;cursor:pointer;">Activate</button>
+  </form>
+  {% elif s.status == 'ACTIVE' %}
+  <form method="post" action="/workforce-planning/scenarios/{{ s.id }}/status" style="display:inline;">
+    <button name="status" value="APPROVED" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;background:#2563eb;color:#fff;border:none;cursor:pointer;">Approve</button>
+  </form>
+  {% endif %}
+</div>
+
+{# Assumptions #}
+{% if s.assumptions %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.85rem;display:block;margin-bottom:.5rem;">Assumptions</strong>
+  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.82rem;">
+    {% for k, v in s.assumptions.items() %}
+    <div><span style="color:#6b7280;">{{ k|replace('_',' ')|title }}:</span> <strong>{{ v }}{% if 'pct' in k %}%{% elif 'cost' in k %}₱{% endif %}</strong></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# Cost Projections #}
+{% if cost_projections %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Cost Projections by Quarter</strong>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Period</th>
+        <th style="padding:6px 8px;text-align:right;">Salary</th>
+        <th style="padding:6px 8px;text-align:right;">Benefits</th>
+        <th style="padding:6px 8px;text-align:right;">Training</th>
+        <th style="padding:6px 8px;text-align:right;">Recruitment</th>
+        <th style="padding:6px 8px;text-align:right;font-weight:800;">Total</th>
+        <th style="padding:6px 8px;text-align:center;">HC</th>
+        <th style="padding:6px 8px;text-align:right;">Cost/Head</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cp in cost_projections %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:600;">{{ cp.period_label }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(cp.salary_cost) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(cp.benefits_cost) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(cp.training_cost) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(cp.recruitment_cost) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:800;color:var(--primary,#4f46e5);">₱{{ '{:,.0f}'.format(cp.total_cost) }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;">{{ cp.headcount }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(cp.cost_per_head) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# Headcount Plans by Department #}
+{% if headcount_plans %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Headcount Plan by Department</strong>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Department</th>
+        <th style="padding:6px 8px;">Period</th>
+        <th style="padding:6px 8px;">Current HC</th>
+        <th style="padding:6px 8px;">Planned HC</th>
+        <th style="padding:6px 8px;">Hires</th>
+        <th style="padding:6px 8px;">Exits</th>
+        <th style="padding:6px 8px;text-align:right;">Avg Cost</th>
+        <th style="padding:6px 8px;text-align:right;">Total Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for hp in headcount_plans %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ hp.department_name or '—' }}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;">{{ hp.period_label }}</td>
+        <td style="padding:6px 8px;text-align:center;">{{ hp.current_hc }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;color:var(--primary,#4f46e5);">{{ hp.planned_hc }}</td>
+        <td style="padding:6px 8px;text-align:center;color:#16a34a;">+{{ hp.planned_hires }}</td>
+        <td style="padding:6px 8px;text-align:center;color:#dc2626;">-{{ hp.planned_exits }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(hp.avg_cost) }}</td>
+        <td style="padding:6px 8px;text-align:right;font-family:monospace;">₱{{ '{:,.0f}'.format(hp.total_cost) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{# Skill Demands #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Skill Demand Forecast</strong>
+  </div>
+  {% if skill_demands %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Skill</th>
+        <th style="padding:6px 8px;">Current Supply</th>
+        <th style="padding:6px 8px;">Future Demand</th>
+        <th style="padding:6px 8px;">Gap</th>
+        <th style="padding:6px 8px;">Priority</th>
+        <th style="padding:6px 8px;">Mitigation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sd in skill_demands %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ sd.skill_name }}</td>
+        <td style="padding:6px 8px;text-align:center;">{{ sd.current_supply }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;">{{ sd.future_demand }}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700;color:{% if sd.gap > 0 %}#dc2626{% elif sd.gap < 0 %}#16a34a{% else %}#6b7280{% endif %};">{{ sd.gap }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.7rem;font-weight:600;padding:2px 7px;border-radius:4px;
+            background:{% if sd.priority=='CRITICAL' %}#fef2f2;color:#991b1b{% elif sd.priority=='HIGH' %}#fffbeb;color:#92400e{% else %}#f1f5f9;color:#64748b{% endif %};">{{ sd.priority }}</span>
+        </td>
+        <td style="padding:6px 8px;font-size:.8rem;">{{ sd.mitigation or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="color:#9ca3af;font-size:.85rem;margin-bottom:.75rem;">No skill demands added yet.</div>
+  {% endif %}
+  <form method="post" action="/workforce-planning/scenarios/{{ s.id }}/skill" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.75rem;padding-top:.75rem;border-top:1px solid #e5e7eb;">
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Skill Name</label><input name="skill_name" required placeholder="Python, Project Mgmt..." style="border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:.82rem;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Current</label><input name="current_supply" type="number" value="0" min="0" style="width:60px;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:.82rem;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Demand</label><input name="future_demand" type="number" value="0" min="0" style="width:60px;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:.82rem;"></div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Priority</label>
+      <select name="priority" style="border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:.82rem;">
+        <option value="LOW">Low</option><option value="MEDIUM" selected>Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option>
+      </select>
+    </div>
+    <div><label style="font-size:.68rem;color:#6b7280;display:block;">Mitigation</label>
+      <select name="mitigation" style="border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:.82rem;">
+        <option value="HIRE">Hire</option><option value="TRAIN">Train</option><option value="OUTSOURCE">Outsource</option><option value="AUTOMATE">Automate</option>
+      </select>
+    </div>
+    <button type="submit" style="padding:5px 14px;font-size:.82rem;font-weight:600;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:5px;cursor:pointer;">Add</button>
+  </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% block page_title %}Face Check-In{% endblock %}
+
+{% block extra_css %}
+<style>
+  .checkin-wrap { display:grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap:1rem; }
+  @media (max-width: 860px) { .checkin-wrap { grid-template-columns: 1fr; } }
+
+  .video-card { background:#0b1020; border-radius:14px; overflow:hidden; position:relative; aspect-ratio:16/10; }
+  .video-card video, .video-card canvas {
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  }
+  .video-card .overlay { position:absolute; inset:auto 0 0 0; padding:.5rem 1rem;
+      background:linear-gradient(to top, rgba(0,0,0,.75), transparent);
+      color:#fff; font-size:.8rem; display:flex; justify-content:space-between; align-items:center; }
+  .video-card .status-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:.35rem; }
+  .dot-green { background:#22c55e; box-shadow:0 0 8px #22c55e; }
+  .dot-amber { background:#f59e0b; box-shadow:0 0 8px #f59e0b; }
+  .dot-red   { background:#ef4444; box-shadow:0 0 8px #ef4444; }
+
+  .panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.1rem; margin-bottom:.9rem; }
+  .panel h3 { margin:0 0 .4rem; font-size:.92rem; color:#111827; display:flex; align-items:center; gap:.35rem; }
+  .panel .row { display:flex; justify-content:space-between; font-size:.85rem; color:#374151; padding:.15rem 0; }
+  .panel label { font-size:.75rem; text-transform:uppercase; color:#6b7280; letter-spacing:.04em; display:block; margin-bottom:.2rem; }
+  .panel select, .panel input { width:100%; padding:.45rem .6rem; border:1px solid #d1d5db; border-radius:7px; font-size:.85rem; }
+
+  .btn { display:inline-flex; align-items:center; gap:.35rem; padding:10px 20px; border-radius:9px;
+         font-size:.95rem; font-weight:700; border:none; cursor:pointer; transition:transform .05s; }
+  .btn:active { transform:scale(.98); }
+  .btn-in  { background:#16a34a; color:#fff; }
+  .btn-out { background:#f59e0b; color:#fff; }
+  .btn-ghost { background:#fff; color:#374151; border:1px solid #d1d5db; padding:7px 14px; font-size:.8rem; font-weight:600; }
+
+  .result { padding:.8rem 1rem; border-radius:10px; font-size:.88rem; margin-top:.8rem; display:none; }
+  .result.ok   { background:#f0fdf4; border:1px solid #86efac; color:#166534; display:block; }
+  .result.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; display:block; }
+
+  .enroll-alert { background:#fffbeb; border:1px solid #fde68a; color:#92400e;
+      padding:.8rem 1rem; border-radius:10px; font-size:.88rem; margin-bottom:.8rem; }
+  .enroll-alert a { color:#92400e; font-weight:700; text-decoration:underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">📸 Face Check-In</h2>
+    <div style="font-size:.85rem;color:#6b7280;">Verify your identity and location to record attendance</div>
+  </div>
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+    <a href="/checkin/history" class="btn btn-ghost">📜 My History</a>
+    {% if session.role_code in ('SUPER_ADMIN', 'HR_ADMIN') %}
+    <a href="/admin/checkin-settings" class="btn btn-ghost">⚙️ Settings</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not enrolled %}
+<div class="enroll-alert">
+  🛈 Your face is not yet enrolled. <a href="/checkin/enroll">Enrol your face first →</a>
+  &nbsp;Enrolment takes ~30 seconds and captures a non-reversible numerical signature of your face (not the image itself).
+</div>
+{% endif %}
+
+<div class="checkin-wrap">
+  <div>
+    <div class="video-card" id="videoCard">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="overlay">
+        <span><span class="status-dot dot-amber" id="camDot"></span><span id="camStatus">Initializing camera…</span></span>
+        <span id="fpsLabel" style="opacity:.7;"></span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.6rem;margin-top:.8rem;flex-wrap:wrap;justify-content:center;">
+      <button id="btnIn"  class="btn btn-in"  disabled>✅ Check IN</button>
+      <button id="btnOut" class="btn btn-out" disabled>⏹ Check OUT</button>
+    </div>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h3>📷 Camera</h3>
+      <label for="cameraSelect">Source</label>
+      <select id="cameraSelect"></select>
+      <div style="font-size:.75rem;color:#6b7280;margin-top:.35rem;">
+        Laptop built-in, external webcam, or mobile front/back camera
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>📍 Location</h3>
+      <div class="row"><span>Status</span><span id="geoStatus">Waiting…</span></div>
+      <div class="row"><span>Latitude</span><span id="geoLat">—</span></div>
+      <div class="row"><span>Longitude</span><span id="geoLng">—</span></div>
+      <div class="row"><span>Accuracy</span><span id="geoAcc">—</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>🎯 Activity</h3>
+      <label for="activity">Type</label>
+      <select id="activity">
+        {% for t in (settings.activity_types or 'regular').split(',') %}
+        <option value="{{ t }}">{{ t.replace('_', ' ').title() }}</option>
+        {% endfor %}
+      </select>
+      <label for="notes" style="margin-top:.6rem;">Notes (optional)</label>
+      <input id="notes" type="text" placeholder="e.g., working from home" />
+    </div>
+
+    <div class="panel">
+      <h3>🔒 Verification</h3>
+      <div class="row">
+        <span>Face recognition</span>
+        <span>{{ 'Required' if settings.require_face else 'Off' }}</span>
+      </div>
+      <div class="row">
+        <span>Geolocation</span>
+        <span>{{ 'Required' if settings.require_geotag else 'Off' }}</span>
+      </div>
+      <div class="row">
+        <span>Face match threshold</span>
+        <span>{{ '%.2f'|format(settings.face_threshold|float) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- face-api.js (loaded once) -->
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+<script>
+  // ── Configuration ─────────────────────────────────────────────
+  const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+  const REQUIRE_FACE = {{ 'true' if settings.require_face else 'false' }};
+  const REQUIRE_GEO  = {{ 'true' if settings.require_geotag else 'false' }};
+
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('overlay');
+  const btnIn  = document.getElementById('btnIn');
+  const btnOut = document.getElementById('btnOut');
+  const camStatus = document.getElementById('camStatus');
+  const camDot  = document.getElementById('camDot');
+  const geoStatus = document.getElementById('geoStatus');
+  const geoLat  = document.getElementById('geoLat');
+  const geoLng  = document.getElementById('geoLng');
+  const geoAcc  = document.getElementById('geoAcc');
+  const resultBox = document.getElementById('result');
+  const camSelect = document.getElementById('cameraSelect');
+
+  let stream = null;
+  let modelsReady = false;
+  let lastDetection = null;
+  let currentPosition = null;
+
+  // ── 1. Load face-api models ───────────────────────────────────
+  async function loadModels() {
+    if (!REQUIRE_FACE) { modelsReady = true; return; }
+    camStatus.textContent = 'Loading face-recognition models…';
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      modelsReady = true;
+    } catch (e) {
+      console.error(e);
+      camStatus.textContent = 'Face models failed to load.';
+      camDot.className = 'status-dot dot-red';
+    }
+  }
+
+  // ── 2. Enumerate cameras ───────────────────────────────────────
+  async function populateCameras() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+      camSelect.innerHTML = '';
+      if (!cams.length) {
+        camSelect.innerHTML = '<option>No cameras detected</option>';
+        return;
+      }
+      cams.forEach((c, i) => {
+        const opt = document.createElement('option');
+        opt.value = c.deviceId;
+        opt.textContent = c.label || `Camera ${i + 1}`;
+        camSelect.appendChild(opt);
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  // ── 3. Start camera ────────────────────────────────────────────
+  async function startCamera(deviceId) {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: deviceId
+          ? { deviceId: { exact: deviceId } }
+          : { facingMode: 'user' },
+        audio: false,
+      });
+      video.srcObject = stream;
+      await video.play();
+      resize();
+      camStatus.textContent = 'Camera ready';
+      camDot.className = 'status-dot dot-green';
+      // Re-enumerate to pick up labels (some browsers require active stream)
+      populateCameras();
+      if (modelsReady && REQUIRE_FACE) loopDetect();
+      else enableButtonsIfReady();
+    } catch (e) {
+      console.error(e);
+      camStatus.textContent = 'Camera access denied';
+      camDot.className = 'status-dot dot-red';
+    }
+  }
+
+  function resize() {
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 400;
+  }
+  window.addEventListener('resize', resize);
+
+  // ── 4. Face detection loop ─────────────────────────────────────
+  let frameCount = 0, fpsLast = performance.now();
+  async function loopDetect() {
+    if (!modelsReady || !video.videoWidth) { requestAnimationFrame(loopDetect); return; }
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (detection) {
+      lastDetection = detection;
+      const box = detection.detection.box;
+      const sx = canvas.width / video.videoWidth;
+      const sy = canvas.height / video.videoHeight;
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(box.x * sx, box.y * sy, box.width * sx, box.height * sy);
+      ctx.fillStyle = 'rgba(34,197,94,.85)';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('Face detected', box.x * sx + 4, box.y * sy - 6);
+    } else {
+      lastDetection = null;
+    }
+
+    frameCount++;
+    if (performance.now() - fpsLast > 1000) {
+      document.getElementById('fpsLabel').textContent =
+        `${frameCount} fps · ${lastDetection ? 'face found' : 'searching…'}`;
+      frameCount = 0; fpsLast = performance.now();
+    }
+
+    enableButtonsIfReady();
+    requestAnimationFrame(loopDetect);
+  }
+
+  function enableButtonsIfReady() {
+    const faceOk = !REQUIRE_FACE || !!lastDetection;
+    const geoOk  = !REQUIRE_GEO  || !!currentPosition;
+    btnIn.disabled = !(faceOk && geoOk);
+    btnOut.disabled = !(faceOk && geoOk);
+  }
+
+  // ── 5. Geolocation ─────────────────────────────────────────────
+  function watchGeo() {
+    if (!REQUIRE_GEO) { geoStatus.textContent = 'Not required'; return; }
+    if (!navigator.geolocation) {
+      geoStatus.textContent = 'Not supported'; return;
+    }
+    geoStatus.textContent = 'Requesting permission…';
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        currentPosition = pos;
+        geoStatus.textContent = 'Locked ✓';
+        geoLat.textContent = pos.coords.latitude.toFixed(6);
+        geoLng.textContent = pos.coords.longitude.toFixed(6);
+        geoAcc.textContent = `±${pos.coords.accuracy.toFixed(0)} m`;
+        enableButtonsIfReady();
+      },
+      (err) => {
+        geoStatus.textContent = 'Denied: ' + err.message;
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  }
+
+  // ── 6. Submit check-in ─────────────────────────────────────────
+  function detectDeviceKind() {
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|android|ipad|mobile/.test(ua)) return 'mobile';
+    if (/mac|darwin|macintosh/.test(ua)) return 'laptop';
+    return 'desktop';
+  }
+
+  async function submitCheckIn(type) {
+    if (REQUIRE_FACE && !lastDetection) {
+      showResult(false, 'No face detected — hold still and try again.'); return;
+    }
+    if (REQUIRE_GEO && !currentPosition) {
+      showResult(false, 'Location not yet available.'); return;
+    }
+    const payload = {
+      check_type: type,
+      descriptor: lastDetection ? Array.from(lastDetection.descriptor) : null,
+      latitude: currentPosition ? currentPosition.coords.latitude : null,
+      longitude: currentPosition ? currentPosition.coords.longitude : null,
+      accuracy_m: currentPosition ? currentPosition.coords.accuracy : null,
+      device_kind: detectDeviceKind(),
+      device_info: {
+        ua: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+      },
+      activity: document.getElementById('activity').value,
+      notes: document.getElementById('notes').value,
+    };
+    btnIn.disabled = btnOut.disabled = true;
+    try {
+      const resp = await fetch('/checkin/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        let msg = `✅ ${type === 'IN' ? 'Checked in' : 'Checked out'} at `
+          + new Date(data.checked_at).toLocaleTimeString();
+        if (data.face_match_score !== null && data.face_match_score !== undefined) {
+          msg += `  ·  face score ${(data.face_match_score * 100).toFixed(1)}%`;
+        }
+        if (data.geo_distance_m !== null && data.geo_distance_m !== undefined) {
+          msg += `  ·  ${data.geo_distance_m.toFixed(0)} m from office`;
+        }
+        showResult(true, msg);
+      } else {
+        showResult(false, data.message || 'Check-in failed.');
+      }
+    } catch (e) {
+      showResult(false, 'Network error: ' + e.message);
+    } finally {
+      enableButtonsIfReady();
+    }
+  }
+
+  function showResult(ok, msg) {
+    resultBox.className = 'result ' + (ok ? 'ok' : 'err');
+    resultBox.textContent = msg;
+  }
+
+  // ── 7. Wire up events ──────────────────────────────────────────
+  btnIn.addEventListener('click', () => submitCheckIn('IN'));
+  btnOut.addEventListener('click', () => submitCheckIn('OUT'));
+  camSelect.addEventListener('change', (e) => startCamera(e.target.value));
+
+  // ── 8. Init ────────────────────────────────────────────────────
+  (async function init() {
+    // Check face-api availability
+    if (REQUIRE_FACE && typeof faceapi === 'undefined') {
+      // Defer: script has defer and may not be ready
+      await new Promise(r => window.addEventListener('load', r));
+    }
+    await loadModels();
+    await populateCameras();
+    await startCamera();
+    watchGeo();
+  })();
+</script>
+{% endblock %}

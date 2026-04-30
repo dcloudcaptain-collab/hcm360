@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block page_title %}DTR Detail{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:1rem;">
+  <a href="/attendance/dtr" style="font-size:.85rem;color:var(--primary);">&larr; Back to DTR</a>
+</div>
+
+{% if detail %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+    <div>
+      <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ detail.full_name }}</h2>
+      <div style="font-size:.85rem;color:#6b7280;">{{ detail.employee_no }} &middot; {{ detail.department }}</div>
+    </div>
+    <span class="badge {% if detail.status == 'PRESENT' %}badge-success{% elif detail.status == 'LATE' %}badge-warning{% elif detail.status == 'ABSENT' %}badge-danger{% else %}badge-default{% endif %}" style="font-size:.85rem;padding:4px 12px;">
+      {{ detail.status }}
+    </span>
+  </div>
+
+  <div class="grid three" style="gap:1.5rem;">
+    <div>
+      <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Date</div>
+      <div style="font-size:1.1rem;font-weight:600;font-family:monospace;">{{ detail.work_date }}</div>
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Shift</div>
+      <div>{{ detail.shift_name or 'No shift assigned' }}</div>
+      {% if detail.shift_start %}
+      <div style="font-size:.8rem;color:#6b7280;">{{ detail.shift_start }} - {{ detail.shift_end }}</div>
+      {% endif %}
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Flags</div>
+      {% if detail.is_holiday %}<span class="badge badge-info">Holiday</span> {% endif %}
+      {% if detail.is_restday %}<span class="badge badge-default">Rest Day</span> {% endif %}
+      {% if detail.is_locked %}<span class="badge badge-warning">Locked</span> {% endif %}
+    </div>
+  </div>
+
+  <hr style="margin:1.5rem 0;border:none;border-top:1px solid rgba(0,0,0,.08);">
+
+  <div class="grid kpis">
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;font-family:monospace;">{{ detail.time_in.strftime('%H:%M') if detail.time_in else '--:--' }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Time In</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;font-family:monospace;">{{ detail.time_out.strftime('%H:%M') if detail.time_out else '--:--' }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Time Out</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;color:#166534;">{{ '%.2f'|format(detail.hours_worked or 0) }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Hours Worked</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;color:#d97706;">{{ '%.2f'|format(detail.hours_late or 0) }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Hours Late</div>
+    </div>
+  </div>
+
+  <div class="grid kpis" style="margin-top:1rem;">
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;color:#4f46e5;">{{ '%.2f'|format(detail.hours_overtime or 0) }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">OT Hours</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;color:#7c3aed;">{{ '%.2f'|format(detail.hours_night_diff or 0) }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Night Diff</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:1.5rem;font-weight:700;color:#dc2626;">{{ '%.2f'|format(detail.hours_undertime or 0) }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Undertime</div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:.9rem;color:#6b7280;">{{ detail.remarks or '—' }}</div>
+      <div style="font-size:.75rem;color:#6b7280;">Remarks</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}Payroll Register{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Payroll Register</h2>
+  {% if run_id %}
+  <div style="display:flex;gap:.5rem;">
+    <a href="/payroll/register/export?run_id={{ run_id }}&fmt=xlsx" class="btn btn-sm btn-outline">Export XLSX</a>
+    <a href="/payroll/register/export?run_id={{ run_id }}&fmt=csv" class="btn btn-sm btn-outline">Export CSV</a>
+  </div>
+  {% endif %}
+</div>
+
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.75rem;align-items:flex-end;">
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Pay Run</label>
+    <select name="run_id" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+      <option value="">Select run...</option>
+      {% for r in runs %}
+      <option value="{{ r.id }}" {% if run_id and run_id|string == r.id|string %}selected{% endif %}>#{{ r.id }} — {{ r.cutoff_start }} to {{ r.cutoff_end }} ({{ r.status }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-sm">Load</button>
+</form>
+
+{% if rows %}
+<section class="card" style="padding:0;overflow:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.8rem;white-space:nowrap;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.65rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 10px;text-align:left;">Employee</th>
+        <th style="padding:8px 10px;">Dept</th>
+        <th style="padding:8px 10px;">Basic</th>
+        <th style="padding:8px 10px;">OT</th>
+        <th style="padding:8px 10px;">Holiday</th>
+        <th style="padding:8px 10px;">ND</th>
+        <th style="padding:8px 10px;">Allow.</th>
+        <th style="padding:8px 10px;font-weight:700;">Gross</th>
+        <th style="padding:8px 10px;">SSS</th>
+        <th style="padding:8px 10px;">PH</th>
+        <th style="padding:8px 10px;">HDMF</th>
+        <th style="padding:8px 10px;">Tax</th>
+        <th style="padding:8px 10px;">Loans</th>
+        <th style="padding:8px 10px;">Other</th>
+        <th style="padding:8px 10px;font-weight:700;">Deductions</th>
+        <th style="padding:8px 10px;font-weight:700;">Net Pay</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if loop.index is odd %}background:rgba(0,0,0,.015);{% endif %}">
+        <td style="padding:6px 10px;font-weight:500;">{{ r.full_name }}<div style="font-size:.6rem;color:#9ca3af;">{{ r.employee_no }}</div></td>
+        <td style="padding:6px 10px;color:#6b7280;">{{ r.department }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.basic_pay or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.ot_pay or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.holiday_pay or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.night_diff_pay or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.allowances_total or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;font-weight:600;">{{ '{:,.2f}'.format(r.gross_pay or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.sss_ee or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.philhealth_ee or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.pagibig_ee or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.tax_withheld or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.loan_deductions or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(r.other_deductions or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#dc2626;font-weight:600;">{{ '{:,.2f}'.format(r.total_deductions or 0) }}</td>
+        <td style="padding:6px 10px;text-align:right;font-family:monospace;color:#166534;font-weight:700;">{{ '{:,.2f}'.format(r.net_pay or 0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% elif run_id %}
+<div class="card" style="text-align:center;color:#9ca3af;padding:2rem;">No data for this run.</div>
+{% endif %}
+
+{% endblock %}

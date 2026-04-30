@@ -1,0 +1,366 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ program.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/employee-picker.css') }}">
+<script src="{{ url_for('static', filename='js/employee-picker.js') }}"></script>
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between;
+               flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.3rem; font-weight:800; }
+  .sub { font-size:.85rem; color:#6b7280; display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+
+  .btn { display:inline-flex;align-items:center;gap:.3rem;padding:7px 14px;border-radius:7px;
+         font-size:.82rem;font-weight:600;text-decoration:none;cursor:pointer;border:none;
+         font-family:inherit; }
+  .btn-primary { background:var(--primary,#4f46e5);color:#fff; }
+  .btn-green   { background:#16a34a;color:#fff; }
+  .btn-ghost   { background:#fff;color:#374151;border:1.5px solid #d1d5db; }
+  .btn-xs { padding:3px 9px;font-size:.72rem;font-weight:700;border-radius:5px; }
+
+  .status-chip {
+     font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;
+     letter-spacing:.04em;
+  }
+  .s-ACTIVE    { background:#dcfce7;color:#166534; }
+  .s-PLANNED   { background:#fef9c3;color:#854d0e; }
+  .s-COMPLETED { background:#dbeafe;color:#1e40af; }
+  .s-CANCELLED { background:#fee2e2;color:#991b1b; }
+
+  .card { background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.1rem 1.25rem;margin-bottom:1rem; }
+  .card h3 { margin:0 0 .7rem; font-size:.95rem; display:flex; align-items:center; gap:.4rem; }
+
+  .grid-2 { display:grid; grid-template-columns:2fr 1fr; gap:1rem; }
+  @media (max-width:900px) { .grid-2 { grid-template-columns:1fr; } }
+
+  .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.6rem; margin-bottom:1rem; }
+  .stat-tile { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:.75rem .9rem; text-align:center; }
+  .stat-tile .n { font-size:1.75rem; font-weight:800; line-height:1; color:#111827; }
+  .stat-tile .l { font-size:.7rem; color:#6b7280; text-transform:uppercase;
+                  letter-spacing:.05em; font-weight:700; margin-top:.35rem; }
+  .tile-blue .n   { color:#2563eb; }
+  .tile-green .n  { color:#16a34a; }
+  .tile-amber .n  { color:#d97706; }
+  .tile-red .n    { color:#dc2626; }
+
+  table.att { width:100%; border-collapse:collapse; font-size:.87rem; }
+  table.att th { text-align:left; padding:.55rem .85rem; background:#f9fafb; color:#6b7280;
+     font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.5px solid #e5e7eb; }
+  table.att td { padding:.55rem .85rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  table.att tbody tr:hover td { background:#fafafa; }
+
+  .attend-badge {
+     display:inline-flex; align-items:center; gap:.2rem; padding:2px 8px;
+     border-radius:5px; font-size:.7rem; font-weight:700;
+  }
+  .ab-attended   { background:#dcfce7;color:#166534; }
+  .ab-enrolled   { background:#dbeafe;color:#1e40af; }
+  .ab-no_show    { background:#fee2e2;color:#991b1b; }
+  .ab-withdrawn  { background:#f3f4f6;color:#6b7280; }
+  .ab-completed  { background:#dcfce7;color:#166534; }
+
+  .feedback-text { font-size:.82rem;color:#374151;font-style:italic; }
+  .star-rating { color:#f59e0b; font-size:.82rem; letter-spacing:1px; }
+
+  /* Rating stars on feedback form */
+  .rate-pick { display:flex; gap:.3rem; }
+  .rate-pick input { display:none; }
+  .rate-pick label {
+     cursor:pointer; padding:8px 12px; background:#f9fafb; border:1.5px solid #e5e7eb;
+     border-radius:8px; font-size:.88rem; font-weight:700; color:#6b7280;
+  }
+  .rate-pick input:checked + label { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>🏃 {{ program.name }}
+      <span class="status-chip s-{{ program.status }}" style="margin-left:.5rem;">{{ program.status }}</span>
+    </h2>
+    <div class="sub">
+      {{ program.program_type.replace('_',' ')|title }}
+      {% if program.provider %} · 👨‍⚕️ {{ program.provider }}{% endif %}
+      {% if program.start_date %} · 📅 {{ program.start_date.strftime('%b %d') }}{% endif %}
+      {% if program.end_date %} – {{ program.end_date.strftime('%b %d, %Y') }}{% endif %}
+      {% if program.location %} · 📍 {{ program.location }}{% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    <a href="{{ url_for('health.wellness') }}" class="btn btn-ghost">← All programs</a>
+    {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+    <a href="{{ url_for('health.wellness_edit', program_id=program.id) }}" class="btn btn-ghost">✏️ Edit</a>
+    {% endif %}
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.88rem;
+                background:{% if cat=='error' %}#fee2e2{% else %}#dcfce7{% endif %};
+                color:{% if cat=='error' %}#991b1b{% else %}#166534{% endif %};">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="stats-row">
+  <div class="stat-tile tile-blue">
+    <div class="n">{{ stats.total }}</div>
+    <div class="l">Registered</div>
+  </div>
+  <div class="stat-tile tile-green">
+    <div class="n">{{ stats.attended }}</div>
+    <div class="l">Attended</div>
+  </div>
+  <div class="stat-tile tile-red">
+    <div class="n">{{ stats.no_show }}</div>
+    <div class="l">No-show</div>
+  </div>
+  <div class="stat-tile tile-amber">
+    <div class="n">{{ stats.with_feedback }}</div>
+    <div class="l">Feedback</div>
+  </div>
+  <div class="stat-tile">
+    <div class="n">{{ stats.avg_rating if stats.avg_rating else '—' }}</div>
+    <div class="l">Avg Rating</div>
+  </div>
+  {% if program.max_participants %}
+  <div class="stat-tile">
+    <div class="n">{{ program.max_participants - stats.total }}</div>
+    <div class="l">Slots Left</div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+  <div>
+    {# ───── Attendees list ───── #}
+    <div class="card">
+      <h3>
+        👥 Attendees ({{ enrollments|length }})
+        {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+        <span style="flex:1"></span>
+        <span style="font-size:.72rem;color:#6b7280;font-style:italic;">
+          Admins can mark attendance inline.
+        </span>
+        {% endif %}
+      </h3>
+      {% if enrollments %}
+      <table class="att">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th style="width:140px;">Department</th>
+            <th style="width:120px;">Status</th>
+            <th style="width:120px;">Attended</th>
+            <th style="width:90px;">Rating</th>
+            {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+            <th style="width:180px;text-align:right;">Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in enrollments %}
+          <tr>
+            <td>
+              <div style="font-weight:600;">{{ e.name }}</div>
+              <div style="font-size:.72rem;color:#6b7280;font-family:monospace;">{{ e.employee_no or '' }}</div>
+            </td>
+            <td style="font-size:.82rem;color:#374151;">{{ e.department or '—' }}</td>
+            <td>
+              <span class="attend-badge ab-{{ (e.status or 'ENROLLED')|lower }}">
+                {{ e.status or 'ENROLLED' }}
+              </span>
+            </td>
+            <td style="font-size:.78rem;color:#6b7280;">
+              {% if e.attended_at %}
+              ✓ {{ e.attended_at.strftime('%b %d, %H:%M') }}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if e.feedback_rating %}
+              <span class="star-rating" title="{{ e.feedback_rating }}/5">
+                {% for i in range(5) %}{{ '★' if i < e.feedback_rating else '☆' }}{% endfor %}
+              </span>
+              {% else %}
+              <span style="color:#9ca3af;font-size:.75rem;">—</span>
+              {% endif %}
+            </td>
+            {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+            <td style="text-align:right;">
+              {% if e.attended_at %}
+              <form method="post" action="{{ url_for('health.wellness_mark_attend', enrollment_id=e.enrollment_id) }}"
+                    style="display:inline;">
+                <input type="hidden" name="attended" value="false">
+                <button type="submit" class="btn btn-ghost btn-xs" title="Undo attend">↺ Unmark</button>
+              </form>
+              {% else %}
+              <form method="post" action="{{ url_for('health.wellness_mark_attend', enrollment_id=e.enrollment_id) }}"
+                    style="display:inline;">
+                <input type="hidden" name="attended" value="true">
+                <button type="submit" class="btn btn-green btn-xs" title="Mark attended">✓ Attend</button>
+              </form>
+              <form method="post" action="{{ url_for('health.wellness_mark_noshow', enrollment_id=e.enrollment_id) }}"
+                    style="display:inline;">
+                <button type="submit" class="btn btn-ghost btn-xs" title="Mark no-show">No-show</button>
+              </form>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% if e.feedback %}
+          <tr>
+            <td colspan="{{ 6 if session.role_code in ('SUPER_ADMIN','HR_ADMIN') else 5 }}"
+                style="padding:.3rem .85rem .85rem;border-bottom:1px solid #f1f5f9;">
+              <div class="feedback-text">💬 "{{ e.feedback }}"</div>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="text-align:center;padding:1.5rem;color:#9ca3af;">
+        <div style="font-size:2rem;margin-bottom:.3rem;">📭</div>
+        <div style="font-size:.88rem;">No attendees yet.</div>
+        {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+        <div style="font-size:.78rem;color:#6b7280;margin-top:.4rem;">
+          Use the assignment panel on the right to add employees, departments, or custom groups.
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    {# ───── Admin: Assign attendees ───── #}
+    {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+    <div class="card" data-hint="Bulk-enroll individuals, whole departments, or custom employee groups using the Global Employee Picker.">
+      <h3>➕ Assign Attendees</h3>
+      <p style="font-size:.78rem;color:#6b7280;margin:0 0 .7rem;">
+        Search individuals, expand a department, or pick a custom group.
+      </p>
+      <form method="post" action="{{ url_for('health.wellness_assign', program_id=program.id) }}">
+        <div id="assignPicker" style="margin-bottom:.7rem;"
+             data-hint="Three tabs — Individual search · Department expand · Custom Group. Duplicates are skipped automatically."></div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button type="submit" class="btn btn-primary"
+                  data-hint="Enrolls every selected employee with status ENROLLED.">Enroll selected</button>
+        </div>
+      </form>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        const picker = new EmployeePicker(document.getElementById('assignPicker'), {
+          mode: 'multi',
+          inputName: 'target_employee_ids[]',
+          allowDepartments: true,
+          allowGroups: true,
+          placeholder: 'Search employees to enroll…',
+        });
+        /* Guard submit */
+        const form = document.querySelector('form[action="{{ url_for("health.wellness_assign", program_id=program.id) }}"]');
+        form.addEventListener('submit', function(e){
+          if (picker.getSelectedIds().length === 0) {
+            e.preventDefault();
+            alert('Please pick at least one employee, department, or group.');
+          }
+        });
+      });
+    </script>
+    {% endif %}
+
+    {# ───── Program info ───── #}
+    <div class="card">
+      <h3>📋 Program Info</h3>
+      <table style="width:100%;font-size:.82rem;">
+        <tbody>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">Type</td>
+              <td style="text-align:right;font-weight:600;">{{ program.program_type.replace('_',' ')|title }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">Status</td>
+              <td style="text-align:right;"><span class="status-chip s-{{ program.status }}">{{ program.status }}</span></td></tr>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">Start</td>
+              <td style="text-align:right;">{{ program.start_date.strftime('%b %d, %Y') if program.start_date else '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">End</td>
+              <td style="text-align:right;">{{ program.end_date.strftime('%b %d, %Y') if program.end_date else '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">Provider</td>
+              <td style="text-align:right;">{{ program.provider or '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">Location</td>
+              <td style="text-align:right;">{{ program.location or '—' }}</td></tr>
+          <tr><td style="color:#6b7280;padding:.25rem 0;">Max attendees</td>
+              <td style="text-align:right;">{{ program.max_participants or 'Unlimited' }}</td></tr>
+        </tbody>
+      </table>
+      {% if program.schedule_notes %}
+      <div style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid #f1f5f9;">
+        <div style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem;">📅 Schedule notes</div>
+        <div style="font-size:.85rem;white-space:pre-wrap;color:#374151;">{{ program.schedule_notes }}</div>
+      </div>
+      {% endif %}
+      {% if program.description %}
+      <div style="margin-top:.6rem;padding-top:.6rem;border-top:1px solid #f1f5f9;">
+        <div style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem;">📖 Description</div>
+        <div style="font-size:.85rem;white-space:pre-wrap;color:#374151;">{{ program.description }}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# ───── Employee: enrollment + feedback ───── #}
+    {% if session.employee_id %}
+    <div class="card">
+      <h3>👤 Your Participation</h3>
+      {% if not my_enrollment %}
+        {% if program.status in ('ACTIVE','PLANNED') %}
+        <form method="post" action="{{ url_for('health.enroll', program_id=program.id) }}">
+          <p style="font-size:.85rem;color:#374151;margin:0 0 .6rem;">
+            You're not enrolled in this program yet.
+          </p>
+          <button type="submit" class="btn btn-primary" style="width:100%;">+ Enroll me</button>
+        </form>
+        {% else %}
+        <p style="font-size:.85rem;color:#6b7280;margin:0;">
+          Enrollment is closed for this program.
+        </p>
+        {% endif %}
+      {% else %}
+        <p style="font-size:.85rem;color:#374151;margin:0 0 .6rem;">
+          You're enrolled.
+          {% if my_enrollment.attended_at %} Attended on {{ my_enrollment.attended_at.strftime('%b %d, %Y') }}.{% endif %}
+        </p>
+        {% if my_enrollment.attended_at or program.status == 'COMPLETED' %}
+          {% if my_enrollment.feedback_rating %}
+          <div style="padding:.6rem;background:#f9fafb;border-radius:8px;font-size:.82rem;">
+            <div style="margin-bottom:.3rem;">Your rating:
+              <span class="star-rating">
+                {% for i in range(5) %}{{ '★' if i < my_enrollment.feedback_rating else '☆' }}{% endfor %}
+              </span>
+            </div>
+            {% if my_enrollment.feedback %}
+            <div class="feedback-text">"{{ my_enrollment.feedback }}"</div>
+            {% endif %}
+          </div>
+          {% else %}
+          <form method="post" action="{{ url_for('health.wellness_submit_feedback', program_id=program.id) }}">
+            <label style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:.4rem;">
+              How would you rate it?
+            </label>
+            <div class="rate-pick">
+              {% for v in [1,2,3,4,5] %}
+              <input type="radio" name="rating" id="rate{{ v }}" value="{{ v }}" required>
+              <label for="rate{{ v }}">{{ v }}★</label>
+              {% endfor %}
+            </div>
+            <textarea name="feedback" rows="3" maxlength="1000"
+                      placeholder="Optional — what was good? what could be better?"
+                      style="width:100%;margin-top:.6rem;padding:.5rem .7rem;border:1.5px solid #d1d5db;border-radius:8px;font-size:.85rem;font-family:inherit;resize:vertical;"></textarea>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.5rem;">Submit feedback</button>
+          </form>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

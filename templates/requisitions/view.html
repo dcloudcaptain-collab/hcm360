@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+{% block page_title %}Requisition {{ r.reference_no }}{% endblock %}
+{% block extra_css %}{% include 'requisitions/_shared.html' %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>
+      📋 {{ r.reference_no }}
+      <span class="status-badge s-{{ r.status }}">{{ r.status.replace('_',' ') }}</span>
+      <span class="prio-badge p-{{ r.priority or 'NORMAL' }}">{{ r.priority or 'NORMAL' }}</span>
+    </h2>
+    <div class="sub">{{ r.position_title or '—' }} · {{ r.department_name or '—' }}</div>
+  </div>
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+    <a href="{{ url_for('requisitions.list_view') }}" class="btn btn-ghost">← Back</a>
+    <a href="{{ url_for('requisitions.csc_form_pdf', req_id=r.id) }}" target="_blank" class="btn btn-ghost">📄 CSC Form PDF</a>
+    {% if is_super or r.requested_by == session.user_id %}
+    <form method="post" action="{{ url_for('requisitions.clone', req_id=r.id) }}" style="display:inline;">
+      <button class="btn btn-ghost" type="submit">📋 Clone</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{# Flash banners #}
+{% if wfp_warning %}
+<div class="banner banner-warn">
+  <strong>⚠️ Workforce Plan exceeded:</strong>
+  Department has <strong>{{ wfp_warning.current_hc }}</strong> current + requesting
+  <strong>{{ wfp_warning.requested }}</strong> = <strong>{{ wfp_warning.would_be }}</strong>,
+  but active WFP scenario "<em>{{ wfp_warning.scenario_name }}</em>" planned only
+  <strong>{{ wfp_warning.planned_hc }}</strong> heads
+  (over by <strong>{{ wfp_warning.over_by }}</strong>).
+  Consider revising the scenario or the requisition.
+</div>
+{% endif %}
+
+{% if duplicates %}
+<div class="banner banner-info">
+  <strong>ℹ️ Other active requisitions for this position:</strong>
+  {% for d in duplicates %}
+  <a href="{{ url_for('requisitions.view', req_id=d.id) }}" style="color:#1e40af;">{{ d.reference_no }}</a>
+  ({{ d.status.replace('_',' ') }}, {{ d.headcount }} head){% if not loop.last %}, {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if r.status == 'REJECTED' and r.rejection_reason %}
+<div class="banner banner-err">
+  <strong>❌ Rejected:</strong> {{ r.rejection_reason }}
+</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:1rem;">
+  <div>
+    {# Details #}
+    <div class="card">
+      <h3>🏢 Position Details</h3>
+      <dl class="kv">
+        <dt>Reference No.</dt><dd><code>{{ r.reference_no }}</code></dd>
+        <dt>Department</dt><dd>{{ r.department_name or '—' }}</dd>
+        <dt>Position</dt><dd>{{ r.position_title or '—' }}</dd>
+        <dt>Salary Grade</dt><dd>{{ r.salary_grade or '—' }}</dd>
+        <dt>Plantilla Item</dt><dd>{{ r.plantilla_item_number or '—' }}</dd>
+        <dt>Headcount</dt><dd>
+          <strong>{{ r.headcount }}</strong> requested
+          {% if r.approved_headcount %} · <span style="color:#166534;">{{ r.approved_headcount }} approved</span>{% endif %}
+        </dd>
+        <dt>Priority</dt><dd><span class="prio-badge p-{{ r.priority or 'NORMAL' }}">{{ r.priority or 'NORMAL' }}</span></dd>
+        <dt>Target Hire Date</dt><dd>{% if r.target_hire_date %}{{ r.target_hire_date.strftime('%b %d, %Y') }}{% else %}—{% endif %}</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>💰 Budget &amp; Funding</h3>
+      <dl class="kv">
+        <dt>Budget Source</dt><dd>{{ r.budget_source or '—' }}</dd>
+        <dt>Funds Available</dt><dd>{% if r.funds_available %}PHP {{ '{:,.2f}'.format(r.funds_available) }}{% else %}—{% endif %}</dd>
+        <dt>Salary Min</dt><dd>
+          {% if r.salary_min_override %}PHP {{ '{:,.2f}'.format(r.salary_min_override) }} <small>(override)</small>
+          {% elif r.grade_salary_min %}PHP {{ '{:,.2f}'.format(r.grade_salary_min) }}
+          {% else %}—{% endif %}
+        </dd>
+        <dt>Salary Max</dt><dd>
+          {% if r.salary_max_override %}PHP {{ '{:,.2f}'.format(r.salary_max_override) }} <small>(override)</small>
+          {% elif r.grade_salary_max %}PHP {{ '{:,.2f}'.format(r.grade_salary_max) }}
+          {% else %}—{% endif %}
+        </dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>📚 Qualifications</h3>
+      <dl class="kv">
+        <dt>Education</dt><dd>{{ r.education or '—' }}</dd>
+        <dt>Experience</dt><dd>{{ r.experience or '—' }}</dd>
+        <dt>Training</dt><dd>{{ r.training or '—' }}</dd>
+        <dt>Eligibility</dt><dd>{{ r.eligibility or r.eligibility_name or '—' }}</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3>📄 Justification</h3>
+      <p style="margin:0;line-height:1.45;color:#374151;">{{ r.justification or '—' }}</p>
+    </div>
+
+    {# Linked postings #}
+    {% if postings %}
+    <div class="card">
+      <h3>🌐 Linked Job Postings</h3>
+      <table class="dt">
+        <thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Posted</th><th>Type</th></tr></thead>
+        <tbody>
+        {% for p in postings %}
+        <tr>
+          <td>#{{ p.id }}</td>
+          <td>{{ p.title }}</td>
+          <td><span class="status-badge s-{{ p.status }}">{{ p.status }}</span></td>
+          <td style="font-size:.82rem;">{% if p.posted_on %}{{ p.posted_on.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
+          <td style="font-size:.82rem;">{{ p.employment_type or '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {# Attachments #}
+    <div class="card">
+      <h3>📎 Attachments</h3>
+      {% if attachments %}
+      <table class="dt">
+        <thead><tr><th>Type</th><th>File</th><th>Size</th><th>Uploaded</th><th>By</th></tr></thead>
+        <tbody>
+        {% for a in attachments %}
+        <tr>
+          <td><span class="status-badge s-DRAFT">{{ a.attachment_type }}</span></td>
+          <td>{{ a.file_name }}</td>
+          <td style="font-size:.82rem;">{{ a.file_size_kb }} KB</td>
+          <td style="font-size:.82rem;">{{ a.uploaded_at.strftime('%b %d, %Y') }}</td>
+          <td style="font-size:.82rem;">{{ a.uploaded_by_name or '—' }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#6b7280;margin:0;">No attachments yet.</p>
+      {% endif %}
+      {% if r.status in ('DRAFT','PENDING_APPROVAL') %}
+      <form method="post" action="{{ url_for('requisitions.upload_attachment', req_id=r.id) }}"
+            enctype="multipart/form-data"
+            style="display:flex;gap:.4rem;align-items:flex-end;margin-top:.7rem;flex-wrap:wrap;">
+        <div class="f-group" style="flex:1;min-width:180px;">
+          <label>Attachment Type</label>
+          <select name="attachment_type">
+            <option>JUSTIFICATION</option>
+            <option>BUDGET_APPROVAL</option>
+            <option>ORG_CHART</option>
+            <option>ENDORSEMENT</option>
+            <option>OTHER</option>
+          </select>
+        </div>
+        <div class="f-group" style="flex:2;min-width:240px;">
+          <label>File</label>
+          <input type="file" name="file" required>
+        </div>
+        <button class="btn btn-primary btn-xs" type="submit">Upload</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    {# Actions #}
+    <div class="card">
+      <h3>⚡ Actions</h3>
+      {% if can_submit %}
+      <form method="post" action="{{ url_for('requisitions.submit', req_id=r.id) }}">
+        <button class="btn btn-primary" style="width:100%;margin-bottom:.5rem;" type="submit">✉️ Submit for Approval</button>
+      </form>
+      {% endif %}
+
+      {% if can_approve %}
+      <form method="post" action="{{ url_for('requisitions.approve', req_id=r.id) }}" style="margin-bottom:.7rem;">
+        <div class="f-group" style="margin-bottom:.4rem;">
+          <label>Approved Headcount</label>
+          <input type="number" name="approved_headcount" min="1" max="{{ r.headcount }}" value="{{ r.headcount }}">
+        </div>
+        <div class="f-group" style="margin-bottom:.4rem;">
+          <label>Remarks (optional)</label>
+          <input type="text" name="remarks" placeholder="Optional comments">
+        </div>
+        <button class="btn btn-green" style="width:100%;" type="submit">✓ Approve Step</button>
+      </form>
+
+      <form method="post" action="{{ url_for('requisitions.reject', req_id=r.id) }}"
+            onsubmit="return confirm('Reject this requisition? This cannot be undone.');">
+        <div class="f-group" style="margin-bottom:.4rem;">
+          <label>Reason for Rejection *</label>
+          <textarea name="reason" required minlength="5" placeholder="State the reason..."></textarea>
+        </div>
+        <button class="btn btn-red" style="width:100%;" type="submit">✗ Reject</button>
+      </form>
+      {% endif %}
+
+      {% if can_cancel %}
+      <form method="post" action="{{ url_for('requisitions.cancel', req_id=r.id) }}"
+            onsubmit="return confirm('Cancel this requisition?');" style="margin-top:.5rem;">
+        <input type="hidden" name="reason" value="Cancelled by user">
+        <button class="btn btn-ghost" style="width:100%;" type="submit">⊘ Cancel Requisition</button>
+      </form>
+      {% endif %}
+
+      {% if not can_submit and not can_approve and not can_cancel %}
+      <p style="color:#6b7280;margin:0;font-size:.85rem;">No actions available in current status.</p>
+      {% endif %}
+    </div>
+
+    {# Workflow chain #}
+    <div class="card">
+      <h3>🔀 Approval Chain</h3>
+      {% if r.current_step_name %}
+      <p style="margin:0 0 .5rem;font-size:.85rem;">
+        <strong>Current:</strong> {{ r.current_step_name }}
+        <br><small style="color:#6b7280;">{{ r.current_step_role }}</small>
+      </p>
+      {% endif %}
+      {% if chain %}
+      <ul class="timeline">
+        {% for c in chain %}
+        <li class="{% if c.action_code=='APPROVE' %}ok{% elif c.action_code=='REJECT' %}rej{% endif %}">
+          <strong>{{ c.action_code }}</strong> · {{ c.step_name or '' }}
+          <span class="when">{{ c.created_at.strftime('%b %d, %Y %H:%M') }} · {{ c.performed_by_name or '—' }}</span>
+          {% if c.comments %}<em style="font-size:.8rem;">{{ c.comments }}</em>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="color:#6b7280;font-size:.85rem;margin:0;">No workflow actions yet.</p>
+      {% endif %}
+    </div>
+
+    {# History #}
+    <div class="card">
+      <h3>📜 History</h3>
+      {% if history %}
+      <ul class="timeline">
+        {% for h in history[:12] %}
+        <li>
+          <strong>{{ h.action }}</strong>
+          {% if h.from_status and h.to_status and h.from_status != h.to_status %}
+          · {{ h.from_status.replace('_',' ') }} → {{ h.to_status.replace('_',' ') }}
+          {% endif %}
+          <span class="when">{{ h.created_at.strftime('%b %d, %Y %H:%M') }} · {{ h.performed_by_name or 'System' }}</span>
+          {% if h.remarks %}<em style="font-size:.8rem;color:#6b7280;">{{ h.remarks }}</em>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p style="color:#6b7280;font-size:.85rem;margin:0;">No history entries.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

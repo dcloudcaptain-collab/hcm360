@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block page_title %}Appointments{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Appointment Papers</h2>
+  <a href="/rsp/appointments/new"
+     style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border-radius:7px;font-size:.875rem;font-weight:600;text-decoration:none;">
+    + New Appointment
+  </a>
+</div>
+
+{# Status filter tabs #}
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('DRAFT','Draft'),('FOR_SIGNATURE','For Signature'),('ATTESTED','Attested'),('CANCELLED','Cancelled')] %}
+  <a href="?status={{ s }}"
+     style="padding:6px 16px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+            {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Appt. No.</th>
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;text-align:left;">Position</th>
+        <th style="padding:10px 14px;text-align:center;">Type</th>
+        <th style="padding:10px 14px;text-align:center;">SG-Step</th>
+        <th style="padding:10px 14px;text-align:right;">Monthly Salary</th>
+        <th style="padding:10px 14px;text-align:center;">Effective</th>
+        <th style="padding:10px 14px;text-align:center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in appointments %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:600;color:var(--primary,#4f46e5);">{{ a.appointment_no }}</td>
+        <td style="padding:9px 14px;font-weight:500;">{{ a.employee_name }}</td>
+        <td style="padding:9px 14px;color:#374151;">{{ a.position_title }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if a.appointment_type == 'PERMANENT' %}#dbeafe{% elif a.appointment_type == 'TEMPORARY' %}#fef9c3{% else %}#f3f4f6{% endif %};
+            color:{% if a.appointment_type == 'PERMANENT' %}#1e40af{% elif a.appointment_type == 'TEMPORARY' %}#854d0e{% else %}#374151{% endif %};">
+            {{ a.appointment_type }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;text-align:center;">SG {{ a.salary_grade }}-{{ a.step_no }}</td>
+        <td style="padding:9px 14px;text-align:right;font-weight:600;">
+          ₱{{ '{:,.2f}'.format(a.monthly_salary) }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;color:#6b7280;">
+          {{ a.effective_date.strftime('%b %d, %Y') if a.effective_date else '—' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 10px;border-radius:999px;
+            background:{% if a.status == 'ATTESTED' %}#dcfce7{% elif a.status == 'FOR_SIGNATURE' %}#fef9c3{% elif a.status == 'DRAFT' %}#f1f5f9{% else %}#fee2e2{% endif %};
+            color:{% if a.status == 'ATTESTED' %}#166534{% elif a.status == 'FOR_SIGNATURE' %}#854d0e{% elif a.status == 'DRAFT' %}#374151{% else %}#991b1b{% endif %};">
+            {{ a.status.replace('_',' ') }}
+          </span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" style="padding:2rem;text-align:center;color:#9ca3af;">No appointments found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

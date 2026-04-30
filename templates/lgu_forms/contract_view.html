@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block page_title %}Contract {{ r.contract_no }}{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📜 {{ r.contract_no }}</h2>
+       <div class="sub"><span class="status-badge s-{{ r.status|lower }}">{{ r.status }}</span>
+         · {{ r.type_name }} ({{ r.type_code }})</div></div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <a href="/lgu-contracts/" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+<div class="print-form">
+  <div class="header">
+    <h1>CONTRACT OF SERVICE — {{ r.type_code }}</h1>
+    <div style="font-size:.75rem;color:#6b7280;">{{ r.type_name }}{% if r.legal_basis %} · {{ r.legal_basis }}{% endif %}</div>
+    <div style="font-size:.72rem;color:#6b7280;margin-top:.2rem;">Contract No. {{ r.contract_no }}</div>
+  </div>
+
+  <div class="sec-title">Contractor</div>
+  <div class="kv">
+    <span>Full Name</span><span>{{ r.full_name }}</span>
+    <span>Address</span><span>{{ r.address or '—' }}</span>
+    <span>Contact No.</span><span>{{ r.contact_no or '—' }}</span>
+    <span>Email</span><span>{{ r.email or '—' }}</span>
+  </div>
+
+  <div class="sec-title">Engagement</div>
+  <div class="kv">
+    <span>Position / Title</span><span>{{ r.position_title or '—' }}</span>
+    <span>Department</span><span>{{ r.department_name or '—' }}</span>
+    {% if r.barangay %}<span>Barangay</span><span>{{ r.barangay }}</span>{% endif %}
+    {% if r.school %}<span>School</span><span>{{ r.school }}</span>{% endif %}
+    <span>Period</span><span>{{ r.date_from.strftime('%B %d, %Y') }} to {{ r.date_to.strftime('%B %d, %Y') }}</span>
+    <span>Rate</span><span>{{ '₱{:,.2f}'.format(r.rate|float) if r.rate else '—' }}{% if r.rate_type %} ({{ r.rate_type|lower }}){% endif %}</span>
+    <span>Funds Source</span><span>{{ r.funds_source or '—' }}</span>
+  </div>
+
+  {% if r.terms %}
+  <div class="sec-title">Terms and Conditions</div>
+  <div style="font-size:.88rem;line-height:1.6;white-space:pre-wrap;">{{ r.terms }}</div>
+  {% endif %}
+
+  <div class="signature">
+    <div class="box">Contractor<br><span style="font-size:.75rem;">{{ r.full_name }}</span></div>
+    <div class="box">LGU Representative</div>
+  </div>
+</div>
+
+{% if r.status in ('PENDING','DRAFT') %}
+<div class="card" style="max-width:760px;margin:1rem auto;">
+  <h3>Actions</h3>
+  <div style="display:flex;gap:.5rem;">
+    <button onclick="act('APPROVE')" class="btn btn-green">✓ Approve</button>
+    <button onclick="act('ACTIVATE')" class="btn btn-primary">🚀 Activate</button>
+    <button onclick="act('TERMINATE')" class="btn btn-red">🚫 Terminate</button>
+  </div>
+</div>
+<script>
+  async function act(action) {
+    const r = await fetch(`/lgu-contracts/{{ r.id }}/action`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action}),
+    });
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endif %}
+{% endblock %}

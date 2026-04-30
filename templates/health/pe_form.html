@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block page_title %}New PE Schedule{% endblock %}
+{% block content %}
+<style>.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;}.field{display:flex;flex-direction:column;gap:.25rem;}.field label{font-size:.78rem;font-weight:600;color:#475569;}.field input,.field select{border:1px solid #d1d5db;border-radius:6px;padding:7px 12px;font-size:.875rem;width:100%;box-sizing:border-box;}.form-actions{display:flex;gap:.75rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e2e8f0;}.btn{padding:8px 20px;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;text-decoration:none;}.btn-primary{background:var(--primary,#4f46e5);color:#fff;}.btn-secondary{background:#f1f5f9;color:#374151;border:1px solid #d1d5db;}.required::after{content:" *";color:#ef4444;}</style>
+<h2 style="font-size:1.3rem;font-weight:700;margin:0 0 1.5rem;">New PE Schedule</h2>
+<form method="post" class="card" style="padding:1.5rem;">
+  <div class="form-grid">
+    <div class="field"><label class="required">Year</label><input type="number" name="year" value="2026" required></div>
+    <div class="field"><label class="required">Title</label><input name="title" required placeholder="e.g. 2026 Annual PE"></div>
+    <div class="field"><label>Provider</label><input name="provider_name" placeholder="e.g. Municipal Health Office"></div>
+    <div class="field"><label class="required">From</label><input type="date" name="scheduled_from" required></div>
+    <div class="field"><label class="required">To</label><input type="date" name="scheduled_to" required></div>
+    <div class="field"><label>Status</label><select name="status"><option value="SCHEDULED">Scheduled</option><option value="COMPLETED">Completed</option></select></div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create PE Schedule</button>
+    <a href="{{ url_for('health.pe_schedules') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

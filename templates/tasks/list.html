@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block extra_css %}{% include 'tasks/_shared.html' %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>
+      {% if view == 'team' %}👥 Team Tasks
+      {% elif view == 'admin' %}🗂️ All Tasks
+      {% else %}📋 My Tasks{% endif %}
+    </h2>
+    <div class="sub">
+      {{ tasks|length }} task{{ 's' if tasks|length != 1 else '' }} visible
+      · scope: {{ view }}
+    </div>
+  </div>
+  <div>
+    <a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary">+ New Task</a>
+    {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN') %}
+    <a href="{{ url_for('tasks.task_templates_list') }}" class="btn btn-ghost">📑 Templates</a>
+    {% endif %}
+  </div>
+</div>
+
+{# Summary tiles #}
+<div class="stats-row">
+  <div class="stat-tile stat-blue">
+    <div class="n">{{ stats.open }}</div>
+    <div class="l">Open</div>
+  </div>
+  <div class="stat-tile stat-red">
+    <div class="n">{{ stats.overdue }}</div>
+    <div class="l">Overdue</div>
+  </div>
+  <div class="stat-tile stat-green">
+    <div class="n">{{ stats.completed_ytd }}</div>
+    <div class="l">Completed YTD</div>
+  </div>
+  <div class="stat-tile">
+    <div class="n">{{ stats.avg_completion_days if stats.avg_completion_days is not none else '—' }}</div>
+    <div class="l">Avg Days to Complete</div>
+  </div>
+</div>
+
+{# Filters row — chips for status, then dropdowns + search #}
+<div class="filters" data-filters>
+  {% set base_url = url_for(request.endpoint) %}
+  {% set current_status = filters.status %}
+  <a href="{{ base_url }}" class="{% if not current_status %}active{% endif %}">All</a>
+  {% for s, label in [('PENDING','Pending'),('IN_PROGRESS','In Progress'),
+                      ('COMPLETED','Completed'),('DISMISSED','Dismissed')] %}
+  <a href="{{ base_url }}?status={{ s }}"
+     class="{% if current_status == s %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+
+  {# Due filter chip #}
+  {% set current_due = filters.due %}
+  <span style="margin-left:.5rem;color:#d1d5db;">|</span>
+  <a href="{{ base_url }}?due=overdue" class="{% if current_due=='overdue' %}active{% endif %}">
+    <span style="color:#dc2626;">●</span>&nbsp;Overdue
+  </a>
+  <a href="{{ base_url }}?due=today" class="{% if current_due=='today' %}active{% endif %}">Due Today</a>
+  <a href="{{ base_url }}?due=this_week" class="{% if current_due=='this_week' %}active{% endif %}">This Week</a>
+
+  <span style="flex:1"></span>
+
+  <form method="get" style="display:inline-flex;gap:.4rem;align-items:center;">
+    {% if filters.status %}<input type="hidden" name="status" value="{{ filters.status }}">{% endif %}
+    <input type="search" name="q" placeholder="Search title or description…"
+           value="{{ filters.q or '' }}"
+           style="padding:5px 9px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.78rem;min-width:200px;">
+    <select name="priority" onchange="this.form.submit()"
+            style="padding:5px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.78rem;">
+      <option value="">Any priority</option>
+      {% for p in ['URGENT','HIGH','NORMAL','LOW'] %}
+      <option value="{{ p }}" {% if filters.priority == p %}selected{% endif %}>{{ p.title() }}</option>
+      {% endfor %}
+    </select>
+    <select name="category" onchange="this.form.submit()"
+            style="padding:5px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.78rem;">
+      <option value="">Any category</option>
+      {% for c in ['WORK','FOLLOWUP','MEETING','DOC_REVIEW','ONBOARDING','OFFBOARDING','PERSONAL','SYSTEM'] %}
+      <option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c.replace('_',' ').title() }}</option>
+      {% endfor %}
+    </select>
+    <select name="sort" onchange="this.form.submit()"
+            style="padding:5px 8px;border:1.5px solid #d1d5db;border-radius:6px;font-size:.78rem;">
+      <option value="created_desc" {% if not filters.sort or filters.sort=='created_desc' %}selected{% endif %}>Newest first</option>
+      <option value="created_asc"  {% if filters.sort=='created_asc' %}selected{% endif %}>Oldest first</option>
+      <option value="due_asc"      {% if filters.sort=='due_asc' %}selected{% endif %}>Due soonest</option>
+      <option value="due_desc"     {% if filters.sort=='due_desc' %}selected{% endif %}>Due latest</option>
+      <option value="priority"     {% if filters.sort=='priority' %}selected{% endif %}>Priority</option>
+    </select>
+    <button type="submit" class="btn btn-ghost btn-xs">Apply</button>
+  </form>
+</div>
+
+{% if tasks %}
+<table class="dt">
+  <thead>
+    <tr>
+      <th style="width:30px;"></th>
+      <th>Task</th>
+      {% if view != 'my' %}<th style="width:160px;">Assignee</th>{% endif %}
+      <th style="width:110px;">Category</th>
+      <th style="width:90px;">Priority</th>
+      <th style="width:110px;">Due</th>
+      <th style="width:120px;">Status</th>
+      <th style="width:120px;text-align:right;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for t in tasks %}
+    <tr>
+      <td>{% if not t.is_read %}<span style="color:#dc2626;font-size:1.2rem;" title="Unread">●</span>{% endif %}</td>
+      <td>
+        <a href="{{ url_for('tasks.task_detail', task_id=t.id) }}"
+           style="color:#111827;text-decoration:none;font-weight:600;">{{ t.title }}</a>
+        {% if t.description %}
+        <div style="font-size:.75rem;color:#6b7280;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px;">
+          {{ t.description[:120] }}{% if t.description|length > 120 %}…{% endif %}
+        </div>
+        {% endif %}
+      </td>
+      {% if view != 'my' %}
+      <td style="font-size:.82rem;">
+        {{ t.assignee_name or '—' }}
+        {% if t.assignee_department %}<br><span style="font-size:.72rem;color:#6b7280;">{{ t.assignee_department }}</span>{% endif %}
+      </td>
+      {% endif %}
+      <td><span class="cat-chip">{{ (t.task_category or 'WORK').replace('_',' ') }}</span></td>
+      <td><span class="prio-badge p-{{ t.priority }}">{{ t.priority }}</span></td>
+      <td>
+        {% if t.due_date %}
+          {% if t.is_overdue %}
+          <span class="due-overdue">{{ t.due_date.strftime('%b %d') }} ⚠</span>
+          {% else %}
+          {{ t.due_date.strftime('%b %d, %Y') }}
+          {% endif %}
+        {% else %}<span style="color:#9ca3af;">—</span>{% endif %}
+      </td>
+      <td><span class="status-badge s-{{ t.status }}">{{ t.status.replace('_',' ') }}</span></td>
+      <td style="text-align:right;">
+        {% if t.status in ('PENDING','IN_PROGRESS') %}
+        <form method="post" action="{{ url_for('tasks.task_complete', task_id=t.id) }}" style="display:inline;">
+          <button type="submit" class="btn-xs btn-green" style="border:none;" title="Mark complete">✓</button>
+        </form>
+        {% else %}
+        <form method="post" action="{{ url_for('tasks.task_reopen', task_id=t.id) }}" style="display:inline;">
+          <button type="submit" class="btn-xs btn-ghost" title="Reopen">↺</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('tasks.task_detail', task_id=t.id) }}" class="btn-xs btn-ghost">Open</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#6b7280;">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">📭</div>
+  <div style="font-weight:600;margin-bottom:.4rem;">No tasks match your filters.</div>
+  <div style="font-size:.85rem;">
+    <a href="{{ url_for('tasks.new_task') }}" style="color:#4f46e5;font-weight:600;">Create your first task</a>
+    or adjust the filters above.
+  </div>
+</div>
+{% endif %}
+{% endblock %}

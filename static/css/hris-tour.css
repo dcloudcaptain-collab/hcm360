@@ -1,0 +1,289 @@
+/* ══════════════════════════════════════════════════════════════════
+   HCM360 Guided Tour + Tooltip — client styles
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Help launcher (always visible) ──────────────────────────────── */
+.hris-help-launcher {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, .35);
+  z-index: 99998;
+  transition: transform .15s, box-shadow .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hris-help-launcher:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, .45);
+}
+.hris-help-launcher::after {
+  content: '';
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #fff;
+  display: none;
+}
+.hris-help-launcher.has-new::after { display: block; }
+
+/* ── Launcher dropdown ───────────────────────────────────────────── */
+.hris-help-menu {
+  position: fixed;
+  bottom: 4.5rem;
+  right: 1.25rem;
+  min-width: 280px;
+  max-width: 360px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .15);
+  z-index: 99998;
+  padding: .5rem 0;
+  display: none;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.hris-help-menu.open { display: block; }
+.hris-help-menu h4 {
+  margin: 0;
+  padding: .6rem 1rem .3rem;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #6b7280;
+  font-weight: 700;
+}
+.hris-help-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: .6rem 1rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: .88rem;
+  color: #374151;
+  font-family: inherit;
+  border-left: 3px solid transparent;
+}
+.hris-help-menu button:hover {
+  background: #f9fafb;
+  border-left-color: #4f46e5;
+  color: #111827;
+}
+.hris-help-menu button .hris-menu-sub {
+  display: block;
+  font-size: .75rem;
+  color: #9ca3af;
+  margin-top: .15rem;
+}
+.hris-help-menu button .hris-menu-done {
+  float: right;
+  font-size: .7rem;
+  color: #16a34a;
+  font-weight: 700;
+}
+
+/* ── Overlay ─────────────────────────────────────────────────────── */
+.hris-tour-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, .55);
+  z-index: 99999;
+  pointer-events: auto;
+  transition: opacity .2s;
+}
+.hris-tour-spotlight {
+  position: absolute;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(17, 24, 39, .55);
+  pointer-events: none;
+  transition: all .25s ease;
+  border: 2px solid #4f46e5;
+}
+
+/* ── Step tooltip ────────────────────────────────────────────────── */
+.hris-tour-step {
+  position: absolute;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  max-width: 360px;
+  width: max-content;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+  z-index: 100000;
+  font-family: inherit;
+  color: #111827;
+}
+.hris-tour-step.centered {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 420px;
+}
+.hris-tour-step h3 {
+  margin: 0 0 .45rem;
+  font-size: 1rem;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+.hris-tour-step h3::before {
+  content: '💡';
+  font-size: .95rem;
+}
+.hris-tour-step p {
+  margin: 0 0 .85rem;
+  font-size: .88rem;
+  line-height: 1.5;
+  color: #374151;
+}
+.hris-tour-step .hris-tour-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.hris-tour-step .hris-tour-progress {
+  font-size: .72rem;
+  color: #9ca3af;
+  font-weight: 600;
+}
+.hris-tour-step .hris-tour-btns {
+  display: flex;
+  gap: .4rem;
+}
+.hris-tour-step button {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: .8rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.hris-tour-step .hris-btn-ghost {
+  background: transparent;
+  color: #6b7280;
+  padding: 6px 10px;
+}
+.hris-tour-step .hris-btn-ghost:hover { color: #111827; }
+.hris-tour-step .hris-btn-back {
+  background: #f3f4f6;
+  color: #374151;
+}
+.hris-tour-step .hris-btn-next {
+  background: #4f46e5;
+  color: #fff;
+}
+.hris-tour-step .hris-btn-next:hover { background: #4338ca; }
+
+/* Arrow pointer */
+.hris-tour-step .hris-tour-arrow {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+.hris-tour-step[data-pos="top"] .hris-tour-arrow {
+  bottom: -7px;
+  left: 50%;
+  margin-left: -7px;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, .05);
+}
+.hris-tour-step[data-pos="bottom"] .hris-tour-arrow {
+  top: -7px;
+  left: 50%;
+  margin-left: -7px;
+  box-shadow: -1px -1px 2px rgba(0, 0, 0, .05);
+}
+.hris-tour-step[data-pos="left"] .hris-tour-arrow {
+  right: -7px;
+  top: 50%;
+  margin-top: -7px;
+  box-shadow: 2px -1px 2px rgba(0, 0, 0, .05);
+}
+.hris-tour-step[data-pos="right"] .hris-tour-arrow {
+  left: -7px;
+  top: 50%;
+  margin-top: -7px;
+  box-shadow: -1px 2px 2px rgba(0, 0, 0, .05);
+}
+
+/* ── Tooltip (data-hint / data-tour-hint) ────────────────────────── */
+.hris-tooltip {
+  position: fixed;
+  background: #111827;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: .75rem;
+  line-height: 1.4;
+  max-width: 260px;
+  z-index: 100001;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18);
+  opacity: 0;
+  transition: opacity .12s;
+}
+.hris-tooltip.show { opacity: 1; }
+.hris-tooltip::after {
+  content: '';
+  position: absolute;
+  border: 5px solid transparent;
+}
+.hris-tooltip[data-pos="top"]::after {
+  bottom: -10px;
+  left: 50%;
+  margin-left: -5px;
+  border-top-color: #111827;
+}
+.hris-tooltip[data-pos="bottom"]::after {
+  top: -10px;
+  left: 50%;
+  margin-left: -5px;
+  border-bottom-color: #111827;
+}
+.hris-tooltip[data-pos="left"]::after {
+  right: -10px;
+  top: 50%;
+  margin-top: -5px;
+  border-left-color: #111827;
+}
+.hris-tooltip[data-pos="right"]::after {
+  left: -10px;
+  top: 50%;
+  margin-top: -5px;
+  border-right-color: #111827;
+}
+
+/* ── Mobile adjustments ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hris-tour-step { max-width: calc(100vw - 2rem); }
+  .hris-tour-overlay,
+  .hris-tour-spotlight { display: none; }
+  .hris-tour-step.centered { width: calc(100vw - 2rem); }
+  .hris-help-launcher { bottom: 1rem; right: 1rem; }
+}
+
+/* ── Spotlight target styling (optional extra emphasis) ──────────── */
+.hris-tour-target-lit {
+  position: relative;
+  z-index: 99999 !important;
+}

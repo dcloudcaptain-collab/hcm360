@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block page_title %}Document Requests{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Document Requests</h2>
+  <a href="/dms/" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+<div style="display:flex;gap:.5rem;margin-bottom:1.25rem;">
+  {% for s, label in [('','All'),('PENDING','Pending'),('SUBMITTED','Submitted'),('OVERDUE','Overdue')] %}
+  <a href="?status={{ s }}" style="padding:6px 14px;border-radius:20px;font-size:.85rem;text-decoration:none;font-weight:500;
+    {% if status_filter == s or (not status_filter and not s) %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:rgba(0,0,0,.05);color:#6b7280;{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for r in requests %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:.95rem;font-weight:700;">{{ r.employee_name }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">{{ r.document_type }} · Requested by {{ r.requested_by_name }}{% if r.due_date %} · Due: {{ r.due_date.strftime('%b %d, %Y') }}{% endif %}</div>
+      {% if r.purpose %}<div style="font-size:.78rem;color:#374151;margin-top:.15rem;">{{ r.purpose[:100] }}</div>{% endif %}
+    </div>
+    <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+      background:{% if r.status == 'SUBMITTED' %}#dcfce7{% elif r.status == 'OVERDUE' %}#fee2e2{% elif r.status == 'CANCELLED' %}#f1f5f9{% else %}#fef9c3{% endif %};
+      color:{% if r.status == 'SUBMITTED' %}#166534{% elif r.status == 'OVERDUE' %}#991b1b{% elif r.status == 'CANCELLED' %}#374151{% else %}#854d0e{% endif %};">{{ r.status }}</span>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No document requests found.</div>
+  {% endfor %}
+</div>
+{% endblock %}

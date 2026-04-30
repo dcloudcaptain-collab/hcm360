@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block page_title %}Plantilla of Personnel{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Plantilla of Personnel</h2>
+  <div style="display:flex;gap:.5rem;">
+    <span style="font-size:.875rem;color:#6b7280;">DBM-Authorized Positions</span>
+  </div>
+</div>
+
+{# Filters #}
+<form method="get" style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Department</label>
+    <select name="dept_id" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if dept_filter == d.id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Status</label>
+    <select name="status" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All</option>
+      {% for s in ['VACANT','FILLED','PROPOSED','ABOLISHED'] %}
+      <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+  <a href="/rsp/plantilla" style="padding:7px 16px;border:1px solid #d1d5db;border-radius:6px;font-size:.875rem;color:#374151;text-decoration:none;">Clear</a>
+</form>
+
+{# Summary badges #}
+{% set vacant_count = items | selectattr('status','eq','VACANT') | list | length %}
+{% set filled_count = items | selectattr('status','eq','FILLED') | list | length %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.25rem;font-weight:800;color:var(--primary,#4f46e5);">{{ items|length }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Total Positions</span>
+  </div>
+  <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.25rem;font-weight:800;color:#16a34a;">{{ filled_count }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Filled</span>
+  </div>
+  <div class="card" style="padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.25rem;font-weight:800;color:#d97706;">{{ vacant_count }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Vacant</span>
+  </div>
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Item No.</th>
+        <th style="padding:10px 14px;text-align:left;">Position</th>
+        <th style="padding:10px 14px;text-align:left;">Department</th>
+        <th style="padding:10px 14px;text-align:center;">SG</th>
+        <th style="padding:10px 14px;text-align:center;">Step</th>
+        <th style="padding:10px 14px;text-align:left;">Filled By</th>
+        <th style="padding:10px 14px;text-align:center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:600;color:var(--primary,#4f46e5);">{{ item.item_number }}</td>
+        <td style="padding:9px 14px;font-weight:500;">{{ item.position_title or '—' }}</td>
+        <td style="padding:9px 14px;color:#6b7280;">{{ item.department_name or '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ item.salary_grade }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ item.step_no }}</td>
+        <td style="padding:9px 14px;color:#6b7280;">{{ item.filled_by_name or '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 10px;border-radius:999px;
+            background:{% if item.status == 'VACANT' %}#fef9c3{% elif item.status == 'FILLED' %}#dcfce7{% elif item.status == 'PROPOSED' %}#dbeafe{% else %}#fee2e2{% endif %};
+            color:{% if item.status == 'VACANT' %}#854d0e{% elif item.status == 'FILLED' %}#166534{% elif item.status == 'PROPOSED' %}#1e40af{% else %}#991b1b{% endif %};">
+            {{ item.status }}
+          </span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No plantilla items found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

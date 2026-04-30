@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block page_title %}Shift Definitions{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Shift Schedule Definitions</h2>
+  <a href="/attendance/shift-assignments" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Assignments →</a>
+</div>
+
+{# New shift form #}
+<details class="card" style="padding:0;margin-bottom:1.25rem;">
+  <summary style="padding:1rem;cursor:pointer;font-size:.9rem;font-weight:600;list-style:none;display:flex;justify-content:space-between;">
+    + Add New Shift <span style="color:#9ca3af;">›</span>
+  </summary>
+  <form method="post" action="/attendance/shifts/save" style="padding:0 1rem 1rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Code *</label>
+      <input name="code" required placeholder="e.g. DAY_SHIFT" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Name *</label>
+      <input name="name" required placeholder="e.g. Day Shift 8AM-5PM" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Time In *</label>
+      <input name="time_in" type="time" required style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Time Out *</label>
+      <input name="time_out" type="time" required style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Break (min)</label>
+      <input name="break_minutes" type="number" value="60" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div>
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Grace Period (min)</label>
+      <input name="grace_period_minutes" type="number" value="15" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;cursor:pointer;">
+        <input type="checkbox" name="is_night_shift" value="1"> Night Shift
+      </label>
+      <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;cursor:pointer;">
+        <input type="checkbox" name="crosses_midnight" value="1"> Crosses Midnight
+      </label>
+    </div>
+    <div style="grid-column:3;text-align:right;">
+      <button type="submit" style="padding:8px 18px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">Create Shift</button>
+    </div>
+  </form>
+</details>
+
+{# Existing shifts #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+      <th style="padding:8px 12px;text-align:left;">Code</th>
+      <th style="padding:8px 12px;text-align:left;">Name</th>
+      <th style="padding:8px 12px;text-align:center;">Time In</th>
+      <th style="padding:8px 12px;text-align:center;">Time Out</th>
+      <th style="padding:8px 12px;text-align:center;">Break</th>
+      <th style="padding:8px 12px;text-align:center;">Grace</th>
+      <th style="padding:8px 12px;text-align:center;">Night</th>
+    </tr></thead>
+    <tbody>
+      {% for s in shifts %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:700;color:var(--primary,#4f46e5);">{{ s.code }}</td>
+        <td style="padding:8px 12px;">{{ s.name }}</td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;">{{ s.time_in }}</td>
+        <td style="padding:8px 12px;text-align:center;font-family:monospace;">{{ s.time_out }}</td>
+        <td style="padding:8px 12px;text-align:center;">{{ s.break_minutes }}m</td>
+        <td style="padding:8px 12px;text-align:center;">{{ s.grace_period_minutes }}m</td>
+        <td style="padding:8px 12px;text-align:center;">{% if s.is_night_shift %}🌙{% else %}—{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No shifts defined. Add one above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

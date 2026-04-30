@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block page_title %}Clearance #{{ clearance.id }}{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>✅ Clearance — {{ clearance.full_name }}</h2>
+    <div class="sub">{{ clearance.department_name or '' }} · Last day: {{ clearance.last_working_day.strftime('%b %d, %Y') }}</div>
+  </div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <a href="/offboarding/clearance" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+<div class="print-form">
+  <div class="header">
+    <div style="font-size:.72rem;color:#6b7280;">CS Form No. 7 (s.2017)</div>
+    <h1>CLEARANCE FROM MONEY AND PROPERTY ACCOUNTABILITY</h1>
+  </div>
+
+  <div class="kv">
+    <span>Name of Employee</span><span>{{ clearance.full_name }}</span>
+    <span>Employee No.</span><span>{{ clearance.employee_no }}</span>
+    <span>Department</span><span>{{ clearance.department_name or '—' }}</span>
+    <span>Position</span><span>{{ clearance.position_title or '—' }}</span>
+    <span>Last Working Day</span><span>{{ clearance.last_working_day.strftime('%B %d, %Y') }}</span>
+    <span>Status</span><span><span class="status-badge s-{{ clearance.status|lower|replace('_','-') }}">{{ clearance.status.replace('_',' ') }}</span></span>
+  </div>
+
+  <div class="sec-title">Signatories &amp; Accountabilities</div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;margin-top:.5rem;">
+    <thead><tr style="background:#f3f4f6;">
+      <th style="text-align:left;padding:.5rem;">Signatory</th>
+      <th style="text-align:left;padding:.5rem;">Description</th>
+      <th style="text-align:center;padding:.5rem;">Status</th>
+      <th style="text-align:left;padding:.5rem;">Remarks</th>
+      <th style="text-align:right;padding:.5rem;">Action</th>
+    </tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr style="border-top:1px solid #e5e7eb;">
+        <td style="padding:.6rem;font-weight:600;">{{ it.signatory_role }}</td>
+        <td style="padding:.6rem;color:#6b7280;">{{ it.description or '—' }}</td>
+        <td style="padding:.6rem;text-align:center;">
+          {% if it.is_cleared %}
+            <span style="color:#16a34a;font-weight:700;">✓ Cleared</span>
+            {% if it.cleared_at %}<div style="font-size:.7rem;color:#9ca3af;">{{ it.cleared_at.strftime('%b %d, %Y') }}</div>{% endif %}
+          {% else %}
+            <span style="color:#d97706;font-weight:700;">Pending</span>
+          {% endif %}
+        </td>
+        <td style="padding:.6rem;font-size:.8rem;color:#6b7280;">{{ it.remarks or '—' }}</td>
+        <td style="padding:.6rem;text-align:right;">
+          {% if not it.is_cleared and session.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER') %}
+          <button onclick="signItem({{ it.id }})" class="btn-xs btn-green">✓ Sign</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if clearance.status == 'CLEARED' %}
+  <div style="margin-top:1.25rem;padding:1rem;background:#f0fdf4;border:1px solid #86efac;border-radius:9px;text-align:center;color:#166534;font-weight:700;">
+    ✓ FULLY CLEARED — Employee is cleared from all money and property accountabilities.
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  async function signItem(id) {
+    const remarks = prompt('Remarks (optional):') || '';
+    const r = await fetch(`/offboarding/clearance/item/${id}/sign`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cleared: true, remarks}),
+    });
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endblock %}

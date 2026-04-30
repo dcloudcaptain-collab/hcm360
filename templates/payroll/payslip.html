@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block page_title %}Payslip{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Payslip</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/payroll/payslips/{{ detail.payslip_id }}/pdf"
+       style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">
+      ↓ Download PDF
+    </a>
+    <a href="javascript:window.print()"
+       style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">
+      🖨 Print
+    </a>
+  </div>
+</div>
+
+<div class="card" style="max-width:640px;padding:1.5rem;" id="payslip-print">
+
+  {# Header #}
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:2px solid rgba(0,0,0,.08);">
+    <div>
+      <div style="font-size:1rem;font-weight:700;">{{ branding.company_name if branding else 'Company' }}</div>
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.15rem;">Official Payslip</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:.8rem;color:#6b7280;">Cutoff Period</div>
+      <div style="font-weight:600;">{{ detail.cutoff_start }} – {{ detail.cutoff_end }}</div>
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.25rem;">Pay Date: <strong>{{ detail.pay_date or '—' }}</strong></div>
+    </div>
+  </div>
+
+  {# Employee info #}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid rgba(0,0,0,.06);">
+    <div>
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Employee</div>
+      <div style="font-weight:600;font-size:.95rem;">{{ detail.full_name }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">{{ detail.employee_no }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Position</div>
+      <div style="font-size:.875rem;">{{ detail.position_title or '—' }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">{{ detail.department or '—' }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">Employment Type</div>
+      <div style="font-size:.875rem;">{{ detail.employment_type or '—' }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;">TIN</div>
+      <div style="font-size:.875rem;font-family:monospace;">{{ detail.tin or '—' }}</div>
+    </div>
+  </div>
+
+  {# Earnings / Deductions side-by-side #}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.25rem;">
+
+    {# Earnings #}
+    <div>
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin-bottom:.5rem;">Earnings</div>
+      {% set earnings = [
+        ('Basic Pay', detail.basic_pay),
+        ('OT Pay', detail.ot_pay),
+        ('Holiday Pay', detail.holiday_pay),
+        ('Night Diff', detail.night_diff_pay),
+        ('Allowances', detail.total_allowances),
+        ('13th Month (partial)', detail.thirteenth_month_partial),
+      ] %}
+      {% for label, val in earnings %}
+      {% if val and val != 0 %}
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.85rem;">
+        <span style="color:#4b5563;">{{ label }}</span>
+        <span style="font-family:monospace;">{{ '{:,.2f}'.format(val) }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0 3px;border-top:1px solid rgba(0,0,0,.1);font-weight:700;font-size:.875rem;margin-top:.25rem;">
+        <span>Gross Pay</span>
+        <span style="font-family:monospace;">{{ '{:,.2f}'.format(detail.gross_pay or 0) }}</span>
+      </div>
+    </div>
+
+    {# Deductions #}
+    <div>
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#374151;margin-bottom:.5rem;">Deductions</div>
+      {% set deductions = [
+        ('SSS', detail.sss_ee),
+        ('PhilHealth', detail.philhealth_ee),
+        ('HDMF/Pag-IBIG', detail.hdmf_ee),
+        ('Withholding Tax', detail.withholding_tax),
+        ('Loan Deductions', detail.total_loan_deductions),
+        ('Other Deductions', detail.other_deductions),
+      ] %}
+      {% for label, val in deductions %}
+      {% if val and val != 0 %}
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:.85rem;">
+        <span style="color:#4b5563;">{{ label }}</span>
+        <span style="font-family:monospace;color:#dc2626;">{{ '{:,.2f}'.format(val) }}</span>
+      </div>
+      {% endif %}
+      {% endfor %}
+      <div style="display:flex;justify-content:space-between;padding:6px 0 3px;border-top:1px solid rgba(0,0,0,.1);font-weight:700;font-size:.875rem;margin-top:.25rem;color:#dc2626;">
+        <span>Total Deductions</span>
+        <span style="font-family:monospace;">{{ '{:,.2f}'.format(detail.total_deductions or 0) }}</span>
+      </div>
+    </div>
+  </div>
+
+  {# Net Pay #}
+  <div style="background:var(--primary,#4f46e5);color:#fff;border-radius:8px;padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:1rem;font-weight:600;">Net Pay</span>
+    <span style="font-size:1.5rem;font-weight:800;font-family:monospace;">₱ {{ '{:,.2f}'.format(detail.net_pay or 0) }}</span>
+  </div>
+
+  {# Bank info #}
+  {% if detail.bank_account_no %}
+  <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid rgba(0,0,0,.06);font-size:.8rem;color:#6b7280;">
+    Credit to: <strong>{{ detail.bank_name }}</strong> {{ detail.bank_account_no }}
+  </div>
+  {% endif %}
+
+  <div style="margin-top:.75rem;font-size:.72rem;color:#9ca3af;text-align:center;">
+    This is a computer-generated payslip and does not require a signature.
+  </div>
+</div>
+
+<style>
+@media print {
+  .sidebar, .topbar, .top-actions, h2, .card:not(#payslip-print) { display: none !important; }
+  #payslip-print { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+}
+</style>
+{% endblock %}

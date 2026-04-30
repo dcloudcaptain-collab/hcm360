@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block page_title %}Payroll Settings{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Company Payroll Settings</h2>
+</div>
+
+<form method="post" action="/config/save">
+  <section class="card" style="padding:0;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+      <thead>
+        <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+          <th style="padding:10px 14px;text-align:left;">Key</th>
+          <th style="padding:10px 14px;text-align:left;">Value</th>
+          <th style="padding:10px 14px;text-align:left;">Description</th>
+          <th style="padding:10px 14px;">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr style="border-top:1px solid rgba(0,0,0,.06);">
+          <td style="padding:9px 14px;font-weight:500;font-family:monospace;font-size:.8rem;">{{ r.config_key }}</td>
+          <td style="padding:9px 14px;">
+            {% if r.config_key == 'payroll_type' %}
+            <select name="cfg_{{ r.config_key }}" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+              <option value="GOV" {% if r.config_value == 'GOV' %}selected{% endif %}>Government (SSL/GSIS)</option>
+              <option value="PRIVATE" {% if r.config_value == 'PRIVATE' %}selected{% endif %}>Private (SSS)</option>
+            </select>
+            {% elif r.config_key == 'cutoff_type' %}
+            <select name="cfg_{{ r.config_key }}" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+              <option value="SEMI_MONTHLY" {% if r.config_value == 'SEMI_MONTHLY' %}selected{% endif %}>Semi-Monthly</option>
+              <option value="MONTHLY" {% if r.config_value == 'MONTHLY' %}selected{% endif %}>Monthly</option>
+              <option value="WEEKLY" {% if r.config_value == 'WEEKLY' %}selected{% endif %}>Weekly</option>
+            </select>
+            {% elif r.config_key == 'late_deduction_rule' %}
+            <select name="cfg_{{ r.config_key }}" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+              <option value="PER_MINUTE" {% if r.config_value == 'PER_MINUTE' %}selected{% endif %}>Per Minute</option>
+              <option value="PER_15MIN" {% if r.config_value == 'PER_15MIN' %}selected{% endif %}>Per 15 Minutes</option>
+            </select>
+            {% elif r.config_key == 'absent_deduction_rule' %}
+            <select name="cfg_{{ r.config_key }}" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+              <option value="PROPORTIONAL" {% if r.config_value == 'PROPORTIONAL' %}selected{% endif %}>Proportional (daily rate)</option>
+              <option value="FIXED" {% if r.config_value == 'FIXED' %}selected{% endif %}>Fixed Amount</option>
+            </select>
+            {% else %}
+            <input type="text" name="cfg_{{ r.config_key }}" value="{{ r.config_value }}"
+                   style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:180px;">
+            {% endif %}
+          </td>
+          <td style="padding:9px 14px;color:#6b7280;font-size:.8rem;">{{ r.description or '' }}</td>
+          <td style="padding:9px 14px;text-align:center;font-size:.75rem;color:#9ca3af;">{{ r.updated_at.strftime('%Y-%m-%d') if r.updated_at else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="padding:2rem;text-align:center;color:#9ca3af;">No config found. Run the migration first.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {% if rows %}
+  <button type="submit" style="padding:8px 20px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:.875rem;cursor:pointer;">
+    Save All Settings
+  </button>
+  {% endif %}
+</form>
+
+{% endblock %}

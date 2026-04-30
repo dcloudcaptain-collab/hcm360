@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block page_title %}Leave Management{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem;">
+  <div>
+    <h1 style="font-size:1.35rem;font-weight:700;margin:0;">Leave Management</h1>
+    <p style="margin:0.25rem 0 0;color:var(--text-muted,#94a3b8);font-size:0.875rem;">Overview of your leave balances and recent requests</p>
+  </div>
+  <a href="/leave/requests/new" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.1rem;background:var(--primary,#3b82f6);color:#fff;border-radius:var(--radius,8px);font-size:0.875rem;font-weight:600;text-decoration:none;">
+    + File Leave Request
+  </a>
+</div>
+
+{# ── Balance Cards ─────────────────────────────────────────── #}
+{% if balances %}
+<h2 style="font-size:0.8rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted,#94a3b8);margin:0 0 0.75rem;">Your {{ balances[0].year if balances else '' }} Leave Balances</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0.75rem;margin-bottom:2rem;">
+  {% for b in balances %}
+  {% set used_pct = ((b.used_days or 0) / (b.entitled_days or 1) * 100)|round(0)|int %}
+  <div style="background:var(--card,#1e293b);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius,8px);padding:1rem;">
+    <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted,#94a3b8);margin-bottom:0.5rem;">{{ b.leave_type_name }}</div>
+    <div style="font-size:1.75rem;font-weight:700;line-height:1;color:var(--text,#f1f5f9);">{{ b.balance | float | round(1) }}</div>
+    <div style="font-size:0.75rem;color:var(--text-muted,#94a3b8);margin-top:0.2rem;">days remaining</div>
+    <div style="margin-top:0.6rem;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;">
+      <div style="height:4px;border-radius:2px;background:var(--accent,#3b82f6);width:{{ [used_pct, 100]|min }}%;opacity:0.8;"></div>
+    </div>
+    <div style="font-size:0.7rem;color:var(--text-muted,#94a3b8);margin-top:0.3rem;">{{ b.used_days or 0 }} / {{ b.entitled_days or 0 }} used</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div style="padding:1.5rem;background:var(--card,#1e293b);border-radius:var(--radius,8px);margin-bottom:2rem;text-align:center;color:var(--text-muted,#94a3b8);font-size:0.9rem;">
+  No leave balances found for your account.
+</div>
+{% endif %}
+
+{# ── Pending Requests ─────────────────────────────────────── #}
+<h2 style="font-size:0.8rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-muted,#94a3b8);margin:0 0 0.75rem;">Pending Requests</h2>
+{% if pending %}
+<div style="background:var(--card,#1e293b);border:1px solid rgba(255,255,255,0.07);border-radius:var(--radius,8px);overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+    <thead>
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.07);">
+        <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-muted,#94a3b8);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Reference</th>
+        <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-muted,#94a3b8);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Type</th>
+        <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-muted,#94a3b8);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Dates</th>
+        <th style="padding:0.75rem 1rem;text-align:center;font-weight:600;color:var(--text-muted,#94a3b8);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Days</th>
+        <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-muted,#94a3b8);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Status</th>
+        <th style="padding:0.75rem 1rem;text-align:left;font-weight:600;color:var(--text-muted,#94a3b8);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in pending %}
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+        <td style="padding:0.75rem 1rem;color:var(--text,#f1f5f9);font-family:monospace;font-size:0.8rem;">{{ r.reference_no or ('LV-%05d'|format(r.id)) }}</td>
+        <td style="padding:0.75rem 1rem;color:var(--text,#f1f5f9);">{{ r.leave_type_name }}</td>
+        <td style="padding:0.75rem 1rem;color:var(--text,#f1f5f9);">{{ r.date_from }} – {{ r.date_to }}</td>
+        <td style="padding:0.75rem 1rem;text-align:center;color:var(--text,#f1f5f9);">{{ r.days_requested }}</td>
+        <td style="padding:0.75rem 1rem;">
+          <span style="display:inline-block;padding:0.2rem 0.6rem;border-radius:999px;font-size:0.7rem;font-weight:600;background:rgba(245,158,11,0.15);color:#f59e0b;">PENDING</span>
+        </td>
+        <td style="padding:0.75rem 1rem;">
+          <a href="/leave/requests/{{ r.id }}" style="font-size:0.8rem;color:var(--accent,#3b82f6);">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div style="padding:1.5rem;background:var(--card,#1e293b);border-radius:var(--radius,8px);text-align:center;color:var(--text-muted,#94a3b8);font-size:0.9rem;">
+  No pending leave requests. <a href="/leave/requests" style="color:var(--accent,#3b82f6);">View all requests →</a>
+</div>
+{% endif %}
+
+<div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+  <a href="/leave/requests" style="padding:0.5rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius,8px);font-size:0.875rem;color:var(--text,#f1f5f9);text-decoration:none;">All Requests</a>
+  <a href="/leave/balances" style="padding:0.5rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius,8px);font-size:0.875rem;color:var(--text,#f1f5f9);text-decoration:none;">Balance Matrix</a>
+  <a href="/leave/locator" style="padding:0.5rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius,8px);font-size:0.875rem;color:var(--text,#f1f5f9);text-decoration:none;">Team Locator</a>
+  <a href="/leave/travel-orders" style="padding:0.5rem 1rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius,8px);font-size:0.875rem;color:var(--text,#f1f5f9);text-decoration:none;">Travel Orders</a>
+</div>
+
+{% endblock %}

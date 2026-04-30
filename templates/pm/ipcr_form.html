@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block page_title %}IPCR Management{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">IPCR — Individual Performance</h2>
+  <a href="/pm/cycles" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Cycles</a>
+</div>
+
+{# Filters #}
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Cycle</label>
+    <select name="cycle_id" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All Cycles</option>
+      {% for c in cycles %}
+      <option value="{{ c.id }}" {% if cycle_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Employee ID</label>
+    <input name="employee_id" type="number" value="{{ employee_id or '' }}" placeholder="Filter by employee"
+           style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;width:140px;">
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+</form>
+
+{# Group entries by function type #}
+{% set core_entries = entries|selectattr('function_type','eq','CORE')|list %}
+{% set support_entries = entries|selectattr('function_type','eq','SUPPORT')|list %}
+{% set strategic_entries = entries|selectattr('function_type','eq','STRATEGIC')|list %}
+
+{% for fn_type, fn_entries, color in [('CORE', core_entries, '#4f46e5'), ('SUPPORT', support_entries, '#16a34a'), ('STRATEGIC', strategic_entries, '#d97706')] %}
+{% if fn_entries %}
+<section class="card" style="padding:0;overflow:hidden;margin-bottom:1rem;">
+  <div style="padding:.75rem 1rem;background:rgba(0,0,0,.02);border-bottom:1px solid rgba(0,0,0,.06);display:flex;align-items:center;gap:.5rem;">
+    <span style="width:8px;height:8px;border-radius:50%;background:{{ color }};"></span>
+    <strong style="font-size:.85rem;">{{ fn_type }} Functions</strong>
+    <span style="font-size:.75rem;color:#9ca3af;">({{ fn_entries|length }} items)</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:left;">Employee</th>
+        <th style="padding:8px 12px;text-align:left;">Performance Indicator</th>
+        <th style="padding:8px 12px;text-align:center;">Target</th>
+        <th style="padding:8px 12px;text-align:center;">Q</th>
+        <th style="padding:8px 12px;text-align:center;">E</th>
+        <th style="padding:8px 12px;text-align:center;">T</th>
+        <th style="padding:8px 12px;text-align:center;">Avg</th>
+        <th style="padding:8px 12px;text-align:center;">Status</th>
+        <th style="padding:8px 12px;text-align:center;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in fn_entries %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:500;">
+          <a href="/pm/ipcr/{{ i.employee_id }}/{{ i.cycle_id }}" style="color:inherit;text-decoration:none;">
+            {{ i.employee_name }}
+          </a>
+          <div style="font-size:.72rem;color:#9ca3af;">{{ i.department_name or '' }}</div>
+        </td>
+        <td style="padding:8px 12px;">{{ i.performance_indicator[:60] }}{% if i.performance_indicator|length > 60 %}…{% endif %}</td>
+        <td style="padding:8px 12px;text-align:center;color:#6b7280;">{{ i.target_value if i.target_value is not none else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;font-weight:600;">{{ '%.1f'|format(i.quality_rating) if i.quality_rating is not none else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;font-weight:600;">{{ '%.1f'|format(i.efficiency_rating) if i.efficiency_rating is not none else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;font-weight:600;">{{ '%.1f'|format(i.timeliness_rating) if i.timeliness_rating is not none else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          {% if i.average_rating is not none %}
+          <span style="font-weight:800;color:{% if i.average_rating >= 4.5 %}#16a34a{% elif i.average_rating >= 3.5 %}#2563eb{% elif i.average_rating >= 2.5 %}#d97706{% else %}#dc2626{% endif %};">
+            {{ '%.2f'|format(i.average_rating) }}
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if i.status == 'APPROVED' %}#dcfce7{% elif i.status == 'EVALUATED' %}#dbeafe{% elif i.status == 'SUBMITTED' %}#fef9c3{% else %}#f1f5f9{% endif %};
+            color:{% if i.status == 'APPROVED' %}#166534{% elif i.status == 'EVALUATED' %}#1e40af{% elif i.status == 'SUBMITTED' %}#854d0e{% else %}#374151{% endif %};">
+            {{ i.status }}
+          </span>
+        </td>
+        <td style="padding:8px 12px;text-align:center;">
+          <a href="/pm/ipcr/{{ i.employee_id }}/{{ i.cycle_id }}"
+             style="font-size:.78rem;color:var(--primary,#4f46e5);text-decoration:none;font-weight:600;">
+            View
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endfor %}
+
+{% if not entries %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No IPCR entries found. Select a cycle and optionally an employee to filter.
+</div>
+{% endif %}
+
+{% endblock %}

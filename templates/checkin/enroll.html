@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% block page_title %}Face Enrollment{% endblock %}
+
+{% block extra_css %}
+<style>
+  .enroll-wrap { display:grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap:1rem; }
+  @media (max-width: 860px) { .enroll-wrap { grid-template-columns: 1fr; } }
+
+  .video-card { background:#0b1020; border-radius:14px; overflow:hidden; position:relative; aspect-ratio:16/10; }
+  .video-card video, .video-card canvas { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .video-card .overlay { position:absolute; inset:auto 0 0 0; padding:.5rem 1rem;
+      background:linear-gradient(to top, rgba(0,0,0,.75), transparent);
+      color:#fff; font-size:.8rem; display:flex; justify-content:space-between; align-items:center; }
+
+  .step-list { list-style:none; padding:0; margin:0; }
+  .step-list li { padding:.6rem .8rem; border:1px solid #e5e7eb; border-radius:9px; margin-bottom:.4rem;
+      font-size:.88rem; display:flex; justify-content:space-between; align-items:center; background:#fff; }
+  .step-list li.done { background:#f0fdf4; border-color:#86efac; color:#166534; }
+  .step-list li.current { background:#fffbeb; border-color:#fde68a; color:#92400e; }
+
+  .btn { display:inline-flex; align-items:center; gap:.35rem; padding:10px 24px; border-radius:10px;
+         font-size:.95rem; font-weight:700; border:none; cursor:pointer; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost { background:#fff; color:#374151; border:1px solid #d1d5db; }
+
+  .panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:1rem 1.1rem; margin-bottom:.9rem; }
+  .panel h3 { margin:0 0 .4rem; font-size:.92rem; }
+  .panel label { font-size:.75rem; text-transform:uppercase; color:#6b7280; letter-spacing:.04em; display:block; margin-bottom:.2rem; }
+  .panel select { width:100%; padding:.45rem .6rem; border:1px solid #d1d5db; border-radius:7px; font-size:.85rem; }
+
+  .result { padding:.8rem 1rem; border-radius:10px; font-size:.88rem; margin-top:.8rem; display:none; }
+  .result.ok   { background:#f0fdf4; border:1px solid #86efac; color:#166534; display:block; }
+  .result.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; display:block; }
+
+  .privacy { font-size:.78rem; color:#6b7280; line-height:1.5; margin-top:.8rem; padding:.8rem 1rem;
+      background:#f9fafb; border-radius:8px; border:1px dashed #d1d5db; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:800;">🧬 Face Enrollment</h2>
+    <div style="font-size:.85rem;color:#6b7280;">Register your face signature for attendance check-in</div>
+  </div>
+  <a href="/checkin/" class="btn btn-ghost">← Back to Check-In</a>
+</div>
+
+{% if existing %}
+<div style="background:#ecfeff;border:1px solid #a5f3fc;padding:.85rem 1rem;border-radius:10px;font-size:.88rem;color:#155e75;margin-bottom:1rem;">
+  ✓ Face previously enrolled on {{ existing.enrolled_at.strftime('%b %d, %Y at %I:%M %p') }}.
+  You can re-enrol below to replace it.
+</div>
+{% endif %}
+
+<div class="enroll-wrap">
+  <div>
+    <div class="video-card">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="overlay">
+        <span id="camStatus">Initializing…</span>
+        <span id="fpsLabel" style="opacity:.7;"></span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:.6rem;margin-top:.8rem;flex-wrap:wrap;">
+      <button id="btnCapture" class="btn btn-primary" disabled>📸 Capture sample (<span id="sampleCount">0</span>/3)</button>
+      <button id="btnEnroll" class="btn btn-primary" disabled style="background:#16a34a;">✓ Save Enrollment</button>
+      <button id="btnReset" class="btn btn-ghost">Reset</button>
+    </div>
+
+    <div id="result" class="result"></div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h3>📋 Steps</h3>
+      <ol class="step-list">
+        <li id="step1" class="current">1. Grant camera access</li>
+        <li id="step2">2. Look at the camera</li>
+        <li id="step3">3. Capture 3 samples (different angles)</li>
+        <li id="step4">4. Save enrollment</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <h3>📷 Camera</h3>
+      <label for="cameraSelect">Source</label>
+      <select id="cameraSelect"></select>
+    </div>
+
+    <div class="panel">
+      <h3>🔒 Privacy</h3>
+      <div class="privacy">
+        We do <strong>not</strong> store your photo. Instead, we compute a
+        128-number mathematical signature of your face directly in your
+        browser. That signature cannot be turned back into an image.
+        Enrollment can be removed at any time by contacting HR.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script>
+  const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('overlay');
+  const camStatus = document.getElementById('camStatus');
+  const camSelect = document.getElementById('cameraSelect');
+  const btnCapture = document.getElementById('btnCapture');
+  const btnEnroll  = document.getElementById('btnEnroll');
+  const btnReset   = document.getElementById('btnReset');
+  const sampleCountEl = document.getElementById('sampleCount');
+  const resultBox = document.getElementById('result');
+
+  let samples = [];    // array of Float32Array descriptors
+  let lastDetection = null;
+  let modelsReady = false;
+  let stream = null;
+
+  async function loadModels() {
+    camStatus.textContent = 'Loading face-recognition models…';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+    modelsReady = true;
+    markStep(2);
+  }
+
+  function markStep(n) {
+    [1,2,3,4].forEach(i => {
+      const el = document.getElementById('step' + i);
+      if (i < n) el.className = 'done';
+      else if (i === n) el.className = 'current';
+      else el.className = '';
+    });
+  }
+
+  async function populateCameras() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+    camSelect.innerHTML = '';
+    cams.forEach((c, i) => {
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.textContent = c.label || `Camera ${i + 1}`;
+      camSelect.appendChild(opt);
+    });
+  }
+
+  async function startCamera(deviceId) {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    markStep(2);
+    camStatus.textContent = 'Camera ready';
+    await populateCameras();
+    loopDetect();
+  }
+
+  let frameCount = 0, fpsLast = performance.now();
+  async function loopDetect() {
+    if (!modelsReady || !video.videoWidth) { requestAnimationFrame(loopDetect); return; }
+    const detection = await faceapi
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
+      .withFaceLandmarks()
+      .withFaceDescriptor();
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (detection) {
+      lastDetection = detection;
+      const b = detection.detection.box;
+      const sx = canvas.width / video.videoWidth;
+      const sy = canvas.height / video.videoHeight;
+      ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 3;
+      ctx.strokeRect(b.x * sx, b.y * sy, b.width * sx, b.height * sy);
+      btnCapture.disabled = false;
+    } else {
+      lastDetection = null;
+      btnCapture.disabled = true;
+    }
+
+    frameCount++;
+    if (performance.now() - fpsLast > 1000) {
+      document.getElementById('fpsLabel').textContent =
+        `${frameCount} fps · ${lastDetection ? 'face found' : 'searching…'}`;
+      frameCount = 0; fpsLast = performance.now();
+    }
+    requestAnimationFrame(loopDetect);
+  }
+
+  btnCapture.addEventListener('click', () => {
+    if (!lastDetection) return;
+    samples.push(Array.from(lastDetection.descriptor));
+    sampleCountEl.textContent = samples.length;
+    if (samples.length >= 3) {
+      markStep(4);
+      btnEnroll.disabled = false;
+      btnCapture.disabled = true;
+    } else {
+      markStep(3);
+    }
+  });
+
+  btnReset.addEventListener('click', () => {
+    samples = [];
+    sampleCountEl.textContent = 0;
+    btnEnroll.disabled = true;
+    btnCapture.disabled = !lastDetection;
+    markStep(2);
+    resultBox.style.display = 'none';
+  });
+
+  btnEnroll.addEventListener('click', async () => {
+    if (samples.length < 3) return;
+    // Average the descriptors for robustness
+    const avg = new Array(128).fill(0);
+    samples.forEach(s => s.forEach((v, i) => avg[i] += v));
+    for (let i = 0; i < 128; i++) avg[i] /= samples.length;
+
+    btnEnroll.disabled = true;
+    try {
+      const resp = await fetch('/checkin/api/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descriptor: avg, note: `Averaged from ${samples.length} samples` }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        showResult(true, '✓ Face enrolled successfully. You can now check in.');
+        setTimeout(() => { window.location.href = '/checkin/'; }, 1800);
+      } else {
+        showResult(false, data.message || 'Enrollment failed.');
+        btnEnroll.disabled = false;
+      }
+    } catch (e) {
+      showResult(false, 'Network error: ' + e.message);
+      btnEnroll.disabled = false;
+    }
+  });
+
+  function showResult(ok, msg) {
+    resultBox.className = 'result ' + (ok ? 'ok' : 'err');
+    resultBox.textContent = msg;
+  }
+
+  camSelect.addEventListener('change', e => startCamera(e.target.value));
+
+  (async function init() {
+    if (typeof faceapi === 'undefined') {
+      await new Promise(r => window.addEventListener('load', r));
+    }
+    await loadModels();
+    await populateCameras();
+    await startCamera();
+  })();
+</script>
+{% endblock %}

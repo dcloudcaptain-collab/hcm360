@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block page_title %}My Certifications{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">My Certifications</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Your professional certifications and their status.</p>
+  </div>
+  <a href="/me" style="font-size:.82rem;color:var(--primary,#4f46e5);">&larr; Back to Portal</a>
+</div>
+
+{% if certs %}
+{% for c in certs %}
+<div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 0;{% if not loop.first %}border-top:1px solid rgba(0,0,0,.05);{% endif %}">
+  <div style="flex:1;">
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <span style="font-size:.88rem;font-weight:600;">{{ c.cert_name }}</span>
+      <span style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:#64748b;">{{ c.cert_type or 'GENERAL' }}</span>
+    </div>
+    <div style="font-size:.75rem;color:#6b7280;">{{ c.issuing_body or '' }}{% if c.cert_number %} &middot; #{{ c.cert_number }}{% endif %}</div>
+    <div style="font-size:.72rem;color:#9ca3af;">Issued: {{ c.issued_date or '—' }} &middot; Expires: {{ c.expiry_date or 'N/A' }}</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem;">
+    <span style="font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:999px;background:{% if c.expiry_status=='EXPIRED' %}#fee2e2;color:#991b1b{% elif c.expiry_status=='EXPIRING_30' %}#fef9c3;color:#854d0e{% elif c.expiry_status=='EXPIRING_90' %}#fff7ed;color:#c2410c{% else %}#dcfce7;color:#166534{% endif %};">
+      {% if c.expiry_status == 'EXPIRED' %}EXPIRED{% elif c.expiry_status in ('EXPIRING_30','EXPIRING_90') %}EXPIRING ({{ c.days_until_expiry }}d){% else %}ACTIVE{% endif %}
+    </span>
+    {% if c.document_path %}
+    <a href="{{ c.document_path }}" style="font-size:.78rem;color:var(--primary,#4f46e5);text-decoration:none;" target="_blank">View Doc</a>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;margin-bottom:1.25rem;">
+  You have no certifications on file.
+</div>
+{% endif %}
+
+{# Add Certification Form #}
+<div class="card" style="padding:1rem;margin-top:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Add Certification</strong>
+  <form method="post" action="/certifications/add" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:end;">
+    <input type="hidden" name="employee_id" value="{{ session.get('employee_id') }}">
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Cert Name</label>
+      <input name="cert_name" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:160px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Type</label>
+      <input name="cert_type" placeholder="e.g. SAFETY, IT" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Issuing Body</label>
+      <input name="issuing_body" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:140px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Cert Number</label>
+      <input name="cert_number" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Issued Date</label>
+      <input name="issued_date" type="date" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Expiry Date</label>
+      <input name="expiry_date" type="date" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;">
+    </div>
+    <button type="submit" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:var(--primary,#4f46e5);color:#fff;">Add</button>
+  </form>
+</div>
+
+{% endblock %}

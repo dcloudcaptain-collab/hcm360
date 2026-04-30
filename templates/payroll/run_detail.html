@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% block page_title %}Pay Run #{{ run.id }}{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;">
+  <a href="/payroll/runs" style="font-size:.825rem;color:#6b7280;text-decoration:none;">← Pay Runs</a>
+  <span style="color:#d1d5db;">/</span>
+  <h2 style="margin:0;font-size:1.15rem;font-weight:700;">
+    Pay Run #{{ run.id }}
+    <span style="margin-left:.5rem;font-size:.75rem;padding:3px 10px;border-radius:99px;font-weight:600;
+      background:{% if run.status=='COMPLETED' %}#dcfce7;color:#166534
+      {% elif run.status=='APPROVED' %}#dbeafe;color:#1d4ed8
+      {% elif run.status=='REJECTED' %}#fee2e2;color:#991b1b
+      {% else %}rgba(0,0,0,.06);color:#374151{% endif %};">
+      {{ run.status }}
+    </span>
+  </h2>
+</div>
+
+{# ── Run summary ────────────────────────────────────────────────── #}
+<section class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;">
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Period</div>
+      <div style="font-weight:600;">{{ run.date_from }} – {{ run.date_to }}</div>
+      <div style="font-size:.8rem;color:#6b7280;">{{ run.period_type }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Payment Date</div>
+      <div>{{ run.payment_date or '—' }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Employees</div>
+      <div style="font-size:1.25rem;font-weight:800;">{{ employees|length }}</div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Total Gross</div>
+      <div style="font-size:1.1rem;font-weight:700;">
+        ₱{{ '{:,.2f}'.format(employees|sum(attribute='gross_pay') if employees else 0) }}
+      </div>
+    </div>
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Total Net</div>
+      <div style="font-size:1.1rem;font-weight:700;color:#16a34a;">
+        ₱{{ '{:,.2f}'.format(employees|sum(attribute='net_pay') if employees else 0) }}
+      </div>
+    </div>
+    {% if adjustments %}
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;color:#9ca3af;margin-bottom:.25rem;">Adjustments</div>
+      <div style="font-size:1.1rem;font-weight:700;color:#d97706;">
+        ₱{{ '{:,.2f}'.format(adjustments|sum(attribute='amount')) }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Workflow actions #}
+  {% if run.status not in ('COMPLETED','REJECTED') %}
+  <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(0,0,0,.06);display:flex;gap:.5rem;flex-wrap:wrap;">
+    {% if run.status == 'DRAFT' %}
+    <form method="post" action="/payroll/runs/{{ run.id }}/action" style="display:inline;">
+      <input type="hidden" name="action_code" value="SUBMIT">
+      <button type="submit" style="padding:6px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Submit for Approval</button>
+    </form>
+    {% elif run.status == 'SUBMITTED' %}
+    <form method="post" action="/payroll/runs/{{ run.id }}/action" style="display:inline;">
+      <input type="hidden" name="action_code" value="APPROVE">
+      <button type="submit" style="padding:6px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Approve</button>
+    </form>
+    <form method="post" action="/payroll/runs/{{ run.id }}/action" style="display:inline;">
+      <input type="hidden" name="action_code" value="REJECT">
+      <button type="submit" style="padding:6px 16px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Reject</button>
+    </form>
+    {% elif run.status == 'APPROVED' %}
+    <form method="post" action="/payroll/runs/{{ run.id }}/action" style="display:inline;">
+      <input type="hidden" name="action_code" value="PROCESS">
+      <button type="submit" style="padding:6px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Process</button>
+    </form>
+    {% elif run.status == 'PROCESSING' %}
+    <form method="post" action="/payroll/runs/{{ run.id }}/action" style="display:inline;">
+      <input type="hidden" name="action_code" value="COMPLETE">
+      <button type="submit" style="padding:6px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Mark Completed</button>
+    </form>
+    {% endif %}
+    <a href="/payroll/register?run_id={{ run.id }}"
+       style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;font-size:.875rem;color:#374151;text-decoration:none;">
+      Export Register
+    </a>
+  </div>
+  {% endif %}
+</section>
+
+{# ── Adjustment Form ─────────────────────────────────────────────── #}
+{% if can_adjust and run.status != 'COMPLETED' %}
+<section class="card" style="padding:1.25rem;margin-bottom:1.25rem;border-left:4px solid #d97706;">
+  <h3 style="margin:0 0 .875rem;font-size:.95rem;font-weight:700;color:#92400e;">Add Adjustment</h3>
+  <form method="post" action="/payroll/runs/{{ run.id }}/adjustment"
+        style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;min-width:200px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Employee <span style="color:#dc2626;">*</span></label>
+      <select name="employee_id" required
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="">— select —</option>
+        {% for emp in employees %}
+        <option value="{{ emp.employee_id }}">{{ emp.full_name }} ({{ emp.employee_no }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Type</label>
+      <select name="adjustment_type"
+              style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+        <option value="EARNINGS">Earnings (+)</option>
+        <option value="DEDUCTION">Deduction (–)</option>
+        <option value="ALLOWANCE">Allowance (+)</option>
+        <option value="CORRECTION">Correction</option>
+      </select>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:200px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Description <span style="color:#dc2626;">*</span></label>
+      <input type="text" name="description" required placeholder="e.g. Missed PERA allowance"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;width:130px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Amount (₱) <span style="color:#dc2626;">*</span></label>
+      <input type="number" name="amount" required step="0.01" placeholder="0.00"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;font-family:monospace;">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:160px;">
+      <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Remarks</label>
+      <input type="text" name="remarks" placeholder="Optional notes"
+             style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    </div>
+
+    <button type="submit"
+            style="padding:7px 18px;background:#d97706;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      Add
+    </button>
+  </form>
+</section>
+{% endif %}
+
+{# ── Adjustments log ─────────────────────────────────────────────── #}
+{% if adjustments %}
+<section class="card" style="padding:0;overflow:hidden;margin-bottom:1.25rem;">
+  <div style="padding:.875rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.06);">
+    <h3 style="margin:0;font-size:.9rem;font-weight:700;">Adjustments ({{ adjustments|length }})</h3>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 14px;text-align:left;">Employee</th>
+        <th style="padding:8px 14px;text-align:left;">Type</th>
+        <th style="padding:8px 14px;text-align:left;">Description</th>
+        <th style="padding:8px 14px;text-align:right;">Amount</th>
+        <th style="padding:8px 14px;text-align:left;">By</th>
+        <th style="padding:8px 14px;text-align:left;">When</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in adjustments %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 14px;font-weight:500;">
+          {{ a.full_name }}
+          <div style="font-size:.72rem;color:#9ca3af;">{{ a.employee_no }}</div>
+        </td>
+        <td style="padding:8px 14px;">
+          <span style="font-size:.72rem;padding:2px 7px;border-radius:4px;font-weight:600;
+            background:{% if a.adjustment_type=='EARNINGS' or a.adjustment_type=='ALLOWANCE' %}#dcfce7;color:#166534
+            {% elif a.adjustment_type=='DEDUCTION' %}#fee2e2;color:#991b1b
+            {% else %}rgba(0,0,0,.06);color:#374151{% endif %};">
+            {{ a.adjustment_type }}
+          </span>
+        </td>
+        <td style="padding:8px 14px;color:#374151;">{{ a.description }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;font-weight:700;
+          color:{% if a.amount >= 0 %}#16a34a{% else %}#dc2626{% endif %};">
+          {% if a.amount >= 0 %}+{% endif %}₱{{ '{:,.2f}'.format(a.amount) }}
+        </td>
+        <td style="padding:8px 14px;color:#6b7280;font-size:.8rem;">{{ a.applied_by_name }}</td>
+        <td style="padding:8px 14px;color:#6b7280;font-size:.8rem;white-space:nowrap;">
+          {{ a.applied_at.strftime('%Y-%m-%d %H:%M') }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{# ── Employee payroll table ──────────────────────────────────────── #}
+<section class="card" style="padding:0;overflow-x:auto;">
+  <div style="padding:.875rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.06);">
+    <h3 style="margin:0;font-size:.9rem;font-weight:700;">Payroll Register</h3>
+  </div>
+  {% if employees %}
+  <table style="width:100%;border-collapse:collapse;font-size:.825rem;white-space:nowrap;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:9px 14px;text-align:left;">Employee</th>
+        <th style="padding:9px 12px;text-align:right;">Basic Pay</th>
+        <th style="padding:9px 12px;text-align:right;">Gross</th>
+        <th style="padding:9px 12px;text-align:right;">GSIS</th>
+        <th style="padding:9px 12px;text-align:right;">PagIBIG</th>
+        <th style="padding:9px 12px;text-align:right;">Tax</th>
+        <th style="padding:9px 12px;text-align:right;">Deductions</th>
+        <th style="padding:9px 12px;text-align:right;">Net Pay</th>
+        <th style="padding:9px 12px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 14px;font-weight:500;">
+          {{ e.full_name }}
+          <div style="font-size:.72rem;color:#9ca3af;">{{ e.employee_no }} · {{ e.department }}</div>
+        </td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;">{{ '₱{:,.2f}'.format(e.basic_pay or 0) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;">{{ '₱{:,.2f}'.format(e.gross_pay or 0) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#6b7280;">{{ '₱{:,.2f}'.format((e.gsis_ps or 0) + (e.gsis_gs or 0)) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#6b7280;">{{ '₱{:,.2f}'.format((e.pagibig_ps or 0) + (e.pagibig_gs or 0)) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#6b7280;">{{ '₱{:,.2f}'.format(e.tax_withheld or 0) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#dc2626;">{{ '₱{:,.2f}'.format(e.total_deductions or 0) }}</td>
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;font-weight:700;color:#16a34a;">{{ '₱{:,.2f}'.format(e.net_pay or 0) }}</td>
+        <td style="padding:8px 12px;">
+          <a href="/payroll/payslips/{{ e.id }}/view" style="font-size:.75rem;color:var(--primary,#4f46e5);">Slip</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:2.5rem;text-align:center;color:#9ca3af;">No payroll records in this run yet.</div>
+  {% endif %}
+</section>
+
+{# ── Remittances ─────────────────────────────────────────────────── #}
+{% if remittances %}
+<section class="card" style="padding:0;overflow:hidden;margin-top:1.25rem;">
+  <div style="padding:.875rem 1.25rem;border-bottom:1px solid rgba(0,0,0,.06);">
+    <h3 style="margin:0;font-size:.9rem;font-weight:700;">Government Remittances</h3>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 14px;text-align:left;">Agency</th>
+        <th style="padding:8px 14px;text-align:right;">Employee Share</th>
+        <th style="padding:8px 14px;text-align:right;">Gov't Share</th>
+        <th style="padding:8px 14px;text-align:right;">Total</th>
+        <th style="padding:8px 14px;text-align:center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in remittances %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 14px;font-weight:600;">{{ r.agency }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '₱{:,.2f}'.format(r.employee_share or 0) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;">{{ '₱{:,.2f}'.format(r.government_share or 0) }}</td>
+        <td style="padding:8px 14px;text-align:right;font-family:monospace;font-weight:700;">{{ '₱{:,.2f}'.format(r.total_amount or 0) }}</td>
+        <td style="padding:8px 14px;text-align:center;">
+          <span style="font-size:.72rem;padding:2px 8px;border-radius:4px;font-weight:600;
+            background:{% if r.status=='REMITTED' %}#dcfce7;color:#166534{% else %}rgba(0,0,0,.06);color:#374151{% endif %};">
+            {{ r.status }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% endblock %}

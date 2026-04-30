@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block page_title %}My Reports{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">My Saved Reports</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/reports/builder" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border-radius:7px;font-size:.875rem;font-weight:600;text-decoration:none;">+ New Report</a>
+    <a href="/reports/scheduled" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Scheduled</a>
+  </div>
+</div>
+
+{% if reports %}
+<div style="display:flex;flex-direction:column;gap:.75rem;">
+  {% for r in reports %}
+  <div class="card" style="padding:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+    <div style="flex:1;">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;">
+        <span style="font-size:.95rem;font-weight:700;">{{ r.name }}</span>
+        {% if r.is_shared %}
+        <span style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:999px;background:#dbeafe;color:#1e40af;">Shared</span>
+        {% endif %}
+        {% if r.is_system %}
+        <span style="font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:999px;background:#f1f5f9;color:#374151;">System</span>
+        {% endif %}
+      </div>
+      <div style="font-size:.8rem;color:#6b7280;">
+        {{ r.source_label }}
+        {% if r.description %}&nbsp;·&nbsp; {{ r.description[:80] }}{% endif %}
+      </div>
+      <div style="font-size:.75rem;color:#9ca3af;margin-top:.2rem;">
+        Created by {{ r.created_by_name or '—' }}
+        &nbsp;·&nbsp; Run {{ r.run_count }} time{{ 's' if r.run_count != 1 }}
+        {% if r.last_run_at %}&nbsp;·&nbsp; Last: {{ r.last_run_at.strftime('%b %d, %Y %H:%M') }}{% endif %}
+      </div>
+    </div>
+    <div style="display:flex;gap:.4rem;flex-shrink:0;">
+      <a href="/reports/saved/{{ r.id }}/run"
+         style="padding:5px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;">
+        Open
+      </a>
+      <form method="post" action="/reports/saved/{{ r.id }}/delete" style="display:inline;"
+            onsubmit="return confirm('Delete this report?');">
+        <button type="submit"
+                style="padding:5px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:.8rem;cursor:pointer;">
+          Delete
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">
+  No saved reports yet. <a href="/reports/builder" style="color:var(--primary,#4f46e5);font-weight:600;">Create one</a> using the Report Builder.
+</div>
+{% endif %}
+
+{% endblock %}

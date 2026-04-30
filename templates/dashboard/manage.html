@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block page_title %}Manage Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  .mg-head { display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem; }
+  .mg-head h2 { margin:0;font-size:1.3rem;font-weight:800; }
+  .mg-head .sub { font-size:.85rem;color:#6b7280; }
+
+  .mg-filters { display:flex;gap:.35rem;margin-bottom:1rem;flex-wrap:wrap; }
+  .mg-chip {
+     padding:5px 12px;border-radius:6px;font-size:.78rem;font-weight:600;
+     color:#374151;background:#fff;border:1px solid #e5e7eb;cursor:pointer;
+  }
+  .mg-chip.active { background:#4f46e5;color:#fff;border-color:#4f46e5; }
+  .mg-chip:hover:not(.active) { background:#f3f4f6; }
+
+  .mg-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.85rem; }
+  .mg-card {
+     background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+     padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.4rem;
+     transition:box-shadow .15s, border-color .15s;position:relative;
+  }
+  .mg-card.is-pinned { border-color:#4f46e5;box-shadow:0 2px 10px rgba(79,70,229,.12); }
+  .mg-card .top { display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem; }
+  .mg-card .title { font-weight:700;color:#111827;font-size:.95rem; }
+  .mg-card .kpi-icon { font-size:1.1rem;margin-right:.35rem; }
+  .mg-card .desc { font-size:.78rem;color:#6b7280;line-height:1.45;min-height:2.4em; }
+  .mg-card .meta { display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem; }
+  .mg-card .chip { font-size:.65rem;padding:2px 8px;border-radius:999px;font-weight:600; }
+  .chip-cat   { background:#eef2ff;color:#4338ca; }
+  .chip-mod   { background:#f3f4f6;color:#374151; }
+  .chip-role  { background:#fef3c7;color:#92400e; }
+
+  .toggle {
+     position:relative;width:44px;height:24px;cursor:pointer;
+     background:#e5e7eb;border-radius:999px;transition:background .2s;flex-shrink:0;
+  }
+  .toggle input { position:absolute;opacity:0;width:0;height:0; }
+  .toggle .knob {
+     position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;
+     transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15);
+  }
+  .toggle.on { background:#4f46e5; }
+  .toggle.on .knob { transform:translateX(20px); }
+
+  .mg-counter {
+     display:inline-flex;align-items:center;gap:.4rem;
+     padding:6px 12px;background:#eef2ff;color:#4338ca;
+     border-radius:8px;font-size:.8rem;font-weight:700;
+  }
+  .btn { display:inline-flex;align-items:center;padding:8px 16px;
+         border-radius:8px;font-size:.85rem;font-weight:600;
+         text-decoration:none;cursor:pointer;border:none;font-family:inherit; }
+  .btn-primary { background:#4f46e5;color:#fff; }
+  .btn-ghost   { background:#fff;color:#374151;border:1.5px solid #d1d5db; }
+
+  .bulk-actions { display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap; }
+  .bulk-actions button {
+     padding:5px 10px;font-size:.72rem;background:#fff;color:#374151;
+     border:1px solid #e5e7eb;border-radius:6px;cursor:pointer;font-weight:600;
+  }
+  .bulk-actions button:hover { background:#f3f4f6; }
+</style>
+
+<div class="mg-head">
+  <div>
+    <h2>⚙️ Manage Dashboard</h2>
+    <div class="sub"
+         data-hint="Industry-standard HR leader KPIs. Tick what you want on your Dashboard — preference is per-user and takes effect immediately.">
+      Pin the KPI tiles you want on
+      <a href="{{ url_for('dashboard.index') }}" style="color:#4f46e5;font-weight:600;">your Dashboard</a>.
+      No pins? You see the full role-default set. Each tile is one KPI per card.
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <span class="mg-counter"
+          data-hint="Total tiles pinned to your Dashboard.">
+      <span id="pinnedVal">{{ pinned_count }}</span> pinned
+    </span>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">→ Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="mg-filters">
+  <button class="mg-chip active" onclick="filterCat(this,'__all__')"
+          data-hint="Show every KPI available to your role.">All</button>
+  {% for cat in categories %}
+  <button class="mg-chip" onclick="filterCat(this,'{{ cat }}')"
+          data-hint="Filter to {{ cat }} KPIs only.">{{ cat }}</button>
+  {% endfor %}
+</div>
+
+<div class="bulk-actions">
+  <button type="button" onclick="bulkAction('pin_visible')"
+          data-hint="Pin every KPI currently shown by the active filter.">✓ Pin all visible</button>
+  <button type="button" onclick="bulkAction('unpin_visible')"
+          data-hint="Unpin every KPI currently shown by the active filter.">✕ Unpin all visible</button>
+  <button type="button" onclick="bulkAction('reset')"
+          data-hint="Remove all pins — your Dashboard returns to the role-default set.">↻ Reset to defaults</button>
+</div>
+
+<div class="mg-grid" id="mgGrid">
+  {% for t in tiles %}
+  <div class="mg-card {% if t.is_pinned %}is-pinned{% endif %}"
+       data-code="{{ t.code }}" data-cat="{{ t.category }}">
+    <div class="top">
+      <div class="title">
+        <span class="kpi-icon">📊</span>{{ t.label }}
+      </div>
+      <label class="toggle {% if t.is_pinned %}on{% endif %}"
+             data-hint="Tick to pin this KPI tile to your Dashboard. Untick to remove.">
+        <input type="checkbox" {% if t.is_pinned %}checked{% endif %}
+               onchange="togglePin(this, '{{ t.code }}')">
+        <span class="knob"></span>
+      </label>
+    </div>
+    <div class="desc">{{ t.description or '' }}</div>
+    <div class="meta">
+      <span class="chip chip-cat">{{ t.category }}</span>
+      <span class="chip chip-mod">{{ t.module or '—' }}</span>
+      {% if 'SUPER_ADMIN' in t.roles and t.roles|length < 5 %}
+        <span class="chip chip-role">admin-only</span>
+      {% endif %}
+      {% if t.filter_url %}
+        <span class="chip" style="background:#dcfce7;color:#166534;">⤵ drill-down</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+  const TOGGLE_URL = '{{ url_for("dashboard.manage_toggle") }}';
+
+  async function togglePin(checkbox, code){
+    const card = checkbox.closest('.mg-card');
+    const wrap = checkbox.closest('.toggle');
+    const enabled = checkbox.checked;
+    wrap.style.pointerEvents = 'none';
+    try {
+      const fd = new FormData();
+      fd.append('code', code);
+      fd.append('enabled', enabled ? 'true' : 'false');
+      const res = await fetch(TOGGLE_URL, {
+        method: 'POST', body: fd, credentials: 'same-origin',
+      });
+      const j = await res.json();
+      if (j.ok) {
+        wrap.classList.toggle('on', enabled);
+        card.classList.toggle('is-pinned', enabled);
+        document.getElementById('pinnedVal').textContent = j.pinned_count;
+      } else {
+        checkbox.checked = !enabled;
+        alert('Could not update: ' + (j.error || 'unknown'));
+      }
+    } catch (e) {
+      checkbox.checked = !enabled;
+      alert('Network error');
+    } finally {
+      wrap.style.pointerEvents = '';
+    }
+  }
+
+  function filterCat(btn, cat){
+    document.querySelectorAll('.mg-chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.mg-card').forEach(card => {
+      card.style.display = (cat === '__all__' || card.dataset.cat === cat) ? '' : 'none';
+    });
+  }
+
+  async function bulkAction(op){
+    const visibleCards = Array.from(document.querySelectorAll('.mg-card'))
+      .filter(c => c.style.display !== 'none');
+
+    let targets = [];
+    if (op === 'pin_visible') {
+      targets = visibleCards
+        .filter(c => !c.classList.contains('is-pinned'))
+        .map(c => ({card: c, enabled: true}));
+    } else if (op === 'unpin_visible') {
+      targets = visibleCards
+        .filter(c => c.classList.contains('is-pinned'))
+        .map(c => ({card: c, enabled: false}));
+    } else if (op === 'reset') {
+      if (!confirm('Remove ALL pins? Your Dashboard will return to the role-default set.')) return;
+      targets = Array.from(document.querySelectorAll('.mg-card.is-pinned'))
+        .map(c => ({card: c, enabled: false}));
+    }
+
+    if (!targets.length) return;
+    for (const t of targets) {
+      const cb = t.card.querySelector('input[type=checkbox]');
+      cb.checked = t.enabled;
+      await togglePin(cb, t.card.dataset.code);
+    }
+  }
+</script>
+{% endblock %}

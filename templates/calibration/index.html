@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block page_title %}Talent Calibration{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Talent Calibration</h2>
+</div>
+
+<!-- Stats Cards -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.85rem;margin-bottom:1.5rem;">
+  <a href="#sessions" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Total Sessions</div>
+    <div style="font-size:1.6rem;font-weight:800;color:var(--primary,#4f46e5);">{{ stats.total_sessions }}</div>
+  </a>
+  <a href="#sessions" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Finalized</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#059669;">{{ stats.finalized }}</div>
+  </a>
+  <a href="#sessions" class="card" style="padding:1rem;text-decoration:none;color:inherit;">
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Employees Assessed</div>
+    <div style="font-size:1.6rem;font-weight:800;color:#d97706;">{{ stats.employees_assessed }}</div>
+  </a>
+</div>
+
+<!-- Create Session Form -->
+<div class="card" style="padding:1rem;margin-bottom:1.5rem;">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:.6rem;">Create New Session</div>
+  <form method="POST" action="{{ url_for('calibration.create') }}" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Session Name</label>
+      <input type="text" name="name" required placeholder="Q1 2026 Calibration"
+             style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:220px;">
+    </div>
+    <div>
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Cycle</label>
+      <select name="cycle_id" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        <option value="">-- Optional --</option>
+        {% for c in cycles %}
+        <option value="{{ c.id }}">{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Department</label>
+      <select name="department_id" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        <option value="">-- All --</option>
+        {% for d in departments %}
+        <option value="{{ d.id }}">{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Facilitator</label>
+      <select name="facilitator_id" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        <option value="">-- Optional --</option>
+        {% for e in employees %}
+        <option value="{{ e.id }}">{{ e.full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit"
+            style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+      Create
+    </button>
+  </form>
+</div>
+
+<!-- Sessions Table -->
+<div id="sessions" class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Name</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Cycle</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Department</th>
+        <th style="text-align:left;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Facilitator</th>
+        <th style="text-align:center;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Status</th>
+        <th style="text-align:center;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Assessed</th>
+        <th style="text-align:center;padding:.6rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sessions %}
+      <tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:.6rem .85rem;font-weight:600;">{{ s.name }}</td>
+        <td style="padding:.6rem .85rem;">{{ s.cycle_name or '-' }}</td>
+        <td style="padding:.6rem .85rem;">{{ s.department_name or 'All' }}</td>
+        <td style="padding:.6rem .85rem;">{{ s.facilitator_name or '-' }}</td>
+        <td style="padding:.6rem .85rem;text-align:center;">
+          <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.68rem;font-weight:600;
+            background:{% if s.status == 'FINALIZED' %}#dcfce7{% elif s.status == 'DRAFT' %}#f1f5f9{% else %}#fef3c7{% endif %};
+            color:{% if s.status == 'FINALIZED' %}#166534{% elif s.status == 'DRAFT' %}#374151{% else %}#92400e{% endif %};">
+            {{ s.status }}
+          </span>
+        </td>
+        <td style="padding:.6rem .85rem;text-align:center;font-weight:600;">{{ s.assessed_count }}</td>
+        <td style="padding:.6rem .85rem;text-align:center;">
+          <a href="{{ url_for('calibration.detail', session_id=s.id) }}"
+             style="padding:4px 12px;background:var(--primary,#4f46e5);color:#fff;border-radius:6px;font-size:.78rem;font-weight:600;text-decoration:none;">
+            View
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No calibration sessions yet. Create one above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

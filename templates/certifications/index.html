@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block page_title %}Certifications & Compliance{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Certifications & Compliance</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">Track employee certifications, renewals, and compliance status.</p>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/certifications/compliance" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #d1d5db;color:#374151;">Compliance Matrix</a>
+  </div>
+</div>
+
+{# Stats Cards #}
+{% if stats %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:1.25rem;">
+  <a href="#expiring" class="card" style="padding:.75rem 1rem;text-align:center;text-decoration:none;color:inherit;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:1.3rem;font-weight:800;color:#16a34a;">{{ stats.active_certs or 0 }}</div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Active</div>
+  </a>
+  <a href="#expiring" class="card" style="padding:.75rem 1rem;text-align:center;text-decoration:none;color:inherit;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:1.3rem;font-weight:800;color:#d97706;">{{ stats.expiring_30 or 0 }}</div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Expiring 30d</div>
+  </a>
+  <a href="#expiring" class="card" style="padding:.75rem 1rem;text-align:center;text-decoration:none;color:inherit;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:1.3rem;font-weight:800;color:#ea580c;">{{ stats.expiring_90 or 0 }}</div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Expiring 90d</div>
+  </a>
+  <a href="#expiring" class="card" style="padding:.75rem 1rem;text-align:center;text-decoration:none;color:inherit;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:1.3rem;font-weight:800;color:#dc2626;">{{ stats.expired_certs or 0 }}</div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Expired</div>
+  </a>
+  <a href="/certifications/compliance" class="card" style="padding:.75rem 1rem;text-align:center;text-decoration:none;color:inherit;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow=''">
+    <div style="font-size:1.3rem;font-weight:800;color:#991b1b;">{{ stats.required_missing or 0 }}</div>
+    <div style="font-size:.68rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">Required Missing</div>
+  </a>
+</div>
+{% endif %}
+
+{# Add Certification Form #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Add Certification</strong>
+  <form method="post" action="/certifications/add" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:end;">
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Employee ID</label>
+      <input name="employee_id" type="number" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Cert Name</label>
+      <input name="cert_name" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:160px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Type</label>
+      <input name="cert_type" placeholder="e.g. SAFETY, IT, MEDICAL" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:120px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Issuing Body</label>
+      <input name="issuing_body" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:140px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Cert Number</label>
+      <input name="cert_number" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;width:120px;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Issued Date</label>
+      <input name="issued_date" type="date" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;">
+    </div>
+    <div>
+      <label style="font-size:.72rem;color:#6b7280;display:block;margin-bottom:2px;">Expiry Date</label>
+      <input name="expiry_date" type="date" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;">
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <input type="checkbox" name="is_required" id="is_req">
+      <label for="is_req" style="font-size:.78rem;color:#6b7280;">Required</label>
+    </div>
+    <button type="submit" style="padding:6px 16px;border-radius:6px;font-size:.8rem;font-weight:600;border:none;cursor:pointer;background:var(--primary,#4f46e5);color:#fff;">Add</button>
+  </form>
+</div>
+
+{# Expiring Soon Table #}
+<div class="card" style="padding:1rem;" id="expiring">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Expiring Soon (90 days)</strong>
+  {% if expiring %}
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Employee</th>
+        <th style="padding:6px 8px;text-align:left;">Certification</th>
+        <th style="padding:6px 8px;text-align:center;">Expiry Date</th>
+        <th style="padding:6px 8px;text-align:center;">Days Left</th>
+        <th style="padding:6px 8px;text-align:center;">Renew</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in expiring %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">
+          <a href="/certifications/employee/{{ c.employee_id }}" style="color:inherit;text-decoration:none;">{{ c.employee_name }}</a>
+        </td>
+        <td style="padding:6px 8px;">{{ c.cert_name }}</td>
+        <td style="padding:6px 8px;text-align:center;">{{ c.expiry_date }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-weight:700;color:{% if (c.days_until_expiry or 0) <= 30 %}#dc2626{% elif (c.days_until_expiry or 0) <= 60 %}#d97706{% else %}#16a34a{% endif %};">{{ c.days_until_expiry }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          <form method="post" action="/certifications/{{ c.id }}/renew" style="display:inline-flex;gap:4px;align-items:center;">
+            <input name="new_expiry_date" type="date" required style="padding:3px 6px;border:1px solid #d1d5db;border-radius:4px;font-size:.78rem;">
+            <button type="submit" style="padding:3px 10px;border-radius:4px;font-size:.72rem;font-weight:600;border:none;cursor:pointer;background:#dcfce7;color:#166534;">Renew</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="text-align:center;color:#9ca3af;font-size:.85rem;">No certifications expiring in the next 90 days.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

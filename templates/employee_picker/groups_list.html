@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block page_title %}Employee Groups{% endblock %}
+{% block extra_css %}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between;
+               flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+  .page-head h2 { margin:0; font-size:1.25rem; font-weight:800; }
+  .sub { font-size:.85rem; color:#6b7280; }
+
+  .btn { display:inline-flex; align-items:center; gap:.35rem; padding:8px 16px;
+     border-radius:8px; font-size:.85rem; font-weight:600; text-decoration:none;
+     cursor:pointer; border:none; font-family:inherit; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost   { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .btn-xs      { padding:4px 10px; font-size:.72rem; font-weight:700; border-radius:6px; }
+
+  table.grp { width:100%; border-collapse:collapse; font-size:.88rem; background:#fff;
+     border:1px solid #e5e7eb; border-radius:11px; overflow:hidden; }
+  table.grp th { text-align:left; padding:.6rem .85rem; background:#f9fafb; color:#6b7280;
+     font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;
+     border-bottom:1.5px solid #e5e7eb; }
+  table.grp td { padding:.65rem .85rem; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+  table.grp tbody tr:hover td { background:#f9fafb; }
+
+  .vis-badge { display:inline-block; padding:2px 8px; border-radius:5px;
+               font-size:.68rem; font-weight:700; }
+  .v-PUBLIC  { background:#dbeafe; color:#1d4ed8; }
+  .v-DEPT    { background:#fef3c7; color:#92400e; }
+  .v-PRIVATE { background:#e5e7eb; color:#374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>👥 Employee Groups</h2>
+    <div class="sub">
+      {{ groups|length }} group{{ 's' if groups|length != 1 else '' }} ·
+      Custom cohorts for bulk task assignment, messaging, training, and more.
+    </div>
+  </div>
+  <a href="{{ url_for('employee_picker.group_new') }}" class="btn btn-primary">+ New Group</a>
+</div>
+
+{% if groups %}
+<table class="grp">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th style="width:130px;">Code</th>
+      <th style="width:100px;">Visibility</th>
+      <th style="width:130px;">Department</th>
+      <th style="width:100px;text-align:right;">Members</th>
+      <th style="width:140px;">Created By</th>
+      <th style="width:120px;">Created</th>
+      <th style="width:90px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for g in groups %}
+    <tr>
+      <td>
+        <div style="font-weight:600;color:#111827;">
+          <a href="{{ url_for('employee_picker.group_detail', group_id=g.id) }}"
+             style="color:#111827;text-decoration:none;">{{ g.name }}</a>
+        </div>
+        {% if g.description %}
+        <div style="font-size:.75rem;color:#6b7280;margin-top:.15rem;">{{ g.description[:120] }}{% if g.description|length > 120 %}…{% endif %}</div>
+        {% endif %}
+      </td>
+      <td style="font-family:monospace;font-size:.78rem;color:#6b7280;">{{ g.code or '—' }}</td>
+      <td><span class="vis-badge v-{{ g.visibility }}">{{ g.visibility }}</span></td>
+      <td style="font-size:.82rem;color:#374151;">{{ g.department or '—' }}</td>
+      <td style="text-align:right;font-weight:700;font-size:1rem;color:#4f46e5;">{{ g.member_count }}</td>
+      <td style="font-size:.82rem;">{{ g.created_by_name or '—' }}</td>
+      <td style="font-size:.78rem;color:#6b7280;">{{ g.created_at.strftime('%b %d, %Y') if g.created_at else '—' }}</td>
+      <td style="text-align:right;">
+        <a href="{{ url_for('employee_picker.group_detail', group_id=g.id) }}" class="btn btn-ghost btn-xs">Manage</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div style="background:#fff;border:1px solid #e5e7eb;border-radius:11px;padding:2.5rem;text-align:center;color:#6b7280;">
+  <div style="font-size:2.5rem;margin-bottom:.5rem;">📭</div>
+  <div style="font-weight:600;margin-bottom:.4rem;">No groups yet.</div>
+  <div style="font-size:.85rem;">
+    <a href="{{ url_for('employee_picker.group_new') }}" style="color:#4f46e5;font-weight:600;">Create your first group</a>
+    — useful for bulk-assigning tasks to a cohort (probationary employees, committee members, project team…).
+  </div>
+</div>
+{% endif %}
+{% endblock %}

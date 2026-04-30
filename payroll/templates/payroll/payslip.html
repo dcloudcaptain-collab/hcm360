@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block page_title %}Payslip{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:1rem;">
+  <a href="/payroll/runs" style="font-size:.85rem;color:var(--primary);">&larr; Back</a>
+</div>
+
+{% if detail %}
+<div class="card" style="max-width:800px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;border-bottom:2px solid var(--primary);padding-bottom:1rem;">
+    <div>
+      <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Payslip</h2>
+      <div style="font-size:.85rem;color:#6b7280;">{{ detail.cutoff_start }} to {{ detail.cutoff_end }} &middot; {{ detail.period_type }}</div>
+      {% if detail.payment_date %}<div style="font-size:.8rem;color:#6b7280;">Pay date: {{ detail.payment_date }}</div>{% endif %}
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:1.1rem;font-weight:700;">{{ detail.full_name }}</div>
+      <div style="font-size:.85rem;color:#6b7280;">{{ detail.employee_no }} &middot; {{ detail.department }}</div>
+      {% if detail.position_title %}<div style="font-size:.8rem;color:#9ca3af;">{{ detail.position_title }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;">
+    {# Earnings #}
+    <div>
+      <h3 style="margin:0 0 .75rem;font-size:.9rem;font-weight:700;text-transform:uppercase;color:#166534;">Earnings</h3>
+      <table style="width:100%;font-size:.85rem;">
+        <tr><td>Basic Pay</td><td style="text-align:right;font-family:monospace;font-weight:600;">{{ '{:,.2f}'.format(detail.basic_pay or 0) }}</td></tr>
+        <tr><td>OT Pay</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.ot_pay or 0) }}</td></tr>
+        <tr><td>Holiday Pay</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.holiday_pay or 0) }}</td></tr>
+        <tr><td>Night Diff Pay</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.night_diff_pay or 0) }}</td></tr>
+        <tr><td>Allowances</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.allowances_total or 0) }}</td></tr>
+        <tr><td>Other Earnings</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.other_earnings or 0) }}</td></tr>
+        <tr style="border-top:2px solid #166534;font-weight:700;">
+          <td>Gross Pay</td>
+          <td style="text-align:right;font-family:monospace;color:#166534;font-size:1rem;">{{ '{:,.2f}'.format(detail.gross_pay or 0) }}</td>
+        </tr>
+      </table>
+    </div>
+
+    {# Deductions #}
+    <div>
+      <h3 style="margin:0 0 .75rem;font-size:.9rem;font-weight:700;text-transform:uppercase;color:#991b1b;">Deductions</h3>
+      <table style="width:100%;font-size:.85rem;">
+        {% if detail.sss_ee and detail.sss_ee > 0 %}
+        <tr><td>SSS (EE)</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.sss_ee) }}</td></tr>
+        {% endif %}
+        {% if detail.gsis_ps is defined and detail.gsis_ps and detail.gsis_ps > 0 %}
+        <tr><td>GSIS (PS)</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.gsis_ps) }}</td></tr>
+        {% endif %}
+        <tr><td>PhilHealth (EE)</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.philhealth_ee or 0) }}</td></tr>
+        <tr><td>Pag-IBIG (EE)</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.pagibig_ee or 0) }}</td></tr>
+        <tr><td>Withholding Tax</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.tax_withheld or 0) }}</td></tr>
+        <tr><td>Loan Deductions</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.loan_deductions or 0) }}</td></tr>
+        <tr><td>Other Deductions</td><td style="text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(detail.other_deductions or 0) }}</td></tr>
+        <tr style="border-top:2px solid #991b1b;font-weight:700;">
+          <td>Total Deductions</td>
+          <td style="text-align:right;font-family:monospace;color:#991b1b;font-size:1rem;">{{ '{:,.2f}'.format(detail.total_deductions or 0) }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem;padding:1rem;background:rgba(22,101,52,.06);border-radius:8px;text-align:center;">
+    <div style="font-size:.8rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Net Pay</div>
+    <div style="font-size:2rem;font-weight:800;font-family:monospace;color:#166534;">
+      &#8369; {{ '{:,.2f}'.format(detail.net_pay or 0) }}
+    </div>
+  </div>
+
+  <hr style="margin:1.5rem 0;border:none;border-top:1px solid rgba(0,0,0,.08);">
+
+  <h3 style="margin:0 0 .75rem;font-size:.85rem;font-weight:600;color:#6b7280;">Attendance Summary</h3>
+  <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:.85rem;">
+    <div><span style="color:#6b7280;">Scheduled:</span> <strong>{{ detail.scheduled_days or 0 }}</strong> days</div>
+    <div><span style="color:#6b7280;">Worked:</span> <strong>{{ detail.worked_days or 0 }}</strong> days</div>
+    <div><span style="color:#6b7280;">Absent:</span> <strong>{{ detail.absent_days or 0 }}</strong> days</div>
+    <div><span style="color:#6b7280;">Leave:</span> <strong>{{ detail.leave_days or 0 }}</strong> days</div>
+    <div><span style="color:#6b7280;">Late:</span> <strong>{{ '%.1f'|format(detail.late_hours or 0) }}</strong> hrs</div>
+    <div><span style="color:#6b7280;">OT:</span> <strong>{{ '%.1f'|format((detail.ot_regular_hours or 0) + (detail.ot_restday_hours or 0) + (detail.ot_holiday_hours or 0)) }}</strong> hrs</div>
+    <div><span style="color:#6b7280;">Night Diff:</span> <strong>{{ '%.1f'|format(detail.night_diff_hours or 0) }}</strong> hrs</div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

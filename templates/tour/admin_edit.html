@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block page_title %}{{ 'Edit Tour' if tour else 'New Tour' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+  .btn { padding:7px 14px; border-radius:8px; font-size:.82rem; font-weight:600; text-decoration:none; border:none; cursor:pointer; }
+  .btn-primary { background:#4f46e5; color:#fff; }
+  .btn-ghost { background:#fff; color:#374151; border:1.5px solid #d1d5db; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:11px; padding:1.1rem 1.25rem; margin-bottom:1rem; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+  @media (max-width:720px) { .grid-2 { grid-template-columns: 1fr; } }
+  .f { display:flex; flex-direction:column; gap:.3rem; margin-bottom:.6rem; }
+  .f label { font-size:.72rem; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .f input, .f select, .f textarea {
+    width:100%; padding:.55rem .7rem; border:1.5px solid #d1d5db; border-radius:8px; font-size:.9rem; font-family:inherit;
+  }
+  .f textarea { min-height:80px; resize:vertical; }
+  .f textarea.code {
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size:.82rem;
+    min-height:240px;
+    background:#f8fafc;
+  }
+  .hint { font-size:.75rem; color:#9ca3af; margin-top:.3rem; }
+  .toggle { display:flex; align-items:center; gap:.5rem; font-size:.88rem; padding:.4rem 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2 style="margin:0;">{{ '✏️ Edit Tour' if tour else '+ New Tour' }}</h2>
+    <div style="font-size:.85rem;color:#6b7280;">Define the walkthrough steps shown to users on a specific page.</div>
+  </div>
+  <a href="/admin/tours" class="btn btn-ghost">← Back</a>
+</div>
+
+<form method="POST" id="tourForm">
+  <div class="card">
+    <h3 style="margin:0 0 .7rem;font-size:.95rem;">Tour Metadata</h3>
+    <div class="grid-2">
+      <div class="f">
+        <label>Tour Key *</label>
+        <input type="text" name="tour_key" value="{{ tour.tour_key if tour else '' }}" required pattern="[a-z0-9\-]+" placeholder="e.g., employees-directory-v1" />
+        <div class="hint">Lowercase, dashes only. Used as unique identifier (e.g., <code>payroll-runs-v1</code>).</div>
+      </div>
+      <div class="f">
+        <label>Version</label>
+        <input type="number" name="version" min="1" value="{{ tour.version if tour else 1 }}" />
+        <div class="hint">Increment to re-show tour to users who already completed the older version.</div>
+      </div>
+      <div class="f" style="grid-column:1/-1;">
+        <label>Title *</label>
+        <input type="text" name="title" value="{{ tour.title if tour else '' }}" required placeholder="e.g., Employee Directory Tour" />
+      </div>
+      <div class="f" style="grid-column:1/-1;">
+        <label>Description</label>
+        <input type="text" name="description" value="{{ tour.description or '' if tour else '' }}" />
+      </div>
+      <div class="f">
+        <label>Module</label>
+        <select name="module">
+          <option value="">— Select —</option>
+          {% for m in ['dashboard','employees','attendance','leave_mgmt','payroll','ess_mss','rsp','pm','ld','rr','dms','discipline','health','orgchart','workforce_planning','analytics','ai','admin'] %}
+          <option value="{{ m }}" {% if tour and tour.module == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f">
+        <label>URL Pattern</label>
+        <input type="text" name="url_pattern" value="{{ tour.url_pattern or '' if tour else '' }}" placeholder="/employees or /payroll%" />
+        <div class="hint">Tour shows on pages matching this path (SQL LIKE). Wildcards: <code>/payroll%</code>.</div>
+      </div>
+      <div class="f" style="grid-column:1/-1;">
+        <label>Allowed Roles (comma-separated)</label>
+        <input type="text" name="allowed_roles" value="{{ ','.join(tour.allowed_roles) if tour and tour.allowed_roles else 'SUPER_ADMIN,HR_ADMIN,MANAGER,EMPLOYEE,EXECUTIVE' }}" />
+        <div class="hint">Only these roles will see/auto-start this tour.</div>
+      </div>
+      <div class="f" style="grid-column:1/-1;">
+        <label class="toggle">
+          <input type="checkbox" name="auto_start" {% if not tour or tour.auto_start %}checked{% endif %} />
+          Auto-start for first-time users
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="is_active" {% if not tour or tour.is_active %}checked{% endif %} />
+          Active
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 .7rem;font-size:.95rem;">Steps (JSON array)</h3>
+    <div class="f">
+      <textarea name="steps" class="code" required>{{ steps_str if steps_str else '[\n  {\n    "title": "Welcome",\n    "body": "Tell the user what they will learn.",\n    "position": "center"\n  },\n  {\n    "selector": ".btn-primary",\n    "title": "Primary Action",\n    "body": "Explain what this button does.",\n    "position": "bottom"\n  }\n]' }}</textarea>
+    </div>
+    <div class="hint">
+      Each step supports: <code>selector</code> (CSS), <code>title</code>, <code>body</code>,
+      <code>position</code> (<code>top</code>/<code>bottom</code>/<code>left</code>/<code>right</code>/<code>center</code>).
+      If <code>selector</code> is omitted or doesn't match, the step renders as a centered modal.
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+    <a href="/admin/tours" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">💾 Save Tour</button>
+  </div>
+</form>
+{% endblock %}

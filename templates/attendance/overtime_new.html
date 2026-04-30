@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}File Overtime Request{% endblock %}
+
+{% block extra_css %}
+<style>
+.ot-form-container { max-width:600px; margin:0 auto; }
+.ot-form { background:var(--card,#fff); border:1px solid rgba(0,0,0,.07);
+           border-radius:var(--radius,10px); padding:1.5rem; }
+.ot-form h2 { margin:0 0 1.25rem; font-size:1.3rem; font-weight:700; }
+.ot-form-group { margin-bottom:1.1rem; }
+.ot-form-label { display:block; font-size:.85rem; font-weight:600; margin-bottom:.4rem;
+                 color:var(--text,#111827); }
+.ot-form-input, .ot-form-textarea, .ot-form-select {
+  width:100%; padding:.6rem .85rem; border:1px solid rgba(0,0,0,.12); border-radius:8px;
+  font-size:.85rem; font-family:inherit; box-sizing:border-box;
+  background:var(--card,#fff); color:var(--text,#111827);
+}
+.ot-form-input:focus, .ot-form-textarea:focus, .ot-form-select:focus {
+  outline:none; border-color:var(--primary,#4f46e5); box-shadow:0 0 0 3px rgba(79,70,229,.1);
+}
+.ot-form-textarea { resize:vertical; min-height:100px; }
+.ot-form-hint { font-size:.75rem; color:#9ca3af; margin-top:.25rem; }
+
+.ot-form-actions { display:flex; gap:.7rem; margin-top:1.5rem; }
+.ot-btn { padding:.6rem 1.2rem; border:none; border-radius:8px; font-size:.85rem;
+          font-weight:600; cursor:pointer; text-decoration:none; transition:opacity .15s; }
+.ot-btn-primary { background:var(--primary,#4f46e5); color:#fff; }
+.ot-btn-primary:hover { opacity:.88; }
+.ot-btn-secondary { background:#f1f5f9; color:var(--text,#111827); border:1px solid rgba(0,0,0,.12); }
+.ot-btn-secondary:hover { background:#e2e8f0; }
+
+.ot-alert { padding:.8rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:.85rem; }
+.ot-alert-error { background:#fee2e2; color:#991b1b; border-left:4px solid #dc2626; }
+.ot-alert-success { background:#d1fae5; color:#065f46; border-left:4px solid #059669; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ot-form-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="ot-alert ot-alert-{{ 'error' if category=='error' else 'success' }}">
+        {{ message }}
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" class="ot-form">
+    <h2>File Overtime Request</h2>
+
+    <div class="ot-form-group">
+      <label class="ot-form-label" for="work_date">Work Date *</label>
+      <input type="date" id="work_date" name="work_date" class="ot-form-input" required>
+      <div class="ot-form-hint">Date when overtime was worked</div>
+    </div>
+
+    <div class="ot-form-group">
+      <label class="ot-form-label" for="ot_hours">Overtime Hours *</label>
+      <input type="number" id="ot_hours" name="ot_hours" class="ot-form-input"
+             placeholder="e.g. 2.5" step="0.5" min="0.5" max="12" required>
+      <div class="ot-form-hint">Number of hours (0.5 to 12)</div>
+    </div>
+
+    <div class="ot-form-group">
+      <label class="ot-form-label" for="reason">Reason for Overtime *</label>
+      <textarea id="reason" name="reason" class="ot-form-textarea" required
+                placeholder="Explain why overtime was necessary..."></textarea>
+      <div class="ot-form-hint">Brief description of the overtime work</div>
+    </div>
+
+    <div class="ot-form-actions">
+      <button type="submit" class="ot-btn ot-btn-primary">Submit OT Request</button>
+      <a href="/attendance/overtime" class="ot-btn ot-btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

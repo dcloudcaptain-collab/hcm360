@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block page_title %}New Job Requisition{% endblock %}
+{% block extra_css %}{% include 'requisitions/_shared.html' %}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>📝 New Job Requisition</h2>
+    <div class="sub">
+      {% if clone_id %}
+      Cloned from requisition #{{ clone_id }} — review and submit.
+      {% else %}
+      Fill in the details below. Required fields marked with *.
+      {% endif %}
+    </div>
+  </div>
+  <a href="{{ url_for('requisitions.list_view') }}" class="btn btn-ghost">← Back to list</a>
+</div>
+
+<div id="dupe-banner" style="display:none;" class="banner banner-warn">
+  <strong>⚠️ Duplicate warning:</strong>
+  <span id="dupe-text"></span>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+
+  <div class="card">
+    <h3>🏢 Position &amp; Department</h3>
+    <div class="grid-2">
+      <div class="f-group">
+        <label data-hint="The department or office where this position will report">Department *</label>
+        <select name="department_id" required>
+          <option value="">— Select department —</option>
+          {% for d in lookups.departments %}
+          <option value="{{ d.id }}" {% if preset.department_id==d.id %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="The specific position being requested. Select the job title.">Position *</label>
+        <select name="position_id" id="position_id" required onchange="checkDupes()">
+          <option value="">— Select position —</option>
+          {% for p in lookups.positions %}
+          <option value="{{ p.id }}" data-dept="{{ p.department_id }}" data-grade="{{ p.salary_grade or '' }}"
+                  {% if preset.position_id==p.id %}selected{% endif %}>
+            {{ p.title }}{% if p.salary_grade %} (SG {{ p.salary_grade }}){% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="For LGU: link to a specific vacant plantilla item">Plantilla Item</label>
+        <select name="plantilla_item_id">
+          <option value="">— None / Not applicable —</option>
+          {% for pi in lookups.plantilla_items %}
+          <option value="{{ pi.id }}" {% if preset.plantilla_item_id==pi.id %}selected{% endif %}>
+            {{ pi.item_number }} · {{ pi.position_title or 'Unassigned' }} · SG {{ pi.salary_grade }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="Number of people you want to hire (often 1, but can be more)">Headcount Requested *</label>
+        <input type="number" name="headcount" min="1" max="50" value="{{ preset.headcount or 1 }}" required>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>💰 Budget &amp; Funding</h3>
+    <div class="grid-3">
+      <div class="f-group">
+        <label data-hint="e.g. 'PS Fund FY 2026', 'Supplemental Budget', 'SEF'">Budget Source</label>
+        <input type="text" name="budget_source" value="{{ preset.budget_source or '' }}" placeholder="PS Fund FY 2026">
+      </div>
+      <div class="f-group">
+        <label data-hint="Estimated annual funds already allocated">Funds Available (PHP)</label>
+        <input type="number" name="funds_available" step="0.01" min="0" value="{{ preset.funds_available or '' }}" placeholder="0.00">
+      </div>
+      <div class="f-group">
+        <label data-hint="URGENT = fast-track auto-publish internally. NORMAL = standard flow.">Priority *</label>
+        <select name="priority">
+          {% for p in ['URGENT','HIGH','NORMAL','LOW'] %}
+          <option value="{{ p }}" {% if (preset.priority or 'NORMAL')==p %}selected{% endif %}>{{ p.title() }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="Override the plantilla salary min (leave blank to use default)">Salary Min Override</label>
+        <input type="number" name="salary_min_override" step="0.01" value="{{ preset.salary_min_override or '' }}">
+      </div>
+      <div class="f-group">
+        <label data-hint="Override the plantilla salary max (leave blank to use default)">Salary Max Override</label>
+        <input type="number" name="salary_max_override" step="0.01" value="{{ preset.salary_max_override or '' }}">
+      </div>
+      <div class="f-group">
+        <label data-hint="When you hope this role will be filled">Target Hire Date</label>
+        <input type="date" name="target_hire_date" value="{{ preset.target_hire_date or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📚 Qualifications</h3>
+    <div class="grid-2">
+      <div class="f-group">
+        <label data-hint="Pre-defined qualification standard for this position">Qualification Standard</label>
+        <select name="qualification_standard_id">
+          <option value="">— Use position default —</option>
+          {% for qs in lookups.qualification_standards %}
+          <option value="{{ qs.id }}" {% if preset.qualification_standard_id==qs.id %}selected{% endif %}>
+            {{ qs.position_title }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="f-group">
+        <label data-hint="Required CSC eligibility (CS Professional, Career Service, Board exam, etc.)">Required Eligibility</label>
+        <select name="required_eligibility_id">
+          <option value="">— Any / Not applicable —</option>
+          {% for e in lookups.eligibilities %}
+          <option value="{{ e.id }}" {% if preset.required_eligibility_id==e.id %}selected{% endif %}>
+            {{ e.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📄 Justification</h3>
+    <div class="f-group">
+      <label data-hint="Explain why this position is needed — e.g. vacancy from retirement, new programme, workload increase">Justification *</label>
+      <textarea name="justification" required placeholder="e.g. Vacancy due to retirement of the previous Nutritionist Scholar. Position is critical for the LGU's feeding programme implementation.">{{ preset.justification or '' }}</textarea>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.6rem;justify-content:flex-end;flex-wrap:wrap;">
+    <button type="submit" name="action" value="draft" class="btn btn-ghost"
+            data-hint="Saves without routing to approvers. You can edit and submit later.">
+      💾 Save as Draft
+    </button>
+    <button type="submit" name="action" value="submit" class="btn btn-primary"
+            data-hint="Routes this requisition through Department Head → HR → Executive for approval.">
+      ✉️ Save &amp; Submit for Approval
+    </button>
+  </div>
+</form>
+
+<script>
+async function checkDupes() {
+  const pid = document.getElementById('position_id').value;
+  const banner = document.getElementById('dupe-banner');
+  const txt = document.getElementById('dupe-text');
+  if (!pid) { banner.style.display = 'none'; return; }
+  try {
+    const r = await fetch('{{ url_for("requisitions.check_duplicates_json") }}?position_id=' + pid);
+    const j = await r.json();
+    if (j.ok && j.duplicates.length > 0) {
+      const list = j.duplicates.map(d =>
+        `<a href="/rsp/requisitions/${d.id}" style="color:#92400e;text-decoration:underline;">${d.reference_no}</a> (${d.status.replace('_',' ')}, ${d.headcount} head, by ${d.requested_by_name || '—'})`
+      ).join(', ');
+      txt.innerHTML = `Active requisition(s) already exist for this position: ${list}`;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch (e) { /* noop */ }
+}
+// initial check in case position was preset (clone)
+document.addEventListener('DOMContentLoaded', checkDupes);
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block page_title %}New Workforce Scenario{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">New Workforce Planning Scenario</h2>
+  <a href="/workforce-planning" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Back</a>
+</div>
+<div class="card" style="padding:1.25rem;max-width:640px;">
+  <form method="post" action="/workforce-planning/scenarios/new">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+      <div style="grid-column:span 2;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Scenario Name *</label>
+        <input type="text" name="name" required maxlength="150" placeholder="FY2027 Headcount Plan" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+      <div style="grid-column:span 2;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Description</label>
+        <textarea name="description" rows="2" placeholder="Scenario assumptions and goals..." style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;"></textarea>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Scenario Type</label>
+        <select name="scenario_type" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+          <option value="HEADCOUNT">Headcount Planning</option>
+          <option value="COST">Cost Analysis</option>
+          <option value="RESTRUCTURE">Restructure</option>
+          <option value="SKILLS">Skills-Based</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Planning Horizon (months)</label>
+        <input type="number" name="horizon_months" value="12" min="3" max="60" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+    </div>
+
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid #e5e7eb;">
+      <strong style="font-size:.85rem;display:block;margin-bottom:.75rem;">Planning Assumptions</strong>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+        <div>
+          <label style="display:block;font-size:.7rem;color:#6b7280;margin-bottom:.2rem;">Annual Attrition %</label>
+          <input type="number" name="attrition_pct" value="5" step="0.1" min="0" max="50" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:.7rem;color:#6b7280;margin-bottom:.2rem;">Growth %</label>
+          <input type="number" name="growth_pct" value="3" step="0.1" min="-20" max="50" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:.7rem;color:#6b7280;margin-bottom:.2rem;">Avg Salary Increase %</label>
+          <input type="number" name="avg_salary_increase" value="5" step="0.1" min="0" max="30" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:.7rem;color:#6b7280;margin-bottom:.2rem;">Benefits % of Salary</label>
+          <input type="number" name="benefits_pct" value="25" step="0.1" min="0" max="100" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:.7rem;color:#6b7280;margin-bottom:.2rem;">Training % of Salary</label>
+          <input type="number" name="training_pct" value="2" step="0.1" min="0" max="20" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="display:block;font-size:.7rem;color:#6b7280;margin-bottom:.2rem;">Recruitment Cost/Hire ₱</label>
+          <input type="number" name="recruitment_cost_per_hire" value="15000" step="1000" min="0" style="width:100%;border:1px solid #d1d5db;border-radius:5px;padding:6px 10px;font-size:.85rem;box-sizing:border-box;">
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1.25rem;display:flex;gap:.5rem;justify-content:flex-end;">
+      <a href="/workforce-planning" style="padding:8px 18px;font-size:.875rem;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#374151;">Cancel</a>
+      <button type="submit" style="padding:8px 22px;font-size:.875rem;font-weight:700;border:none;border-radius:6px;background:var(--primary,#4f46e5);color:#fff;cursor:pointer;">Create & Generate Projections</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

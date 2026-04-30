@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block page_title %}Daily Time Records{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Daily Time Records</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/attendance/calendar" style="font-size:.85rem;color:var(--primary);">Calendar</a>
+    <a href="/attendance/timelog" style="font-size:.85rem;color:var(--primary);">Log Time</a>
+  </div>
+</div>
+
+<form method="get" class="card" style="padding:.75rem 1rem;display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;margin-bottom:1rem;">
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">From</label>
+    <input type="date" name="date_from" value="{{ filters.date_from or '' }}" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">To</label>
+    <input type="date" name="date_to" value="{{ filters.date_to or '' }}" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Department</label>
+    <select name="dept_id" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+      <option value="">All</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if filters.department_id and filters.department_id|string == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.25rem;">
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;">Status</label>
+    <select name="status" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;">
+      <option value="">All</option>
+      {% for s in ['PRESENT','LATE','ABSENT','ON_LEAVE','ON_HOLIDAY'] %}
+      <option value="{{ s }}" {% if filters.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-sm">Filter</button>
+  <a href="/attendance/dtr" style="padding:6px 12px;font-size:.875rem;color:#6b7280;">Reset</a>
+</form>
+
+{% if summary %}
+<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+  <div style="flex:1;min-width:100px;padding:.75rem 1rem;border-radius:8px;background:#dcfce7;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#166534;">{{ summary.present or 0 }}</div>
+    <div style="font-size:.75rem;color:#166534;">Present</div>
+  </div>
+  <div style="flex:1;min-width:100px;padding:.75rem 1rem;border-radius:8px;background:#fef9c3;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#854d0e;">{{ summary.late or 0 }}</div>
+    <div style="font-size:.75rem;color:#854d0e;">Late</div>
+  </div>
+  <div style="flex:1;min-width:100px;padding:.75rem 1rem;border-radius:8px;background:#fee2e2;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#991b1b;">{{ summary.absent or 0 }}</div>
+    <div style="font-size:.75rem;color:#991b1b;">Absent</div>
+  </div>
+  <div style="flex:1;min-width:100px;padding:.75rem 1rem;border-radius:8px;background:rgba(99,102,241,.08);text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:var(--primary);">{{ summary.total or 0 }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total</div>
+  </div>
+</div>
+{% endif %}
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;">Department</th>
+        <th style="padding:10px 14px;">Date</th>
+        <th style="padding:10px 14px;">Time In</th>
+        <th style="padding:10px 14px;">Time Out</th>
+        <th style="padding:10px 14px;">Hours</th>
+        <th style="padding:10px 14px;">Late</th>
+        <th style="padding:10px 14px;">OT</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if loop.index is odd %}background:rgba(0,0,0,.015);{% endif %}">
+        <td style="padding:9px 14px;font-weight:500;">
+          {{ r.full_name }}
+          <div style="font-size:.72rem;color:#9ca3af;">{{ r.employee_no }}</div>
+        </td>
+        <td style="padding:9px 14px;color:#6b7280;text-align:center;">{{ r.department or '' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.work_date }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.time_in.strftime('%H:%M') if r.time_in else '' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.time_out.strftime('%H:%M') if r.time_out else '' }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ '%.1f'|format(r.hours_worked) if r.hours_worked else '' }}</td>
+        <td style="padding:9px 14px;text-align:center;color:{% if r.hours_late and r.hours_late > 0 %}#d97706{% else %}#9ca3af{% endif %};">
+          {{ '%.1f'|format(r.hours_late) if r.hours_late and r.hours_late > 0 else '' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;color:{% if r.hours_overtime and r.hours_overtime > 0 %}#4f46e5{% else %}#9ca3af{% endif %};">
+          {{ '%.1f'|format(r.hours_overtime) if r.hours_overtime and r.hours_overtime > 0 else '' }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;">
+          {% set st = r.attendance_status %}
+          <span class="badge {% if st == 'PRESENT' %}badge-success{% elif st == 'LATE' %}badge-warning{% elif st == 'ABSENT' %}badge-danger{% elif st == 'ON_HOLIDAY' %}badge-info{% else %}badge-default{% endif %}">
+            {{ st }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;">
+          <a href="/attendance/dtr/{{ r.employee_id }}/{{ r.work_date }}" style="font-size:.75rem;color:var(--primary);">Detail</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" style="padding:2rem;text-align:center;color:#9ca3af;">No records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if total > per_page %}
+<div style="display:flex;gap:.5rem;justify-content:center;margin-top:1rem;font-size:.875rem;">
+  {% if page > 1 %}
+  <a href="?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ page-1 }}" class="btn btn-sm btn-outline">Prev</a>
+  {% endif %}
+  <span style="padding:4px 12px;color:#6b7280;">Page {{ page }}</span>
+  {% if page * per_page < total %}
+  <a href="?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&page={{ page+1 }}" class="btn btn-sm btn-outline">Next</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1rem;">
+  <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:600;">Batch Process Attendance</h3>
+  <form method="post" action="/attendance/process" style="display:flex;gap:.75rem;align-items:flex-end;">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">From</label>
+      <input type="date" name="date_from" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">To</label>
+      <input type="date" name="date_to" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <button type="submit" class="btn btn-sm">Process</button>
+  </form>
+</div>
+
+{% endblock %}

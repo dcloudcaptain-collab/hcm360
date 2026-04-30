@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block page_title %}CTO Credits{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Compensatory Time Off (CTO) Credits</h2>
+  {% if current_user and current_user.role_code in ('HR_ADMIN','SUPERADMIN') %}
+  <a href="/leave/cto/adjust"
+     style="padding:7px 16px;background:var(--primary,#4f46e5);color:#fff;border-radius:7px;font-size:.875rem;font-weight:600;text-decoration:none;">
+    + Manual Adjustment
+  </a>
+  {% endif %}
+</div>
+
+{# Summary cards #}
+<div style="display:flex;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem 1rem;text-align:center;">
+    <div style="font-size:1.6rem;font-weight:800;color:#16a34a;">{{ '%.2f'|format(totals.earned or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total Earned (hrs)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem 1rem;text-align:center;">
+    <div style="font-size:1.6rem;font-weight:800;color:#4f46e5;">{{ '%.2f'|format(totals.used or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Used (hrs)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem 1rem;text-align:center;">
+    <div style="font-size:1.6rem;font-weight:800;color:#dc2626;">{{ '%.2f'|format(totals.forfeited or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Forfeited (hrs)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem 1rem;text-align:center;">
+    <div style="font-size:1.6rem;font-weight:800;color:#0f172a;">{{ '%.2f'|format(totals.balance or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Current Balance (hrs)</div>
+  </div>
+</div>
+
+{# CTO Ledger #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:10px 14px;background:rgba(0,0,0,.02);display:flex;align-items:center;justify-content:space-between;">
+    <strong style="font-size:.9rem;">CTO Ledger</strong>
+    {% if employee_filter %}
+    <span style="font-size:.8rem;color:#6b7280;">{{ employee_filter }}</span>
+    {% endif %}
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;">Date</th>
+        <th style="padding:10px 14px;">Type</th>
+        <th style="padding:10px 14px;">Hours</th>
+        <th style="padding:10px 14px;">Reference</th>
+        <th style="padding:10px 14px;">Expiry</th>
+        <th style="padding:10px 14px;">Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:500;">{{ r.full_name }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.credit_date }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span style="font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if r.credit_type=='EARNED' %}#dcfce7{% elif r.credit_type=='USED' %}#dbeafe{% else %}#fee2e2{% endif %};
+            color:{% if r.credit_type=='EARNED' %}#166534{% elif r.credit_type=='USED' %}#1e40af{% else %}#991b1b{% endif %};">
+            {{ r.credit_type }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-weight:700;
+          color:{% if r.credit_type=='EARNED' %}#16a34a{% elif r.credit_type=='USED' %}#4f46e5{% else %}#dc2626{% endif %};">
+          {{ '+' if r.credit_type=='EARNED' else '-' }}{{ '%.2f'|format(r.hours|abs) }}
+        </td>
+        <td style="padding:9px 14px;text-align:center;font-size:.8rem;color:#6b7280;">{{ r.reference_id or '—' }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;font-size:.8rem;
+          color:{% if r.expiry_date and r.expiry_date < today %}#dc2626{% else %}#6b7280{% endif %};">
+          {{ r.expiry_date or '—' }}
+        </td>
+        <td style="padding:9px 14px;color:#6b7280;font-size:.8rem;">{{ r.remarks or '—' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No CTO records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% block page_title %}My SALN{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}
+<style>
+  .sec-head { margin:1.25rem 0 .5rem; font-weight:700; color:#4f46e5; padding:.4rem .75rem;
+      background:#ede9fe; border-left:4px solid #4f46e5; border-radius:4px; font-size:.9rem; }
+  .total-row { background:#f8fafc; font-weight:700; }
+  .pill-save { position:fixed; bottom:1rem; right:1rem; background:#111827; color:#fff;
+      padding:.5rem 1rem; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,.15);
+      font-size:.85rem; display:none; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📋 My SALN — {{ year }}</h2>
+       <div class="sub">Mode: <strong>{{ settings.mode.replace('_',' ').title() }}</strong>
+         {% if current %} · Status: <span class="status-badge s-{{ current.status|lower }}">{{ current.status }}</span>{% endif %}</div></div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="save(false)" class="btn btn-ghost">💾 Save Draft</button>
+    <button onclick="save(true)"  class="btn btn-primary">📨 Submit</button>
+    {% if current and current.id %}
+    <a href="/dms/saln/{{ current.id }}.pdf" target="_blank" class="btn btn-ghost">🖨 PDF</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if settings.mode == 'UPLOAD_ONLY' %}
+  <div class="card">
+    <h3>📎 Upload Completed SALN</h3>
+    <p style="font-size:.88rem;color:#6b7280;">Please upload your completed SALN document (PDF). The system records your filing date and status only.</p>
+    <div class="f-group" style="margin-top:1rem;">
+      <label>SALN Document (PDF)</label>
+      <input type="file" id="salnFile" accept=".pdf" />
+      <div style="font-size:.75rem;color:#9ca3af;margin-top:.4rem;">
+        Max 10 MB. Your document is stored securely and only accessible to you and HR.
+      </div>
+    </div>
+  </div>
+{% elif settings.mode == 'SIMPLE_FORM' %}
+  <div class="card">
+    <h3>💰 Assets &amp; Liabilities Summary</h3>
+    <div class="grid-3">
+      <div class="f-group"><label>Real Property (₱)</label>
+        <input type="number" step="0.01" data-key="real_property" value="{{ data.real_property or 0 }}" /></div>
+      <div class="f-group"><label>Personal Property (₱)</label>
+        <input type="number" step="0.01" data-key="personal_property" value="{{ data.personal_property or 0 }}" /></div>
+      <div class="f-group"><label>Cash on Hand (₱)</label>
+        <input type="number" step="0.01" data-key="cash" value="{{ data.cash or 0 }}" /></div>
+      <div class="f-group"><label>Investments (₱)</label>
+        <input type="number" step="0.01" data-key="investments" value="{{ data.investments or 0 }}" /></div>
+      <div class="f-group"><label>Other Assets (₱)</label>
+        <input type="number" step="0.01" data-key="other_assets" value="{{ data.other_assets or 0 }}" /></div>
+      <div class="f-group"><label><strong>Total Assets</strong></label>
+        <input type="number" step="0.01" data-key="total_assets" value="{{ data.total_assets or 0 }}" id="totalAssets" /></div>
+      <div class="f-group"><label>Loans (₱)</label>
+        <input type="number" step="0.01" data-key="loans" value="{{ data.loans or 0 }}" /></div>
+      <div class="f-group"><label>Other Liabilities (₱)</label>
+        <input type="number" step="0.01" data-key="other_liabilities" value="{{ data.other_liabilities or 0 }}" /></div>
+      <div class="f-group"><label><strong>Total Liabilities</strong></label>
+        <input type="number" step="0.01" data-key="total_liabilities" value="{{ data.total_liabilities or 0 }}" id="totalLiab" /></div>
+    </div>
+    <button type="button" class="btn btn-ghost" style="margin-top:.8rem;" onclick="autoTotals()">🔢 Auto-Compute Totals</button>
+  </div>
+
+  <div class="card" style="margin-top:1rem;">
+    <h3>👤 Spouse &amp; Family</h3>
+    <div class="grid-3">
+      <div class="f-group"><label>Spouse Name</label>
+        <input type="text" data-key="spouse.name" value="{{ data.spouse.name if data.spouse else '' }}" /></div>
+      <div class="f-group"><label>Spouse Occupation</label>
+        <input type="text" data-key="spouse.occupation" value="{{ data.spouse.occupation if data.spouse else '' }}" /></div>
+      <div class="f-group"><label>Spouse Employer</label>
+        <input type="text" data-key="spouse.employer" value="{{ data.spouse.employer if data.spouse else '' }}" /></div>
+    </div>
+    <div class="f-group" style="margin-top:.8rem;">
+      <label>Relatives in Government (names + positions)</label>
+      <textarea data-key="relatives_in_gov">{{ data.relatives_in_gov or '' }}</textarea>
+    </div>
+    <div class="f-group" style="margin-top:.8rem;">
+      <label>Prior Year Net Worth (₱)</label>
+      <input type="number" step="0.01" data-key="prior_net_worth" value="{{ data.prior_net_worth or 0 }}" />
+    </div>
+  </div>
+{% else %} {# FULL_CSC_210 #}
+  <div class="card">
+    <h3>📋 Full CSC Form 210</h3>
+    <p style="font-size:.85rem;color:#6b7280;">Complete all sections below. Fields marked * are required.</p>
+
+    <div class="sec-head">Section I — Summary (Totals)</div>
+    <div class="grid-3">
+      <div class="f-group"><label>Total Real Property</label>
+        <input type="number" step="0.01" data-key="real_property" value="{{ data.real_property or 0 }}" /></div>
+      <div class="f-group"><label>Total Personal Property</label>
+        <input type="number" step="0.01" data-key="personal_property" value="{{ data.personal_property or 0 }}" /></div>
+      <div class="f-group"><label>Cash</label>
+        <input type="number" step="0.01" data-key="cash" value="{{ data.cash or 0 }}" /></div>
+      <div class="f-group"><label>Investments</label>
+        <input type="number" step="0.01" data-key="investments" value="{{ data.investments or 0 }}" /></div>
+      <div class="f-group"><label>Other Assets</label>
+        <input type="number" step="0.01" data-key="other_assets" value="{{ data.other_assets or 0 }}" /></div>
+      <div class="f-group"><label>Total Assets</label>
+        <input type="number" step="0.01" data-key="total_assets" value="{{ data.total_assets or 0 }}" id="totalAssets" /></div>
+      <div class="f-group"><label>Loans</label>
+        <input type="number" step="0.01" data-key="loans" value="{{ data.loans or 0 }}" /></div>
+      <div class="f-group"><label>Other Liabilities</label>
+        <input type="number" step="0.01" data-key="other_liabilities" value="{{ data.other_liabilities or 0 }}" /></div>
+      <div class="f-group"><label>Total Liabilities</label>
+        <input type="number" step="0.01" data-key="total_liabilities" value="{{ data.total_liabilities or 0 }}" id="totalLiab" /></div>
+      <div class="f-group"><label>Prior Year Net Worth</label>
+        <input type="number" step="0.01" data-key="prior_net_worth" value="{{ data.prior_net_worth or 0 }}" /></div>
+    </div>
+    <button type="button" class="btn btn-ghost" style="margin-top:.8rem;" onclick="autoTotals()">🔢 Auto-Compute Totals</button>
+
+    <div class="sec-head">Section II — Spouse &amp; Declared Relatives</div>
+    <div class="grid-3">
+      <div class="f-group"><label>Spouse Name</label>
+        <input type="text" data-key="spouse.name" value="{{ data.spouse.name if data.spouse else '' }}" /></div>
+      <div class="f-group"><label>Spouse Occupation</label>
+        <input type="text" data-key="spouse.occupation" value="{{ data.spouse.occupation if data.spouse else '' }}" /></div>
+      <div class="f-group"><label>Spouse Employer</label>
+        <input type="text" data-key="spouse.employer" value="{{ data.spouse.employer if data.spouse else '' }}" /></div>
+    </div>
+    <div class="f-group" style="margin-top:.8rem;">
+      <label>Relatives in Government Service</label>
+      <textarea data-key="relatives_in_gov" rows="3">{{ data.relatives_in_gov or '' }}</textarea>
+    </div>
+
+    <div class="sec-head">Section III — Business Interests &amp; Financial Connections</div>
+    <div class="f-group">
+      <label>Business Interests (JSON array — name, nature, since)</label>
+      <textarea data-key="business_interests_raw" rows="5" placeholder='[{"name":"XYZ Trading","nature":"Sole Prop","since":"2018"}]'>{{ data.business_interests_raw or '' }}</textarea>
+      <div style="font-size:.75rem;color:#9ca3af;">Leave empty if none. Will be parsed as JSON on save.</div>
+    </div>
+
+    <div class="sec-head">Section IV — Real Property Detail (Optional)</div>
+    <div class="f-group">
+      <label>Real Property (JSON array — description, location, year_acquired, assessed_value)</label>
+      <textarea data-key="real_property_detail_raw" rows="5" placeholder='[{"description":"House and Lot","location":"Mariveles, Bataan","year_acquired":2015,"assessed_value":1500000}]'>{{ data.real_property_detail_raw or '' }}</textarea>
+    </div>
+  </div>
+{% endif %}
+
+<div class="pill-save" id="saveFlash">Saving…</div>
+
+<script>
+  const MODE = '{{ settings.mode }}';
+  let data = {{ data | tojson }};
+
+  function setDeep(path, value) {
+    const parts = path.split('.');
+    let node = data;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (typeof node[parts[i]] !== 'object' || node[parts[i]] === null) node[parts[i]] = {};
+      node = node[parts[i]];
+    }
+    node[parts[parts.length - 1]] = value;
+  }
+
+  function autoTotals() {
+    let assetKeys = ['real_property','personal_property','cash','investments','other_assets'];
+    let liabKeys = ['loans','other_liabilities'];
+    let a = 0, l = 0;
+    assetKeys.forEach(k => {
+      const el = document.querySelector(`[data-key="${k}"]`);
+      if (el) a += parseFloat(el.value) || 0;
+    });
+    liabKeys.forEach(k => {
+      const el = document.querySelector(`[data-key="${k}"]`);
+      if (el) l += parseFloat(el.value) || 0;
+    });
+    const ta = document.getElementById('totalAssets');
+    const tl = document.getElementById('totalLiab');
+    if (ta) ta.value = a.toFixed(2);
+    if (tl) tl.value = l.toFixed(2);
+  }
+
+  function collect() {
+    document.querySelectorAll('[data-key]').forEach(el => {
+      let v = el.value;
+      if (el.type === 'number') v = parseFloat(v) || 0;
+      // Parse _raw JSON fields
+      if (el.dataset.key.endsWith('_raw')) {
+        try {
+          const parsed = v ? JSON.parse(v) : [];
+          const realKey = el.dataset.key.replace('_raw', '');
+          setDeep(realKey, parsed);
+          setDeep(el.dataset.key, v); // keep raw too
+          return;
+        } catch (e) { /* swallow — validation warning could be added */ }
+      }
+      setDeep(el.dataset.key, v);
+    });
+    return data;
+  }
+
+  async function save(submit) {
+    const payload = {mode: MODE, data: collect(), submit: submit};
+    const flash = document.getElementById('saveFlash');
+    flash.textContent = submit ? 'Submitting…' : 'Saving draft…';
+    flash.style.display = 'block';
+    const r = await fetch('/me/saln', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json();
+    flash.textContent = submit ? '✓ Submitted' : '✓ Draft saved';
+    setTimeout(() => flash.style.display = 'none', 2500);
+    if (submit) setTimeout(() => location.reload(), 1200);
+  }
+</script>
+{% endblock %}

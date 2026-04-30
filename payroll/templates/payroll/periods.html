@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}Pay Periods{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Pay Periods</h2>
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Code</th>
+        <th style="padding:10px 14px;">Type</th>
+        <th style="padding:10px 14px;">From</th>
+        <th style="padding:10px 14px;">To</th>
+        <th style="padding:10px 14px;">Pay Date</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:600;font-family:monospace;">{{ r.period_code }}</td>
+        <td style="padding:9px 14px;text-align:center;"><span class="badge badge-default">{{ r.period_type }}</span></td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.date_from }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.date_to }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.payment_date or '' }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span class="badge {% if r.status == 'OPEN' %}badge-success{% elif r.status == 'CLOSED' %}badge-default{% else %}badge-warning{% endif %}">{{ r.status }}</span>
+        </td>
+        <td style="padding:9px 14px;">
+          {% if r.status == 'OPEN' %}
+          <form method="post" action="/payroll/periods/{{ r.id }}/close" style="display:inline;" onsubmit="return confirm('Close this period?');">
+            <button type="submit" class="btn-sm btn-outline">Close</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No pay periods.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<div class="card">
+  <h3 style="margin:0 0 1rem;font-size:1rem;font-weight:600;">Create Pay Period</h3>
+  <form method="post" action="/payroll/periods/new" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Period Code</label>
+      <input name="period_code" required placeholder="2026-01A" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;width:130px;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Type</label>
+      <select name="period_type" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+        <option value="SEMI_MONTHLY">Semi-Monthly</option>
+        <option value="MONTHLY">Monthly</option>
+        <option value="WEEKLY">Weekly</option>
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">From</label>
+      <input type="date" name="date_from" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">To</label>
+      <input type="date" name="date_to" required style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.75rem;font-weight:600;color:#6b7280;">Pay Date</label>
+      <input type="date" name="payment_date" style="padding:5px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+    </div>
+    <button type="submit" class="btn btn-sm">Create</button>
+  </form>
+</div>
+
+{% endblock %}

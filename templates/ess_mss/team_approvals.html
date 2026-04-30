@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block page_title %}Pending Approvals{% endblock %}
+{% block extra_css %}
+<style>
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.72rem; font-weight:600; }
+  .badge-red   { background:#fee2e2; color:#991b1b; }
+  .badge-amber { background:#fef3c7; color:#92400e; }
+  .badge-green { background:#d1fae5; color:#065f46; }
+  .badge-blue  { background:#dbeafe; color:#1e40af; }
+  .badge-grey  { background:#f3f4f6; color:#6b7280; }
+  .urgency-strip { display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+  .urgency-pill  { flex:1; min-width:100px; border-radius:8px; padding:.75rem 1rem; text-align:center; }
+  .pill-count  { font-size:1.6rem; font-weight:800; line-height:1; }
+  .pill-label  { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-top:.2rem; }
+</style>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem;">
+  <div style="display:flex; align-items:center; gap:.75rem;">
+    <h2 style="margin:0; font-size:1.2rem; font-weight:700;">Pending Approvals</h2>
+    {% if pending %}
+    <span style="background:var(--primary,#4f46e5); color:#fff; border-radius:999px; padding:2px 10px; font-size:.78rem; font-weight:700;">{{ pending | length }}</span>
+    {% endif %}
+  </div>
+  <a href="/my-team" style="font-size:.85rem; color:var(--primary,#4f46e5); text-decoration:none;">← My Team</a>
+</div>
+
+{% if pending %}
+
+{% set overdue  = pending | selectattr('hours_pending', '>', 24)  | list %}
+{% set warning  = pending | selectattr('hours_pending', '>=', 2)  | selectattr('hours_pending', '<=', 24) | list %}
+{% set fresh    = pending | selectattr('hours_pending', '<', 2)   | list %}
+
+<div class="urgency-strip">
+  <div class="urgency-pill" style="background:#fee2e2; color:#991b1b;">
+    <div class="pill-count">{{ overdue | length }}</div>
+    <div class="pill-label">Overdue (&gt;24h)</div>
+  </div>
+  <div class="urgency-pill" style="background:#fef3c7; color:#92400e;">
+    <div class="pill-count">{{ warning | length }}</div>
+    <div class="pill-label">Warning (2–24h)</div>
+  </div>
+  <div class="urgency-pill" style="background:#d1fae5; color:#065f46;">
+    <div class="pill-count">{{ fresh | length }}</div>
+    <div class="pill-label">Fresh (&lt;2h)</div>
+  </div>
+</div>
+
+<section class="card" style="padding:0; overflow:hidden;">
+  <table style="width:100%; border-collapse:collapse; font-size:.875rem;">
+    <thead>
+      <tr style="background:#f9fafb;">
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Ref #</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Workflow</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Module</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Step</th>
+        <th style="text-align:left; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Requested By</th>
+        <th style="text-align:right; padding:.6rem 1rem; color:#6b7280; font-size:.72rem; text-transform:uppercase; letter-spacing:.04em;">Waiting</th>
+        <th style="padding:.6rem 1rem;"></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in pending %}
+      {% set hrs = a.hours_pending | float %}
+      <tr style="border-top:1px solid #f3f4f6;
+        {% if hrs > 24 %}background:#fff5f5;
+        {% elif hrs >= 2 %}background:#fffbeb;
+        {% endif %}">
+        <td style="padding:.65rem 1rem; font-family:monospace; font-size:.82rem; color:#6b7280;">{{ a.reference_no }}</td>
+        <td style="padding:.65rem 1rem; font-weight:500;">{{ a.workflow_name }}</td>
+        <td style="padding:.65rem 1rem;">
+          <span class="badge badge-blue">{{ a.module | upper }}</span>
+        </td>
+        <td style="padding:.65rem 1rem; font-size:.82rem; color:#374151;">{{ a.current_step }}</td>
+        <td style="padding:.65rem 1rem; font-size:.82rem; color:#6b7280;">{{ a.initiated_by }}</td>
+        <td style="padding:.65rem 1rem; text-align:right;">
+          {% if hrs > 24 %}
+            <span class="badge badge-red">{{ (hrs / 24) | round(1) }}d</span>
+          {% elif hrs >= 1 %}
+            <span class="badge badge-amber">{{ hrs | round(0) | int }}h</span>
+          {% else %}
+            <span class="badge badge-green">&lt;1h</span>
+          {% endif %}
+        </td>
+        <td style="padding:.65rem 1rem;">
+          <a href="/workflow/instance/{{ a.instance_id }}"
+             style="display:inline-block; padding:5px 12px; background:var(--primary,#4f46e5); color:#fff;
+                    border-radius:6px; font-size:.8rem; font-weight:600; text-decoration:none;">
+            Review
+          </a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% else %}
+<div class="card" style="padding:3rem; text-align:center; color:#6b7280;">
+  <div style="font-size:2.5rem; margin-bottom:.75rem;">✓</div>
+  <div style="font-size:1.1rem; font-weight:700; margin-bottom:.3rem;">All caught up!</div>
+  <div style="font-size:.875rem; color:#9ca3af;">You have no pending approvals at this time.</div>
+</div>
+{% endif %}
+
+{% endblock %}

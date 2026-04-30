@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block page_title %}Pay Run #{{ run.id }}{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:1rem;">
+  <a href="/payroll/runs" style="font-size:.85rem;color:var(--primary);">&larr; Back to Runs</a>
+</div>
+
+{% if run %}
+<div class="card" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Pay Run #{{ run.id }}</h2>
+    <div style="font-size:.85rem;color:#6b7280;margin-top:.25rem;">
+      {{ run.cutoff_start }} to {{ run.cutoff_end }} &middot; {{ run.period_type }}
+      {% if run.payment_date %} &middot; Pay date: {{ run.payment_date }}{% endif %}
+    </div>
+  </div>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <span class="badge {% if run.status=='COMPLETED' %}badge-success{% elif run.status=='COMPUTED' %}badge-info{% elif run.status=='APPROVED' %}badge-success{% else %}badge-default{% endif %}" style="font-size:.9rem;padding:5px 14px;">
+      {{ run.status }}
+    </span>
+  </div>
+</div>
+
+{# Action buttons #}
+<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% if run.status == 'DRAFT' %}
+  <form method="post" action="/payroll/runs/{{ run.id }}/compute">
+    <button type="submit" class="btn btn-sm" onclick="this.disabled=true;this.form.submit();">Compute Payroll</button>
+  </form>
+  {% endif %}
+  {% if run.status == 'COMPUTED' %}
+  <form method="post" action="/payroll/runs/{{ run.id }}/action">
+    <input type="hidden" name="action_code" value="SUBMIT">
+    <button type="submit" class="btn btn-sm">Submit for Approval</button>
+  </form>
+  <form method="post" action="/payroll/runs/{{ run.id }}/compute">
+    <button type="submit" class="btn btn-sm btn-outline">Re-compute</button>
+  </form>
+  {% endif %}
+  {% if run.status == 'SUBMITTED' %}
+  <form method="post" action="/payroll/runs/{{ run.id }}/action">
+    <input type="hidden" name="action_code" value="APPROVE">
+    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+  </form>
+  <form method="post" action="/payroll/runs/{{ run.id }}/action">
+    <input type="hidden" name="action_code" value="REJECT">
+    <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+  </form>
+  {% endif %}
+  {% if run.status == 'APPROVED' %}
+  <form method="post" action="/payroll/runs/{{ run.id }}/action">
+    <input type="hidden" name="action_code" value="COMPLETE">
+    <button type="submit" class="btn btn-sm btn-success">Mark Complete</button>
+  </form>
+  {% endif %}
+</div>
+
+{# Summary #}
+<div class="grid kpis" style="margin-bottom:1.5rem;">
+  <div class="card" style="text-align:center;">
+    <div style="font-size:1.5rem;font-weight:700;">{{ run.total_employees or 0 }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Employees</div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="font-size:1.25rem;font-weight:700;font-family:monospace;">{{ '{:,.2f}'.format(run.total_gross or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total Gross</div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="font-size:1.25rem;font-weight:700;font-family:monospace;color:#dc2626;">{{ '{:,.2f}'.format(run.total_deductions or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total Deductions</div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="font-size:1.25rem;font-weight:700;font-family:monospace;color:#166534;">{{ '{:,.2f}'.format(run.total_net or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total Net Pay</div>
+  </div>
+</div>
+
+{# Remittances #}
+{% if remittances %}
+<h3 style="font-size:1rem;font-weight:600;margin-bottom:.5rem;">Government Remittances</h3>
+<div class="grid kpis" style="margin-bottom:1.5rem;">
+  {% for rem in remittances %}
+  <div class="card" style="text-align:center;padding:1rem;">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">{{ rem.agency }}</div>
+    <div style="font-size:1.1rem;font-weight:700;font-family:monospace;">{{ '{:,.2f}'.format(rem.total_amount or 0) }}</div>
+    <div style="font-size:.7rem;color:#9ca3af;">EE: {{ '{:,.2f}'.format(rem.total_ee or 0) }} | ER: {{ '{:,.2f}'.format(rem.total_er or 0) }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Employee payroll table #}
+<h3 style="font-size:1rem;font-weight:600;margin-bottom:.5rem;">Employee Breakdown</h3>
+<section class="card" style="padding:0;overflow:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.8rem;white-space:nowrap;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.65rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 10px;text-align:left;">Employee</th>
+        <th style="padding:8px 10px;">Dept</th>
+        <th style="padding:8px 10px;">Basic</th>
+        <th style="padding:8px 10px;">OT</th>
+        <th style="padding:8px 10px;">Holiday</th>
+        <th style="padding:8px 10px;">Allowances</th>
+        <th style="padding:8px 10px;">Gross</th>
+        <th style="padding:8px 10px;">Deductions</th>
+        <th style="padding:8px 10px;">Net</th>
+        <th style="padding:8px 10px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);{% if loop.index is odd %}background:rgba(0,0,0,.015);{% endif %}">
+        <td style="padding:7px 10px;font-weight:500;">{{ e.full_name }}<div style="font-size:.65rem;color:#9ca3af;">{{ e.employee_no }}</div></td>
+        <td style="padding:7px 10px;color:#6b7280;">{{ e.department }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(e.basic_pay or 0) }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(e.ot_pay or 0) }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(e.holiday_pay or 0) }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(e.allowances_total or 0) }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:600;">{{ '{:,.2f}'.format(e.gross_pay or 0) }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;color:#dc2626;">{{ '{:,.2f}'.format(e.total_deductions or 0) }}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:700;color:#166534;">{{ '{:,.2f}'.format(e.net_pay or 0) }}</td>
+        <td style="padding:7px 10px;"><a href="/payroll/payslips/{{ e.id }}/view" style="font-size:.7rem;color:var(--primary);">Payslip</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="10" style="padding:2rem;text-align:center;color:#9ca3af;">No employees computed yet. Click "Compute Payroll" to start.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% endblock %}

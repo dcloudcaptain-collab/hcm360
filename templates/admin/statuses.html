@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block page_title %}Status Metadata{% endblock %}
+{% block content %}
+<section class="card"><table><thead><tr><th>Group</th><th>Code</th><th>Label</th><th>Color</th></tr></thead><tbody>{% for s in statuses %}<tr><td>{{ s.status_group }}</td><td>{{ s.status_code }}</td><td>{{ s.status_label }}</td><td>{{ s.badge_color }}</td></tr>{% endfor %}</tbody></table></section>
+{% endblock %}

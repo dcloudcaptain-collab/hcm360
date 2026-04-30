@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block page_title %}CSC Eligibility Report{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>🏅 CSC Eligibility Report</h2>
+       <div class="sub">1st Level / 2nd Level / Honor Graduate × Gender breakdown</div></div>
+</div>
+
+<div class="grid-2" style="margin-bottom:1rem;">
+  <div class="card">
+    <h3 style="margin:0 0 .6rem;font-size:.95rem;">Level × Gender</h3>
+    <table class="dt">
+      <thead><tr><th>Level</th><th>Male</th><th>Female</th><th>Total</th></tr></thead>
+      <tbody>
+      {% for r in level_gender %}
+        <tr>
+          <td><strong>{{ r.level.replace('_',' ').title() if r.level else 'No Eligibility' }}</strong></td>
+          <td>{{ r.male_count }}</td>
+          <td>{{ r.female_count }}</td>
+          <td><strong>{{ r.total }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h3 style="margin:0 0 .6rem;font-size:.95rem;">By Department × Level</h3>
+    <table class="dt">
+      <thead><tr><th>Department</th><th>1st Lv</th><th>2nd Lv</th><th>Honor</th><th>Total</th></tr></thead>
+      <tbody>
+      {% for r in dept_level %}
+        <tr>
+          <td>{{ r.department or '—' }}</td>
+          <td>{{ r.first_level }}</td>
+          <td>{{ r.second_level }}</td>
+          <td>{{ r.honor_grad }}</td>
+          <td><strong>{{ r.total }}</strong></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="page-head">
+  <h3 style="margin:0;font-size:1rem;">Employee Detail</h3>
+  <div class="filters">
+    <a href="?" class="{{ 'active' if not level_filter else '' }}">All</a>
+    {% for l in ['1ST_LEVEL','2ND_LEVEL','HONOR_GRAD','OTHER'] %}
+    <a href="?level={{ l }}" class="{{ 'active' if level_filter == l else '' }}">{{ l.replace('_',' ').title() }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<table class="dt">
+  <thead><tr><th>Employee</th><th>Gender</th><th>Department</th><th>Position</th>
+      <th>Eligibilities</th><th>Level</th></tr></thead>
+  <tbody>
+  {% for e in employees %}
+    <tr>
+      <td><div style="font-weight:600;">{{ e.full_name }}</div>
+          <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ e.employee_no }}</div></td>
+      <td>{{ e.gender or '—' }}</td>
+      <td>{{ e.department_name or '—' }}</td>
+      <td>{{ e.position_title or '—' }}</td>
+      <td style="max-width:280px;font-size:.8rem;">{{ e.eligibilities or '—' }}</td>
+      <td>
+        {% if e.levels %}
+          {% for l in e.levels.split(',') %}
+          <span class="status-badge s-{{ 'high' if '2ND' in l else 'medium' if '1ST' in l else 'low' }}">{{ l.strip().replace('_',' ') }}</span>
+          {% endfor %}
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

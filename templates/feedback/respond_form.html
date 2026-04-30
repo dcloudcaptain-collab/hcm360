@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block page_title %}Respond to Feedback Request{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Submit Feedback</h2>
+  <a href="{{ url_for('feedback.index') }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.85rem;color:#374151;text-decoration:none;">&larr; Dashboard</a>
+</div>
+
+<!-- Request Context -->
+<div class="card" style="padding:1rem;margin-bottom:1rem;background:#f9fafb;">
+  <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Request Details</div>
+  <div style="font-size:.85rem;margin-bottom:.25rem;">
+    <strong>Subject:</strong> {{ freq.subject_name or 'Unknown' }}
+    &nbsp;&middot;&nbsp;
+    <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.68rem;font-weight:600;
+      background:{% if freq.feedback_type == 'PEER' %}#dbeafe{% elif freq.feedback_type == 'UPWARD' %}#fef3c7{% else %}#f3e8ff{% endif %};
+      color:{% if freq.feedback_type == 'PEER' %}#1e40af{% elif freq.feedback_type == 'UPWARD' %}#92400e{% else %}#6b21a8{% endif %};">
+      {{ freq.feedback_type }}
+    </span>
+  </div>
+  <div style="font-size:.85rem;"><strong>Requested by:</strong> {{ freq.requester_name or 'Unknown' }}</div>
+  {% if freq.message %}
+  <div style="font-size:.82rem;color:#6b7280;margin-top:.35rem;padding:.5rem;background:#fff;border-radius:6px;border:1px solid #e5e7eb;">{{ freq.message }}</div>
+  {% endif %}
+  {% if freq.due_date %}
+  <div style="font-size:.78rem;color:#9ca3af;margin-top:.25rem;">Due: {{ freq.due_date.strftime('%b %d, %Y') if freq.due_date else '' }}</div>
+  {% endif %}
+</div>
+
+<!-- Response Form -->
+<div class="card" style="padding:1.25rem;max-width:600px;">
+  <form method="POST" action="{{ url_for('feedback.respond_submit', request_id=freq.id) }}">
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Rating</label>
+      <div id="star-rating" style="display:flex;gap:.25rem;font-size:1.5rem;cursor:pointer;color:#d1d5db;">
+        {% for i in range(1, 6) %}
+        <span data-value="{{ i }}" onclick="setRating({{ i }})" onmouseover="hoverRating({{ i }})" onmouseout="resetRating()">&#9733;</span>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="rating" id="rating-input" value="" required>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Strengths</label>
+      <textarea name="strengths" rows="3" placeholder="What does this person do well?"
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;"></textarea>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Areas for Improvement</label>
+      <textarea name="improvements" rows="3" placeholder="What could they improve?"
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;"></textarea>
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.35rem;">Additional Comments</label>
+      <textarea name="comments" rows="2" placeholder="Any other comments..."
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;"></textarea>
+    </div>
+
+    <div style="display:flex;gap:1.5rem;margin-bottom:1.25rem;">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;cursor:pointer;">
+        <input type="checkbox" name="is_anonymous">
+        Submit Anonymously
+      </label>
+      <div>
+        <label style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Visibility</label>
+        <select name="visibility" style="padding:4px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:.82rem;margin-left:.35rem;">
+          <option value="MANAGER">Manager Only</option>
+          <option value="SUBJECT">Subject + Manager</option>
+          <option value="HR">HR Only</option>
+        </select>
+      </div>
+    </div>
+
+    <button type="submit"
+            style="padding:8px 20px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+      Submit Feedback
+    </button>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var currentRating = 0;
+var stars = document.querySelectorAll('#star-rating span');
+
+function setRating(val) {
+  currentRating = val;
+  document.getElementById('rating-input').value = val;
+  renderStars(val);
+}
+
+function hoverRating(val) {
+  renderStars(val);
+}
+
+function resetRating() {
+  renderStars(currentRating);
+}
+
+function renderStars(val) {
+  stars.forEach(function(s, i) {
+    s.style.color = (i < val) ? '#d97706' : '#d1d5db';
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block page_title %}Attendance Calendar{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Attendance Calendar</h2>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <a href="?year={{ prev_year }}&month={{ prev_month }}&employee_id={{ employee_id or '' }}"
+       style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;text-decoration:none;color:#374151;">‹ Prev</a>
+    <strong style="font-size:.95rem;min-width:120px;text-align:center;">{{ month_label }}</strong>
+    <a href="?year={{ next_year }}&month={{ next_month }}&employee_id={{ employee_id or '' }}"
+       style="padding:5px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;text-decoration:none;color:#374151;">Next ›</a>
+  </div>
+</div>
+
+{# Employee picker #}
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.75rem;align-items:center;">
+  <input type="hidden" name="year" value="{{ year }}">
+  <input type="hidden" name="month" value="{{ month }}">
+  <select name="employee_id" onchange="this.form.submit()"
+          style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+    <option value="">-- Select Employee --</option>
+    {% for e in employees %}
+    <option value="{{ e.id }}" {% if employee_id|string == e.id|string %}selected{% endif %}>
+      {{ e.full_name }}
+    </option>
+    {% endfor %}
+  </select>
+</form>
+
+{# Legend #}
+<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;font-size:.8rem;">
+  <span><span style="display:inline-block;width:12px;height:12px;background:#dcfce7;border-radius:3px;margin-right:4px;"></span>Present</span>
+  <span><span style="display:inline-block;width:12px;height:12px;background:#fef9c3;border-radius:3px;margin-right:4px;"></span>Late</span>
+  <span><span style="display:inline-block;width:12px;height:12px;background:#fee2e2;border-radius:3px;margin-right:4px;"></span>Absent</span>
+  <span><span style="display:inline-block;width:12px;height:12px;background:#ede9fe;border-radius:3px;margin-right:4px;"></span>Holiday</span>
+  <span><span style="display:inline-block;width:12px;height:12px;background:#f1f5f9;border-radius:3px;margin-right:4px;"></span>Rest Day</span>
+</div>
+
+{# Calendar grid #}
+<section class="card" style="padding:1rem;">
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+    {% for day_name in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}
+    <div style="text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;color:#9ca3af;padding:4px 0;">{{ day_name }}</div>
+    {% endfor %}
+
+    {# Empty cells before first day #}
+    {% for _ in range(first_weekday) %}
+    <div></div>
+    {% endfor %}
+
+    {# Day cells #}
+    {% for day in calendar_days %}
+    <div style="min-height:56px;border-radius:6px;padding:4px 6px;font-size:.8rem;cursor:pointer;
+      background:{% if day.is_holiday %}#ede9fe{% elif day.is_absent %}#fee2e2{% elif day.is_late %}#fef9c3{% elif day.is_present %}#dcfce7{% elif day.is_restday %}#f1f5f9{% else %}rgba(0,0,0,.03){% endif %};
+      border:1px solid {% if day.is_today %}var(--primary,#4f46e5){% else %}transparent{% endif %};
+      opacity:{{ '1' if day.in_month else '0.3' }};"
+      onclick="window.location='/attendance/dtr/{{ employee_id }}/{{ day.date }}'"
+      title="{{ day.date }}">
+      <div style="font-weight:{% if day.is_today %}700{% else %}400{% endif %};
+                  color:{% if day.is_today %}var(--primary,#4f46e5){% else %}inherit{% endif %};">
+        {{ day.day }}
+      </div>
+      {% if day.is_present and day.time_in %}
+      <div style="font-size:.65rem;color:#166534;font-family:monospace;">{{ day.time_in }}</div>
+      {% endif %}
+      {% if day.late_minutes and day.late_minutes > 0 %}
+      <div style="font-size:.65rem;color:#854d0e;">+{{ day.late_minutes }}m</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# Monthly summary #}
+{% if summary %}
+<div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+  <div class="card" style="flex:1;min-width:100px;padding:.75rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#16a34a;">{{ summary.present_days }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Present Days</div>
+  </div>
+  <div class="card" style="flex:1;min-width:100px;padding:.75rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#d97706;">{{ summary.late_days }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Late Days</div>
+  </div>
+  <div class="card" style="flex:1;min-width:100px;padding:.75rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#dc2626;">{{ summary.absent_days }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Absent Days</div>
+  </div>
+  <div class="card" style="flex:1;min-width:100px;padding:.75rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#4f46e5;">{{ '%.0f'|format(summary.total_late_minutes or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total Late (min)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:100px;padding:.75rem;text-align:center;">
+    <div style="font-size:1.5rem;font-weight:800;color:#7c3aed;">{{ '%.1f'|format(summary.total_ot_hours or 0) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">OT Hours</div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

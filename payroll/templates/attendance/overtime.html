@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block page_title %}Overtime Requests{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Overtime Requests</h2>
+  <a href="/attendance/overtime/new" class="btn btn-sm">+ New OT Request</a>
+</div>
+
+<div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+  {% for s, label in [('','All'),('PENDING','Pending'),('APPROVED','Approved'),('REJECTED','Rejected')] %}
+  <a href="/attendance/overtime?status={{ s }}"
+     style="padding:5px 14px;border-radius:20px;font-size:.825rem;font-weight:{% if status==s %}700{% else %}400{% endif %};
+            background:{% if status==s %}var(--primary){% else %}rgba(0,0,0,.05){% endif %};
+            color:{% if status==s %}#fff{% else %}#6b7280{% endif %};">
+    {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Employee</th>
+        <th style="padding:10px 14px;">Department</th>
+        <th style="padding:10px 14px;">Date</th>
+        <th style="padding:10px 14px;">Hours</th>
+        <th style="padding:10px 14px;">Reason</th>
+        <th style="padding:10px 14px;">Status</th>
+        <th style="padding:10px 14px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:500;">{{ r.full_name }}<div style="font-size:.72rem;color:#9ca3af;">{{ r.employee_no }}</div></td>
+        <td style="padding:9px 14px;text-align:center;color:#6b7280;">{{ r.department }}</td>
+        <td style="padding:9px 14px;text-align:center;font-family:monospace;">{{ r.request_date }}</td>
+        <td style="padding:9px 14px;text-align:center;font-weight:600;">{{ '%.1f'|format(r.expected_ot_hours) }}</td>
+        <td style="padding:9px 14px;color:#6b7280;font-size:.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;">{{ r.reason or '' }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <span class="badge {% if r.status == 'APPROVED' %}badge-success{% elif r.status == 'REJECTED' %}badge-danger{% else %}badge-warning{% endif %}">
+            {{ r.status }}
+          </span>
+        </td>
+        <td style="padding:9px 14px;white-space:nowrap;">
+          {% if r.status == 'PENDING' %}
+          <form method="post" action="/attendance/overtime/{{ r.id }}/action" style="display:inline;">
+            <input type="hidden" name="action_code" value="APPROVE">
+            <input type="hidden" name="ot_hours_approved" value="{{ r.expected_ot_hours }}">
+            <button type="submit" class="btn-sm btn-success" style="font-size:.7rem;padding:3px 8px;">Approve</button>
+          </form>
+          <form method="post" action="/attendance/overtime/{{ r.id }}/action" style="display:inline;margin-left:4px;">
+            <input type="hidden" name="action_code" value="REJECT">
+            <button type="submit" class="btn-sm btn-danger" style="font-size:.7rem;padding:3px 8px;">Reject</button>
+          </form>
+          {% else %}
+          <span style="font-size:.75rem;color:#9ca3af;">{{ r.approved_by_name or '' }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No overtime requests found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Attendance & Payroll</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">Attendance & Payroll</div>
+    <div class="small">Standalone Module</div>
+    <nav id="sidenav">
+      <div class="nav-group-label">Attendance</div>
+      <a href="/attendance/dtr" class="nav-link{{ ' active' if request.path.startswith('/attendance/dtr') }}">Daily Time Records</a>
+      <a href="/attendance/timelog" class="nav-link{{ ' active' if request.path == '/attendance/timelog' }}">Time Logging</a>
+      <a href="/attendance/shifts" class="nav-link{{ ' active' if request.path == '/attendance/shifts' }}">Shift Management</a>
+      <a href="/attendance/overtime" class="nav-link{{ ' active' if request.path.startswith('/attendance/overtime') }}">Overtime Requests</a>
+      <a href="/attendance/dtr/correction" class="nav-link{{ ' active' if request.path == '/attendance/dtr/correction' }}">DTR Corrections</a>
+      <a href="/attendance/calendar" class="nav-link{{ ' active' if request.path == '/attendance/calendar' }}">Calendar</a>
+      <a href="/attendance/holidays" class="nav-link{{ ' active' if request.path == '/attendance/holidays' }}">Holidays</a>
+
+      <details class="nav-group" open>
+        <summary class="nav-group-summary">Payroll</summary>
+        <a href="/payroll/" class="nav-link{{ ' active' if request.path == '/payroll/' }}">Dashboard</a>
+        <a href="/payroll/periods" class="nav-link{{ ' active' if request.path == '/payroll/periods' }}">Pay Periods</a>
+        <a href="/payroll/runs" class="nav-link{{ ' active' if request.path.startswith('/payroll/runs') }}">Pay Runs</a>
+        <a href="/payroll/loans" class="nav-link{{ ' active' if request.path.startswith('/payroll/loans') }}">Loans</a>
+        <a href="/payroll/register" class="nav-link{{ ' active' if request.path == '/payroll/register' }}">Register</a>
+        <a href="/payroll/13th-month" class="nav-link{{ ' active' if request.path == '/payroll/13th-month' }}">13th Month</a>
+        <a href="/payroll/remittances" class="nav-link{{ ' active' if request.path == '/payroll/remittances' }}">Remittances</a>
+      </details>
+
+      <details class="nav-group">
+        <summary class="nav-group-summary">Configuration</summary>
+        <a href="/config/" class="nav-link{{ ' active' if request.path == '/config/' }}">Settings</a>
+        <a href="/config/rates" class="nav-link{{ ' active' if request.path == '/config/rates' }}">Rate Tables</a>
+        <a href="/config/sss" class="nav-link{{ ' active' if request.path == '/config/sss' }}">SSS Schedule</a>
+        <a href="/config/gsis" class="nav-link{{ ' active' if request.path == '/config/gsis' }}">GSIS Schedule</a>
+        <a href="/config/philhealth" class="nav-link{{ ' active' if request.path == '/config/philhealth' }}">PhilHealth</a>
+        <a href="/config/pagibig" class="nav-link{{ ' active' if request.path == '/config/pagibig' }}">Pag-IBIG</a>
+        <a href="/config/tax" class="nav-link{{ ' active' if request.path == '/config/tax' }}">BIR Tax Tables</a>
+      </details>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar card">
+      <div>
+        <div class="title">{% block page_title %}Payroll{% endblock %}</div>
+        <div class="small">{% if current_user %}{{ current_user.display_name }} ({{ current_user.role_code }}){% else %}Login required{% endif %}</div>
+      </div>
+      <div class="top-actions">
+        {% if current_user %}
+        <form method="post" action="/switch-user" class="inline compact">
+          <select name="user_id" onchange="this.form.submit()" style="padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:.85rem;">
+            {% for u in users %}
+            <option value="{{ u.id }}" {% if current_user.id == u.id %}selected{% endif %}>{{ u.display_name }} ({{ u.role_code }})</option>
+            {% endfor %}
+          </select>
+        </form>
+        <form method="post" action="/logout" class="compact">
+          <button type="submit" class="btn-sm btn-outline">Logout</button>
+        </form>
+        {% endif %}
+      </div>
+    </header>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+  document.querySelectorAll('details.nav-group').forEach(function(el) {
+    var key = 'navg_' + el.querySelector('summary').textContent.trim();
+    var saved = localStorage.getItem(key);
+    if (saved !== null) el.open = saved === '1';
+    el.addEventListener('toggle', function() {
+      localStorage.setItem(key, el.open ? '1' : '0');
+    });
+  });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

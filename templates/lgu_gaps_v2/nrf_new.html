@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block page_title %}Submit Narrative Report{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📝 Narrative Report Form</h2>
+       <div class="sub">{{ ctx.training_title }}{% if ctx.session_date %} · {{ ctx.session_date.strftime('%b %d, %Y') }}{% endif %}</div></div>
+  <a href="/learning/nrf" class="btn btn-ghost">← Cancel</a>
+</div>
+
+<form method="POST">
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Training Context</h3>
+    <div class="grid-2">
+      <div class="f-group"><label>Training Title</label>
+        <input type="text" name="training_title" value="{{ ctx.training_title }}" /></div>
+      <div class="f-group"><label>Venue</label>
+        <input type="text" name="venue" value="{{ ctx.venue or '' }}" /></div>
+      <div class="f-group"><label>Facilitator</label>
+        <input type="text" name="facilitator" value="{{ ctx.facilitator or '' }}" /></div>
+      <div class="f-group"><label>Training Dates</label>
+        <input type="text" name="training_dates" value="{{ ctx.session_date }}{% if ctx.session_end %} to {{ ctx.session_end }}{% endif %}" /></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Your Narrative</h3>
+    <div class="f-group" style="margin-bottom:.8rem;"><label>Learning Objectives *</label>
+      <textarea name="learning_objectives" required rows="3" placeholder="What were the intended outcomes?"></textarea></div>
+    <div class="f-group" style="margin-bottom:.8rem;"><label>Key Learnings *</label>
+      <textarea name="key_learnings" required rows="4" placeholder="What did you learn? Top 3-5 insights."></textarea></div>
+    <div class="f-group" style="margin-bottom:.8rem;"><label>Application Plans *</label>
+      <textarea name="application_plans" required rows="4" placeholder="How will you apply these learnings in your role?"></textarea></div>
+    <div class="f-group" style="margin-bottom:.8rem;"><label>Challenges</label>
+      <textarea name="challenges" rows="3" placeholder="Any difficulties encountered?"></textarea></div>
+    <div class="f-group" style="margin-bottom:.8rem;"><label>Recommendations</label>
+      <textarea name="recommendations" rows="3" placeholder="Suggestions for future sessions?"></textarea></div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Overall Rating</h3>
+    <div class="f-group">
+      <label>Rate this training (1-5)</label>
+      <div style="display:flex;gap:.3rem;">
+        {% for v in range(1,6) %}
+        <label style="flex:1;padding:.5rem;border:1.5px solid #d1d5db;border-radius:8px;text-align:center;cursor:pointer;font-weight:600;">
+          <input type="radio" name="evaluation_rating" value="{{ v }}" style="display:none;"
+                 onclick="this.closest('div').querySelectorAll('label').forEach(l=>l.style.background=''); this.closest('label').style.background='#ede9fe';"/>
+          {{ v }} ⭐
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+    <a href="/learning/nrf" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">📨 Submit NRF</button>
+  </div>
+</form>
+{% endblock %}

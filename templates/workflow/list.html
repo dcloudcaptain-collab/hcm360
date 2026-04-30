@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block page_title %}Workflow Engine{% endblock %}
+{% block content %}
+<div class="grid two">
+<section class="card">
+  <h3>Workflow Definitions</h3>
+  <table><thead><tr><th>Name</th><th>Module</th></tr></thead><tbody>{% for w in workflows %}<tr><td><a href="/workflow/{{ w.id }}">{{ w.workflow_name }}</a></td><td>{{ w.module_code }}</td></tr>{% endfor %}</tbody></table>
+</section>
+<section class="card">
+  <h3>Workflow Instances</h3>
+  {% if feature_flags.get('FUNNEL_WORKFLOW') %}<div class="small">Funnel is visible for this role.</div>{% else %}<div class="small">Workflow funnel is restricted for this role.</div>{% endif %}
+  <table><thead><tr><th>Reference</th><th>Workflow</th><th>Status</th><th>Current Step</th><th>Open</th></tr></thead><tbody>{% for i in instances %}<tr><td>{{ i.reference_no }}</td><td>{{ i.workflow_name }}</td><td>{{ i.status_label }}</td><td>{{ i.current_step or '-' }}</td><td><a href="/workflow/instance/{{ i.id }}">View</a></td></tr>{% endfor %}</tbody></table>
+</section>
+</div>
+{% endblock %}

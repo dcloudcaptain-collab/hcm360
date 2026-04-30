@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block page_title %}201 File — {{ employee_name }}{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">201 File — {{ employee_name }}</h2>
+  <div style="display:flex;gap:.5rem;">
+    <a href="/dms/service-record/{{ employee_id }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">CSC Form 212</a>
+    <a href="/dms/leave-card/{{ employee_id }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">Leave Card</a>
+    <a href="/dms/" style="font-size:.85rem;color:var(--primary,#4f46e5);padding:7px 0;">← Dashboard</a>
+  </div>
+</div>
+
+{% set submitted = checklist|rejectattr('doc_id','none')|list|length %}
+{% set total = checklist|length %}
+{% set pct = ((submitted / total * 100) if total else 0)|round(0)|int %}
+<div class="card" style="padding:.75rem 1rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;">
+  <div style="flex:1;">
+    <div style="height:8px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden;">
+      <div style="height:100%;border-radius:4px;background:{% if pct >= 100 %}#16a34a{% elif pct >= 50 %}#d97706{% else %}#dc2626{% endif %};width:{{ pct }}%;transition:width .3s;"></div>
+    </div>
+  </div>
+  <span style="font-size:.9rem;font-weight:700;color:{% if pct >= 100 %}#16a34a{% elif pct >= 50 %}#d97706{% else %}#dc2626{% endif %};">{{ submitted }}/{{ total }} ({{ pct }}%)</span>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:.6rem;">
+  {% for item in checklist %}
+  <div class="card" style="padding:.75rem 1rem;display:flex;align-items:center;justify-content:space-between;
+              border-left:4px solid {% if item.doc_id %}#16a34a{% elif item.is_mandatory %}#dc2626{% else %}#d1d5db{% endif %};">
+    <div>
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.9rem;font-weight:600;">{{ item.label }}</span>
+        {% if item.is_mandatory %}
+        <span style="font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:999px;background:#fee2e2;color:#991b1b;">Required</span>
+        {% endif %}
+      </div>
+      {% if item.doc_id %}
+      <div style="font-size:.78rem;color:#16a34a;margin-top:.15rem;">
+        ✓ {{ item.document_name }} — Uploaded {{ item.uploaded_at.strftime('%b %d, %Y') if item.uploaded_at else '' }}
+      </div>
+      {% else %}
+      <div style="font-size:.78rem;color:#9ca3af;margin-top:.15rem;">Not yet submitted</div>
+      {% endif %}
+    </div>
+    <span style="font-size:.78rem;color:#6b7280;">{{ item.document_type }}</span>
+  </div>
+  {% else %}
+  <div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No checklist items configured.</div>
+  {% endfor %}
+</div>
+{% endblock %}

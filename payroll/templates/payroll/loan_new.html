@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block page_title %}New Loan Application{% endblock %}
+{% block content %}
+
+<div style="margin-bottom:1rem;">
+  <a href="/payroll/loans" style="font-size:.85rem;color:var(--primary);">&larr; Back to Loans</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+  <h2 style="margin:0 0 1rem;font-size:1.15rem;font-weight:700;">Loan Application</h2>
+  <form method="post" style="display:flex;flex-direction:column;gap:1rem;">
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.8rem;font-weight:600;color:#374151;">Employee</label>
+      <select name="employee_id" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+        <option value="">Select employee...</option>
+        {% for e in employees %}
+        <option value="{{ e.id }}">{{ e.full_name }} ({{ e.employee_no }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:1rem;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">Loan Type</label>
+        <select name="loan_type" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+          <option value="COMPANY">Company Loan</option>
+          <option value="SALARY">Salary Loan</option>
+          <option value="EMERGENCY">Emergency Loan</option>
+          <option value="SSS">SSS Loan</option>
+          <option value="GSIS">GSIS Loan</option>
+          <option value="PAGIBIG">Pag-IBIG Loan</option>
+        </select>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">Start Date</label>
+        <input type="date" name="start_date" required style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+      </div>
+    </div>
+    <div style="display:flex;gap:1rem;">
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">Principal Amount</label>
+        <input type="number" name="principal" step="0.01" required placeholder="50000.00" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">Monthly Deduction</label>
+        <input type="number" name="monthly_deduction" step="0.01" required placeholder="2500.00" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:.25rem;">
+        <label style="font-size:.8rem;font-weight:600;color:#374151;">Total Months</label>
+        <input type="number" name="total_months" required placeholder="24" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;">
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.25rem;">
+      <label style="font-size:.8rem;font-weight:600;color:#374151;">Purpose</label>
+      <textarea name="purpose" rows="2" placeholder="Loan purpose..." style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;resize:vertical;"></textarea>
+    </div>
+    <button type="submit" class="btn">Submit Application</button>
+  </form>
+</div>
+
+{% endblock %}

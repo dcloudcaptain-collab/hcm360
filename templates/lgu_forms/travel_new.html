@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block page_title %}New Travel Order{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>✈️ New Travel Order</h2>
+       <div class="sub">Submit for supervisor and head-of-office approval</div></div>
+  <a href="/travel-orders/" class="btn btn-ghost">← Cancel</a>
+</div>
+
+<form method="POST">
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Purpose &amp; Destination</h3>
+    <div class="f-group" style="margin-bottom:.8rem;">
+      <label>Purpose of Travel *</label>
+      <textarea name="purpose" required minlength="5" placeholder="e.g., Attend budget hearing at DBM Central Office"></textarea>
+    </div>
+    <div class="f-group">
+      <label>Destination *</label>
+      <input type="text" name="destination" required placeholder="e.g., DBM Central Office, Manila" />
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Dates &amp; Mode</h3>
+    <div class="grid-2">
+      <div class="f-group"><label>Date From *</label><input type="date" name="date_from" required /></div>
+      <div class="f-group"><label>Date To *</label><input type="date" name="date_to" required /></div>
+      <div class="f-group"><label>Time From</label><input type="time" name="time_from" /></div>
+      <div class="f-group"><label>Time To</label><input type="time" name="time_to" /></div>
+      <div class="f-group">
+        <label>Mode of Transport</label>
+        <select name="mode_of_transport">
+          <option value="">— Select —</option>
+          <option>Land Vehicle</option><option>Bus</option><option>Airplane</option>
+          <option>Ship</option><option>Private Vehicle</option><option>Other</option>
+        </select>
+      </div>
+      <div class="f-group"><label>Estimated Cost (₱)</label>
+        <input type="number" name="estimated_cost" step="0.01" min="0" /></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1rem;">
+    <h3>Funds &amp; Companions</h3>
+    <div class="grid-2">
+      <div class="f-group">
+        <label>Funds Source (Chargeable To)</label>
+        <input type="text" name="funds_source" placeholder="e.g., Travel Fund - FY 2026" />
+      </div>
+      <div class="f-group">
+        <label>Companions (names, comma-separated)</label>
+        <input type="text" name="companions" />
+      </div>
+    </div>
+    <div class="f-group" style="margin-top:.8rem;">
+      <label>Remarks</label><textarea name="remarks"></textarea>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+    <a href="/travel-orders/" class="btn btn-ghost">Cancel</a>
+    <button type="submit" class="btn btn-primary">📨 Submit for Approval</button>
+  </div>
+</form>
+{% endblock %}

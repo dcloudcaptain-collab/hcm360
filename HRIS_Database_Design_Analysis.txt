@@ -1,0 +1,835 @@
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    HRIS DATABASE DESIGN DOCUMENT                            ║
+║              Municipality of Mariveles, Bataan • PRIME-HRM L2                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Generated: 2026-03-31 16:18:26
+Database: PostgreSQL 14+
+Location: hris_db @ localhost:5440
+Status: EXISTING INFRASTRUCTURE - ANALYSIS & ENHANCEMENT
+
+─────────────────────────────────────────────────────────────────────────────
+
+1. EXECUTIVE SUMMARY
+────────────────────
+
+The Municipality of Mariveles has deployed a PostgreSQL-based HRIS system to support
+14 functional areas defined in the CSC PRIME-HRM Level 2 compliance requirement.
+
+Current Setup:
+  ✓ Database Name: hris_db
+  ✓ Host: localhost (development) / hris_db (Docker)
+  ✓ Port: 5440 (host) → 5432 (container)
+  ✓ User: hris_admin
+  ✓ Tech Stack: PostgreSQL 14+ (recommended)
+
+This document provides:
+  • Complete schema documentation
+  • Analytics & KPI strategy
+  • AI/ML opportunities (retention scoring, skill gaps, etc.)
+  • Security & compliance measures
+  • Implementation roadmap
+
+─────────────────────────────────────────────────────────────────────────────
+
+2. DATABASE ARCHITECTURE
+────────────────────────
+
+LAYER STRUCTURE:
+┌─────────────────────────────────────────────────────────────┐
+│ Application Layer (Web/Mobile)                              │
+├─────────────────────────────────────────────────────────────┤
+│ PostgreSQL CORE SCHEMA                                      │
+│  ├─ Core Entities (employees, positions, departments)       │
+│  ├─ Operational Data (attendance, leave, payroll)           │
+│  ├─ Audit & Temporal (change tracking, history)             │
+│  └─ Integration Tables (external systems)                   │
+├─────────────────────────────────────────────────────────────┤
+│ ANALYTICS LAYER                                             │
+│  ├─ Materialized Views (pre-computed metrics)               │
+│  ├─ Reporting Views (dashboard queries)                     │
+│  └─ Time-Series Tables (historical tracking)                │
+├─────────────────────────────────────────────────────────────┤
+│ Dashboards & BI Tools (Grafana, Metabase, custom)           │
+└─────────────────────────────────────────────────────────────┘
+
+SCHEMA ORGANIZATION:
+  public.*              - Core operational tables
+  audit.*              - Audit logs and change tracking
+  analytics.*          - Materialized views for reporting
+  temp.*               - Temporary staging tables
+  external.*           - Integration data (payroll, SSO)
+
+─────────────────────────────────────────────────────────────────────────────
+
+3. CORE DATA ENTITIES (ENTITY-RELATIONSHIP MODEL)
+──────────────────────────────────────────────────
+
+TIER 1: FOUNDATIONAL (Must Have First)
+─────────────────────────────────────
+
+  departments
+    ├── dept_id (UUID, PK)
+    ├── dept_code (VARCHAR unique)
+    ├── dept_name (VARCHAR)
+    ├── parent_dept_id (UUID FK, nullable)
+    ├── head_id (UUID FK, nullable)
+    ├── created_at, updated_at (TIMESTAMP)
+    └── deleted_at (TIMESTAMP, soft delete)
+
+  positions
+    ├── pos_id (UUID, PK)
+    ├── pos_code (VARCHAR unique)
+    ├── pos_title (VARCHAR)
+    ├── department_id (UUID FK)
+    ├── salary_grade (VARCHAR: SG-1 to SG-33)
+    ├── rank_classification (ENUM: Rank-and-File, Officer, Supervisory)
+    ├── position_status (ENUM: Filled, Vacant, Plantilla)
+    ├── min_qualification (TEXT)
+    ├── job_description (TEXT)
+    ├── reporting_line_id (UUID FK, nullable)
+    ├── created_at, updated_at
+    └── deleted_at
+
+  employees (CORE MASTER TABLE)
+    ├── emp_id (UUID, PK)
+    ├── emp_number (VARCHAR unique: not null)
+    ├── first_name, middle_name, last_name (VARCHAR)
+    ├── email (VARCHAR unique, indexed)
+    ├── gender (ENUM: M, F, Other)
+    ├── birthdate (DATE: for age/retirement calc)
+    ├── birthplace (VARCHAR)
+    ├── civil_status (ENUM: Single, Married, Widowed, Separated, etc.)
+    ├── citizenship (VARCHAR)
+    ├── blood_type (VARCHAR nullable)
+    ├── tin_number (VARCHAR encrypted)
+    ├── gsis_number (VARCHAR encrypted)
+    ├── pagibig_number (VARCHAR encrypted)
+    ├── sss_number (VARCHAR encrypted)
+    ├── philhealth_number (VARCHAR encrypted)
+    ├── hire_date (DATE: critical for tenure)
+    ├── original_appointment_date (DATE: for step increment)
+    ├── employment_status (ENUM: Active, Inactive, On-Leave, Retired, Resigned, Terminated)
+    ├── employment_type (ENUM: Permanent, Casual, Contractual, JO, COS)
+    ├── phone_number (VARCHAR)
+    ├── address (TEXT)
+    ├── emergency_contact_name (VARCHAR)
+    ├── emergency_contact_phone (VARCHAR)
+    ├── department_id (UUID FK: current department)
+    ├── position_id (UUID FK: current position)
+    ├── is_active (BOOLEAN)
+    ├── created_at, updated_at, deleted_at
+    └── INDEXES: emp_number, email, hire_date, birthdate, employment_status
+
+TIER 2: EMPLOYMENT HISTORY & APPOINTMENTS
+────────────────────────────────────────
+
+  appointment_history
+    ├── apt_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── pos_id (UUID FK)
+    ├── department_id (UUID FK)
+    ├── appointment_type (ENUM: Permanent, Casual, Contractual, JO/COS)
+    ├── appointment_date (DATE)
+    ├── start_date (DATE: effective start)
+    ├── end_date (DATE nullable: current if null)
+    ├── appointment_status (ENUM: Active, Ended, Suspended, Cancelled)
+    ├── appointment_order_number (VARCHAR)
+    ├── salary_grade (VARCHAR)
+    └── INDEXES: emp_id, start_date
+
+  promotion_history
+    ├── prom_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── from_pos_id (UUID FK)
+    ├── to_pos_id (UUID FK)
+    ├── promotion_date (DATE)
+    ├── promotion_order_number (VARCHAR)
+    ├── salary_increase_amount (DECIMAL)
+    ├── effective_date (DATE)
+    └── remarks (TEXT)
+
+  transfer_history
+    ├── trans_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── from_dept_id (UUID FK)
+    ├── to_dept_id (UUID FK)
+    ├── from_pos_id (UUID FK)
+    ├── to_pos_id (UUID FK)
+    ├── transfer_date (DATE)
+    ├── transfer_order_number (VARCHAR)
+    ├── transfer_reason (TEXT)
+    └── effective_date (DATE)
+
+TIER 3: ATTENDANCE & TIME TRACKING
+───────────────────────────────────
+
+  attendance
+    ├── att_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── attendance_date (DATE)
+    ├── time_in (TIME nullable)
+    ├── time_out (TIME nullable)
+    ├── hours_worked (DECIMAL computed)
+    ├── overtime_hours (DECIMAL nullable)
+    ├── attendance_status (ENUM: Present, Late, Absent, Leave, Holiday, WFH)
+    ├── remarks (TEXT nullable)
+    ├── biometric_record (BOOLEAN: face rec verification)
+    ├── created_at, updated_at
+    └── INDEXES: emp_id, attendance_date
+
+  leave_requests
+    ├── leave_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── leave_type (ENUM: Vacation, Sick, CTO, LWOP, Maternity, Paternity, Calamity, etc.)
+    ├── start_date (DATE)
+    ├── end_date (DATE)
+    ├── number_of_days (DECIMAL)
+    ├── reason (TEXT)
+    ├── requested_date (TIMESTAMP)
+    ├── approval_status (ENUM: Pending, Approved, Rejected, Cancelled)
+    ├── approved_by (UUID FK: approver)
+    ├── approval_date (TIMESTAMP nullable)
+    ├── approval_remarks (TEXT nullable)
+    ├── prepaid_leave (BOOLEAN: deduction from balance)
+    └── INDEXES: emp_id, approval_status, start_date
+
+  leave_balances (MATERIALIZED)
+    ├── balance_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── fiscal_year (INT)
+    ├── leave_type (ENUM)
+    ├── opening_balance (DECIMAL)
+    ├── days_earned (DECIMAL)
+    ├── days_used (DECIMAL)
+    ├── days_forfeited (DECIMAL)
+    ├── closing_balance (DECIMAL)
+    ├── updated_at (TIMESTAMP)
+    └── UNIQUE(emp_id, fiscal_year, leave_type)
+
+TIER 4: COMPENSATION & PAYROLL
+───────────────────────────────
+
+  compensation
+    ├── comp_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── effective_date (DATE)
+    ├── end_date (DATE nullable)
+    ├── salary_grade (VARCHAR)
+    ├── base_salary (DECIMAL: monthly)
+    ├── basic_pay (DECIMAL)
+    ├── pera (DECIMAL: Personal Economic Relief Allowance)
+    ├── meal_allowance (DECIMAL)
+    ├── clothing_allowance (DECIMAL)
+    ├── other_allowances (JSONB: flexible structure)
+    ├── gross_monthly (DECIMAL: computed)
+    ├── gsis_contribution (DECIMAL)
+    ├── pagibig_contribution (DECIMAL)
+    ├── sss_contribution (DECIMAL)
+    ├── bir_withholding (DECIMAL)
+    ├── other_deductions (JSONB)
+    ├── net_monthly (DECIMAL: computed)
+    ├── active (BOOLEAN)
+    └── created_at, updated_at
+
+  payroll_runs
+    ├── payroll_id (UUID, PK)
+    ├── payroll_period_start (DATE)
+    ├── payroll_period_end (DATE)
+    ├── pay_date (DATE)
+    ├── payroll_type (ENUM: Monthly, 13th, 14th, Final Settlement)
+    ├── processed_by (UUID FK)
+    ├── processed_date (TIMESTAMP)
+    ├── status (ENUM: Draft, Processed, Approved, Posted)
+    ├── total_employees (INT)
+    ├── total_gross (DECIMAL)
+    ├── total_deductions (DECIMAL)
+    ├── total_net (DECIMAL)
+    └── remarks (TEXT)
+
+  payroll_details
+    ├── detail_id (UUID, PK)
+    ├── payroll_id (UUID FK)
+    ├── emp_id (UUID FK)
+    ├── comp_id (UUID FK)
+    ├── basic_pay (DECIMAL)
+    ├── allowances (DECIMAL)
+    ├── gross_pay (DECIMAL)
+    ├── deductions (DECIMAL)
+    ├── net_pay (DECIMAL)
+    └── pay_slip_generated (BOOLEAN)
+
+TIER 5: PERFORMANCE & DEVELOPMENT
+──────────────────────────────────
+
+  performance_goals
+    ├── goal_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── fiscal_year (INT)
+    ├── goal_description (TEXT)
+    ├── target_metric (VARCHAR)
+    ├── target_value (VARCHAR)
+    ├── weight (DECIMAL: 0-1)
+    ├── goal_status (ENUM: Active, Completed, Cancelled)
+    ├── set_date (DATE)
+    ├── target_date (DATE)
+    ├── actual_achievement (VARCHAR nullable)
+    ├── reviewed_date (DATE nullable)
+    ├── reviewer_id (UUID FK nullable)
+    └── remarks (TEXT)
+
+  training_records
+    ├── train_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── training_name (VARCHAR)
+    ├── training_category (VARCHAR)
+    ├── training_date (DATE)
+    ├── training_provider (VARCHAR)
+    ├── training_location (VARCHAR)
+    ├── hours (DECIMAL)
+    ├── cost (DECIMAL nullable)
+    ├── certificate_received (BOOLEAN)
+    ├── certificate_number (VARCHAR nullable)
+    ├── certificate_expiry (DATE nullable)
+    ├── training_type (ENUM: Mandatory, Professional Development, Upskilling)
+    ├── competencies_gained (TEXT)
+    └── created_at
+
+  skills_inventory
+    ├── skill_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── skill_name (VARCHAR)
+    ├── proficiency_level (ENUM: Beginner, Intermediate, Advanced, Expert)
+    ├── verified_date (DATE nullable)
+    ├── verified_by (UUID FK nullable)
+    ├── expiry_date (DATE nullable)
+    └── notes (TEXT)
+
+TIER 6: RECRUITMENT & ONBOARDING
+─────────────────────────────────
+
+  job_postings
+    ├── posting_id (UUID, PK)
+    ├── position_id (UUID FK)
+    ├── posting_date (DATE)
+    ├── closing_date (DATE)
+    ├── posting_status (ENUM: Open, Closed, Cancelled)
+    ├── posted_on_websites (INT)
+    ├── description (TEXT)
+    └── created_by (UUID FK)
+
+  applicants
+    ├── applicant_id (UUID, PK)
+    ├── posting_id (UUID FK)
+    ├── first_name, last_name (VARCHAR)
+    ├── email (VARCHAR unique per posting)
+    ├── phone (VARCHAR)
+    ├── resume_url (TEXT)
+    ├── application_date (DATE)
+    ├── application_status (ENUM: Submitted, Screened, Shortlisted, Interviewed, Rejected, Hired)
+    ├── screening_score (DECIMAL nullable)
+    ├── interview_date (DATE nullable)
+    ├── interview_notes (TEXT nullable)
+    ├── qualifications_met (BOOLEAN)
+    ├── csc_compliance_check (BOOLEAN)
+    └── INDEXES: posting_id, application_status, email
+
+  onboarding_tasks
+    ├── task_id (UUID, PK)
+    ├── emp_id (UUID FK)
+    ├── task_name (VARCHAR)
+    ├── task_category (ENUM: Document, Equipment, Training, Access, Policy)
+    ├── assigned_to (UUID FK)
+    ├── due_date (DATE)
+    ├── completion_date (DATE nullable)
+    ├── status (ENUM: Pending, In Progress, Completed)
+    └── remarks (TEXT)
+
+TIER 7: COMPLIANCE & SECURITY
+──────────────────────────────
+
+  audit_logs
+    ├── log_id (UUID, PK)
+    ├── schema_name (VARCHAR)
+    ├── table_name (VARCHAR)
+    ├── record_id (VARCHAR)
+    ├── action (ENUM: INSERT, UPDATE, DELETE)
+    ├── old_values (JSONB: before state)
+    ├── new_values (JSONB: after state)
+    ├── changed_by (VARCHAR: user who made change)
+    ├── changed_at (TIMESTAMP: immutable)
+    ├── change_reason (TEXT nullable: why changed)
+    ├── ip_address (INET nullable)
+    └── CONSTRAINT: No deletes on audit_logs (append-only)
+
+  user_access_logs
+    ├── access_id (UUID, PK)
+    ├── user_id (VARCHAR)
+    ├── accessed_table (VARCHAR)
+    ├── access_type (ENUM: SELECT, INSERT, UPDATE, DELETE)
+    ├── accessed_at (TIMESTAMP)
+    ├── ip_address (INET)
+    ├── success (BOOLEAN: access granted or denied)
+    └── record_id (VARCHAR nullable)
+
+  compliance_logs
+    ├── comp_log_id (UUID, PK)
+    ├── compliance_type (VARCHAR: GDPR, CSC, Labor Law)
+    ├── description (TEXT)
+    ├── checked_by (VARCHAR)
+    ├── checked_date (TIMESTAMP)
+    ├── status (ENUM: Compliant, Non-Compliant, Action Required)
+    ├── action_taken (TEXT nullable)
+    └── resolved_date (DATE nullable)
+
+  document_storage
+    ├── doc_id (UUID, PK)
+    ├── emp_id (UUID FK nullable)
+    ├── document_type (ENUM: Contract, Certificate, ID, Medical, Performance Review)
+    ├── document_name (VARCHAR)
+    ├── file_path (TEXT: encrypted S3/blob path)
+    ├── file_size (INT)
+    ├── upload_date (TIMESTAMP)
+    ├── uploaded_by (UUID FK)
+    ├── expiry_date (DATE nullable)
+    ├── version (INT)
+    ├── is_signed (BOOLEAN)
+    ├── signature_date (TIMESTAMP nullable)
+    └── INDEXES: emp_id, document_type, expiry_date
+
+─────────────────────────────────────────────────────────────────────────────
+
+4. ANALYTICS STRATEGY
+────────────────────
+
+MATERIALIZED VIEWS (Refreshed Hourly/Daily):
+
+  mv_workforce_demographics
+    • Headcount by gender, age group, tenure
+    • Headcount by position, salary grade, department
+    • Employment status distribution
+    • Data quality: Critical for PRIME-HRM reporting
+
+  mv_attendance_metrics
+    • Daily attendance rate % (Present / Total)
+    • Absenteeism rate % (Absent / Total)
+    • Tardiness count & frequency
+    • Overtime summary by department
+    • WFH breakdown
+
+  mv_leave_utilization
+    • Leave balance per employee
+    • Year-to-date usage by leave type
+    • Forfeited leave analysis
+    • Projected usage vs. annual allowance
+
+  mv_turnover_analysis
+    • Monthly separations (resignations, retirement, termination)
+    • Turnover rate % (separations / avg headcount * 100)
+    • Turnover by position, department, tenure group
+    • Exit interview insights
+
+  mv_compensation_analysis
+    • Payroll by department (gross, net, deductions)
+    • Salary grade distribution
+    • Average salary by position/department
+    • Budget variance analysis
+
+  mv_retirement_eligible
+    • Early retirement candidates (age 60+)
+    • Mandatory retirement candidates (age 65+)
+    • Projected retirement dates
+    • Succession risk by position
+
+  mv_training_coverage
+    • % of employees with recent training (past 12 months)
+    • Training hours per employee
+    • Training by department
+    • Certification compliance rates
+
+KEY PERFORMANCE INDICATORS (KPIs):
+
+  Workforce
+    □ Total Headcount (daily)
+    □ Headcount by Gender (weekly)
+    □ Average Tenure (monthly)
+    □ Tenure by Position/Department (quarterly)
+
+  Recruitment
+    □ Time-to-Hire (avg days from posting to hire)
+    □ Applications Received (monthly)
+    □ Offer Acceptance Rate
+    □ Candidates in Pipeline (by stage)
+
+  Attendance
+    □ Attendance Rate % (daily)
+    □ Absenteeism Rate (weekly)
+    □ Tardiness Incidents (weekly)
+    □ Chronic Absentees (monthly)
+
+  Leave
+    □ Leave Days Used/Remaining (by employee, real-time)
+    □ Leave by Type (vacation, sick, CTO, etc.)
+    □ Forfeited Leave (annual)
+    □ Leave Approval Pending (daily)
+
+  Payroll
+    □ Payroll Processing Time
+    □ Payroll Accuracy (errors / total)
+    □ Budget Variance (actual vs. budgeted)
+    □ Salary Grade Distribution
+
+  Performance
+    □ Goal Achievement Rate
+    □ Performance Rating Distribution
+    □ Employees with Goals (%)
+    □ Review Completion Rate
+
+  Training
+    □ Training Hours per Employee (annual)
+    □ Training Completion Rate (%)
+    □ Certification Compliance (%)
+    □ Training Cost per Employee
+
+  Retention
+    □ Turnover Rate % (monthly, quarterly, annual)
+    □ Turnover by Department
+    □ Average Tenure at Separation
+    □ Top Reasons for Leaving
+
+  Retirement
+    □ Approaching Retirement (60+, 65+)
+    □ Retirement Notices Pending
+    □ Succession Readiness
+    □ Critical Position Vacancies
+
+REAL-TIME DASHBOARDS:
+
+  1. Executive Dashboard
+     • Headcount snapshot
+     • Turnover trend (3-month)
+     • Open positions
+     • Payroll status
+     • Upcoming retirements
+
+  2. Department Manager Dashboard
+     • Team headcount & composition
+     • Attendance rate
+     • Leave balances (team)
+     • Pending approvals
+     • Training coverage
+
+  3. HR Analytics Dashboard
+     • Recruitment pipeline
+     • Candidate flow (application → hire)
+     • Turnover detailed analysis
+     • Compensation benchmarks
+     • Compliance status
+
+  4. Payroll Dashboard
+     • Payroll cycle status
+     • Budget vs. actual
+     • Deduction summary
+     • Employee self-service pay slip
+
+─────────────────────────────────────────────────────────────────────────────
+
+5. AI/ML OPPORTUNITIES
+──────────────────────
+
+IMMEDIATE (Phase 1):
+
+  1. RETENTION RISK SCORING
+     Input Features:
+       • Tenure (years employed)
+       • Department & position
+       • Promotion history (promotions in last 2 years)
+       • Training participation (training hours per year)
+       • Performance rating trend
+       • Leave usage pattern (spikes in sick leave)
+       • Salary vs. market average
+
+     Model: Logistic Regression or Random Forest
+     Output: Risk Score (0-100)
+       • 0-30: Low risk (retain)
+       • 31-60: Medium risk (monitor)
+       • 61-100: High risk (intervene)
+
+     Action: HR gets alerts for high-risk employees; recommend:
+       • Career development plan
+       • Salary review
+       • Mentorship pairing
+       • Promotion consideration
+
+  2. SKILL GAP IDENTIFICATION
+     Input:
+       • Job requirements (per position)
+       • Employee training history
+       • Certifications held
+       • Performance ratings by competency
+
+     Output: Skill gaps per employee/position
+       • Missing critical skills
+       • Recommended training programs
+       • Timeline to fill gap
+
+  3. SUCCESSION PLANNING
+     Input:
+       • Performance ratings (top performers)
+       • Tenure & readiness for next level
+       • Training completion (leadership programs)
+       • Promotion frequency
+       • Critical position definition
+
+     Output: Succession candidates ranked
+       • Ready now (0-6 months)
+       • Ready soon (6-12 months)
+       • Development needed (1-2 years)
+
+SHORT TERM (Phase 2):
+
+  4. CHATBOT / AI ASSISTANT
+     Natural Language Interface:
+       ❯ "How many vacation days do I have?"
+         → Query leave_balance table with auth check
+       ❯ "What's my current salary?"
+         → Query compensation table (masked for privacy)
+       ❯ "When is my next training scheduled?"
+         → Query training_records
+       ❯ "How do I request leave?"
+         → Guided workflow
+       ❯ "What's my promotion timeline?"
+         → Based on succession plan data
+
+     Benefits: Reduce HR support tickets 30-40%
+
+  5. ANOMALY DETECTION
+     Monitor for:
+       • Unusually high overtime in a department
+       • Sudden spike in leave requests
+       • Salary adjustments outside normal range
+       • Unauthorized access to sensitive records
+       • Unusually high absenteeism
+
+     Alert HR/Compliance for review
+
+  6. WORKLOAD FORECASTING
+     Predict staffing needs:
+       • Historical turnover rates
+       • Retirement eligibility timeline
+       • Department growth plans
+       • Seasonal hiring patterns
+
+     Output: Recruitment plan (6-12 months ahead)
+
+MEDIUM TERM (Phase 3):
+
+  7. PERFORMANCE PREDICTION
+     Predict which employees will achieve goals
+     Input: Historical performance data, current metrics
+     Use: Resource allocation, stretch assignment identification
+
+  8. COMPENSATION BENCHMARKING
+     Compare internal salary structure vs. market
+     Recommend salary adjustments for retention
+
+  9. TRAINING ROI ANALYSIS
+     Measure training impact on:
+       • Performance improvement
+       • Turnover reduction
+       • Skill acquisition
+
+─────────────────────────────────────────────────────────────────────────────
+
+6. SECURITY & COMPLIANCE
+────────────────────────
+
+POSTGRESQL BUILT-IN SECURITY:
+
+  ✓ Row-Level Security (RLS) Policies
+    • Employees can only view their own records
+    • Managers can view team data
+    • HR can view all records (with audit trail)
+    • No sensitive salary data for non-HR users
+
+  ✓ Encryption
+    • pgcrypto: Sensitive fields (SSN, banking)
+      CREATE EXTENSION pgcrypto;
+      • gsis_number ENCRYPTED
+      • pagibig_number ENCRYPTED
+      • sss_number ENCRYPTED
+      • tin_number ENCRYPTED
+
+    • SSL/TLS: All connections encrypted in transit
+
+  ✓ Audit Trail
+    • audit_logs: Append-only table
+    • All INSERT, UPDATE, DELETE logged automatically
+    • Change reason & user captured
+    • No ability to delete audit logs
+
+  ✓ Access Control
+    • Database roles: hr_read, hr_write, hr_admin, manager_read, employee_read
+    • GRANT SELECT ON employees TO hr_read;
+    • GRANT INSERT, UPDATE ON attendance TO manager_write;
+
+COMPLIANCE MEASURES:
+
+  CSC PRIME-HRM Level 2:
+    ☐ Gender breakdown in all reports
+    ☐ Appointment records per CSC Form No. 6 (2020)
+    ☐ Plantilla positions tracked
+    ☐ Eligibility certifications (1st/2nd level)
+    ☐ Leave compliance per labor laws
+
+  Data Privacy:
+    ☐ PII masking in non-prod environments
+    ☐ 5-year retention policy for terminated employees (then archive)
+    ☐ GDPR-ready: Data export, right-to-be-forgotten workflows
+    ☐ Soft deletes: deleted_at timestamp, no hard deletions
+
+  Archival:
+    ☐ Off-boarded employees → archive schema (read-only)
+    ☐ Historical data retention per legal requirements
+    ☐ Quarterly compliance audit
+
+─────────────────────────────────────────────────────────────────────────────
+
+7. IMPLEMENTATION CHECKLIST
+────────────────────────────
+
+PHASE 1: FOUNDATION (WEEKS 1-4)
+  ☐ PostgreSQL cluster setup (HA, replication, backup)
+  ☐ Core tables created & tested
+    ☐ departments, positions, employees
+    ☐ appointment_history, transfer_history
+    ☐ audit_logs, user_access_logs
+  ☐ Data migration from legacy system
+  ☐ RLS policies implemented
+  ☐ SSL certificates installed
+  ☐ Backup & recovery tested
+  ☐ User roles created (hr_admin, hr_read, hr_write, manager_read, employee_read)
+
+PHASE 2: OPERATIONAL FEATURES (WEEKS 5-10)
+  ☐ Attendance tables + clock-in integration
+  ☐ Leave management system
+  ☐ Compensation & payroll tables
+  ☐ Performance management tables
+  ☐ Training tracking system
+  ☐ Data validation rules & constraints
+  ☐ Trigger functions for automated calculations
+
+PHASE 3: ANALYTICS (WEEKS 11-14)
+  ☐ Materialized views created
+  ☐ Dashboard queries optimized
+  ☐ Real-time metrics calculated
+  ☐ KPI tracking established
+  ☐ Historical data archival process
+  ☐ Monthly reporting automated
+
+PHASE 4: AI & ADVANCED FEATURES (WEEKS 15-20)
+  ☐ Retention risk model deployed
+  ☐ Skill gap analysis running
+  ☐ Chatbot backend queries
+  ☐ Anomaly detection pipeline
+  ☐ Workload forecasting model
+  ☐ User acceptance testing (UAT)
+  ☐ Staff training completed
+  ☐ Go-live approval
+
+─────────────────────────────────────────────────────────────────────────────
+
+8. SQL SCHEMA CREATION EXAMPLES
+────────────────────────────────
+
+CREATE TABLE departments (
+  dept_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dept_code VARCHAR(20) UNIQUE NOT NULL,
+  dept_name VARCHAR(150) NOT NULL,
+  parent_dept_id UUID REFERENCES departments(dept_id) ON DELETE SET NULL,
+  head_id UUID REFERENCES employees(emp_id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL
+);
+
+CREATE INDEX idx_departments_parent ON departments(parent_dept_id);
+CREATE INDEX idx_departments_head ON departments(head_id);
+
+──────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE employees (
+  emp_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  emp_number VARCHAR(20) UNIQUE NOT NULL,
+  first_name VARCHAR(100) NOT NULL,
+  middle_name VARCHAR(100),
+  last_name VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  gender CHAR(1) CHECK (gender IN ('M', 'F', 'O')) NOT NULL,
+  birthdate DATE,
+  civil_status VARCHAR(30),
+  citizenship VARCHAR(50),
+  blood_type VARCHAR(3),
+  hire_date DATE NOT NULL,
+  original_appointment_date DATE,
+  employment_status VARCHAR(30) DEFAULT 'Active',
+  employment_type VARCHAR(30),
+  phone_number VARCHAR(20),
+  address TEXT,
+  emergency_contact_name VARCHAR(100),
+  emergency_contact_phone VARCHAR(20),
+  department_id UUID REFERENCES departments(dept_id),
+  position_id UUID REFERENCES positions(pos_id),
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL
+);
+
+CREATE INDEX idx_employees_emp_number ON employees(emp_number);
+CREATE INDEX idx_employees_email ON employees(email);
+CREATE INDEX idx_employees_hire_date ON employees(hire_date);
+CREATE INDEX idx_employees_birthdate ON employees(birthdate);
+CREATE INDEX idx_employees_dept ON employees(department_id);
+CREATE INDEX idx_employees_pos ON employees(position_id);
+CREATE INDEX idx_employees_status ON employees(employment_status);
+
+──────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE audit_logs (
+  log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  schema_name VARCHAR(100) NOT NULL,
+  table_name VARCHAR(100) NOT NULL,
+  record_id VARCHAR(100) NOT NULL,
+  action VARCHAR(10) CHECK (action IN ('INSERT', 'UPDATE', 'DELETE')),
+  old_values JSONB,
+  new_values JSONB,
+  changed_by VARCHAR(100) NOT NULL,
+  changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  change_reason TEXT,
+  ip_address INET
+);
+
+-- Audit logs: append-only, no deletes
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY no_delete_audit ON audit_logs AS RESTRICTIVE FOR DELETE USING (FALSE);
+
+CREATE INDEX idx_audit_logs_table ON audit_logs(table_name, record_id);
+CREATE INDEX idx_audit_logs_changed_at ON audit_logs(changed_at);
+
+─────────────────────────────────────────────────────────────────────────────
+
+END OF DOCUMENT
+
+Questions? Connect to database and verify schema:
+  psql -h localhost -p 5440 -d hris_db -U hris_admin
+
+Next Steps:
+  1. Review this design with stakeholders
+  2. Prioritize feature implementation (Phases 1-4)
+  3. Begin Phase 1 database setup
+  4. Schedule UAT
+  5. Train users & go live
+
+Document Generated: 2026-03-31 16:18:26

@@ -1,0 +1,617 @@
+{% extends 'base.html' %}
+{% block page_title %}Time Logging{% endblock %}
+{% block content %}
+
+<!-- ── Method Tabs ─────────────────────────────────────────── -->
+<div class="card" style="padding:0;overflow:hidden;">
+  <div class="log-tabs">
+    <button class="log-tab active" data-method="WEB" onclick="switchTab(this)">
+      <span class="tab-icon">🖥</span>
+      <span class="tab-label">Web / App</span>
+      <span class="tab-desc">Manual entry by HR</span>
+    </button>
+    <button class="log-tab" data-method="QR" onclick="switchTab(this)">
+      <span class="tab-icon">📱</span>
+      <span class="tab-label">QR / Code</span>
+      <span class="tab-desc">Scan employee QR</span>
+    </button>
+    <button class="log-tab" data-method="PIN" onclick="switchTab(this)">
+      <span class="tab-icon">🔢</span>
+      <span class="tab-label">PIN Entry</span>
+      <span class="tab-desc">Employee number pad</span>
+    </button>
+    <button class="log-tab" data-method="BIOMETRIC" onclick="switchTab(this)">
+      <span class="tab-icon">👆</span>
+      <span class="tab-label">Biometric</span>
+      <span class="tab-desc">Fingerprint device</span>
+    </button>
+    <button class="log-tab" data-method="FACE" onclick="switchTab(this)">
+      <span class="tab-icon">🤳</span>
+      <span class="tab-label">Face Recognition</span>
+      <span class="tab-desc">Kiosk / mobile camera</span>
+    </button>
+    <button class="log-tab" data-method="RFID" onclick="switchTab(this)">
+      <span class="tab-icon">🏷</span>
+      <span class="tab-label">RFID</span>
+      <span class="tab-desc">Tap card reader</span>
+    </button>
+  </div>
+
+  <!-- ── WEB Panel ──────────────────────────────────────────── -->
+  <div class="log-panel active" id="panel-WEB">
+    <div class="panel-header">
+      <h3>Manual Time Log Entry</h3>
+      <p class="small">HR/Admin records attendance on behalf of an employee</p>
+    </div>
+    <form method="post" class="log-form">
+      <input type="hidden" name="log_method" value="WEB">
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Employee</label>
+          <select name="employee_id" required>
+            <option value="">Select employee...</option>
+            {% for e in employees %}
+            <option value="{{ e.id }}">{{ e.full_name }} ({{ e.employee_no }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group flex-1">
+          <label>Log Type</label>
+          <div class="toggle-group">
+            <label class="toggle-btn active">
+              <input type="radio" name="log_type" value="IN" checked> Time IN
+            </label>
+            <label class="toggle-btn">
+              <input type="radio" name="log_type" value="OUT"> Time OUT
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Date & Time</label>
+          <input type="datetime-local" name="log_datetime" required id="web-datetime">
+        </div>
+        <div class="form-group flex-1" style="display:flex;align-items:flex-end;">
+          <button type="button" class="btn btn-outline" style="width:100%;" onclick="setNow('web-datetime')">Now</button>
+        </div>
+      </div>
+      <button type="submit" class="btn" style="width:100%;">Record Time Log</button>
+    </form>
+  </div>
+
+  <!-- ── QR Panel ──────────────────────────────────────────── -->
+  <div class="log-panel" id="panel-QR">
+    <div class="panel-header">
+      <h3>QR / Barcode Scan</h3>
+      <p class="small">Employee scans their ID badge or QR code</p>
+    </div>
+    <form method="post" class="log-form" id="qr-form">
+      <input type="hidden" name="log_method" value="QR">
+      <input type="hidden" name="log_datetime" id="qr-datetime">
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Scan / Enter QR Code</label>
+          <input type="text" name="qr_code" id="qr-input" placeholder="Scan badge or type employee no..."
+                 autocomplete="off" autofocus style="font-size:1.25rem;padding:14px;letter-spacing:2px;">
+        </div>
+        <div class="form-group flex-1">
+          <label>Log Type</label>
+          <div class="toggle-group">
+            <label class="toggle-btn active">
+              <input type="radio" name="log_type" value="IN" checked> IN
+            </label>
+            <label class="toggle-btn">
+              <input type="radio" name="log_type" value="OUT"> OUT
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="qr-status" id="qr-status"></div>
+      <input type="hidden" name="employee_id" id="qr-emp-id">
+    </form>
+  </div>
+
+  <!-- ── PIN Panel ──────────────────────────────────────────── -->
+  <div class="log-panel" id="panel-PIN">
+    <div class="panel-header">
+      <h3>PIN Entry</h3>
+      <p class="small">Employee enters their numeric PIN (employee number)</p>
+    </div>
+    <form method="post" class="log-form" id="pin-form">
+      <input type="hidden" name="log_method" value="PIN">
+      <input type="hidden" name="log_datetime" id="pin-datetime">
+      <div style="text-align:center;">
+        <div class="pin-display" id="pin-display">_ _ _ _ _ _</div>
+        <input type="hidden" name="employee_id" id="pin-emp-id">
+        <input type="hidden" name="log_type" id="pin-log-type" value="IN">
+        <div class="pin-toggle">
+          <button type="button" class="btn pin-type-btn active" onclick="setPinType(this,'IN')">⏩ Time IN</button>
+          <button type="button" class="btn btn-outline pin-type-btn" onclick="setPinType(this,'OUT')">⏪ Time OUT</button>
+        </div>
+        <div class="numpad">
+          <button type="button" onclick="pinKey('1')">1</button>
+          <button type="button" onclick="pinKey('2')">2</button>
+          <button type="button" onclick="pinKey('3')">3</button>
+          <button type="button" onclick="pinKey('4')">4</button>
+          <button type="button" onclick="pinKey('5')">5</button>
+          <button type="button" onclick="pinKey('6')">6</button>
+          <button type="button" onclick="pinKey('7')">7</button>
+          <button type="button" onclick="pinKey('8')">8</button>
+          <button type="button" onclick="pinKey('9')">9</button>
+          <button type="button" class="key-clear" onclick="pinClear()">CLR</button>
+          <button type="button" onclick="pinKey('0')">0</button>
+          <button type="button" class="key-enter" onclick="pinSubmit()">✓</button>
+        </div>
+        <div class="pin-status" id="pin-status"></div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── BIOMETRIC Panel ──────────────────────────────────── -->
+  <div class="log-panel" id="panel-BIOMETRIC">
+    <div class="panel-header">
+      <h3>Biometric Device</h3>
+      <p class="small">Fingerprint scanners push logs via API</p>
+    </div>
+    <div class="device-panel">
+      <div class="device-status-card">
+        <div class="device-icon">👆</div>
+        <h4>Listening for Biometric Devices</h4>
+        <p class="small">Logs from registered biometric terminals are received via the API endpoint and appear in the live feed below automatically.</p>
+        <div class="api-info">
+          <code>POST /attendance/api/timelog</code>
+          <pre>{
+  "employee_id": 123,
+  "log_type": "IN",
+  "log_method": "BIOMETRIC",
+  "device_id": "BIO-LOBBY-01"
+}</pre>
+        </div>
+        <div class="device-config">
+          <h5>Registered Devices</h5>
+          <table style="font-size:.85rem;">
+            <thead>
+              <tr><th>Device ID</th><th>Location</th><th>Status</th></tr>
+            </thead>
+            <tbody id="bio-devices">
+              <tr><td colspan="3" class="small" style="text-align:center;color:#94a3b8;">Configure devices in Settings → Biometric</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FACE Panel ──────────────────────────────────────── -->
+  <div class="log-panel" id="panel-FACE">
+    <div class="panel-header">
+      <h3>Face Recognition</h3>
+      <p class="small">Kiosk or mobile camera identifies employee by face</p>
+    </div>
+    <div class="device-panel">
+      <div class="device-status-card">
+        <div class="device-icon">🤳</div>
+        <h4>Face Recognition Kiosk</h4>
+        <p class="small">The face recognition kiosk captures the employee photo, identifies them via the recognition API, and pushes the time log automatically.</p>
+        <div class="api-info">
+          <code>POST /attendance/api/timelog</code>
+          <pre>{
+  "employee_id": 123,
+  "log_type": "IN",
+  "log_method": "FACE",
+  "device_id": "KIOSK-MAIN",
+  "photo_path": "/captures/2026-03-31/emp123.jpg"
+}</pre>
+        </div>
+        <div class="device-config">
+          <h5>Kiosk Status</h5>
+          <table style="font-size:.85rem;">
+            <thead>
+              <tr><th>Device ID</th><th>Location</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="3" class="small" style="text-align:center;color:#94a3b8;">Configure kiosks in Settings → Face Recognition</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RFID Panel ──────────────────────────────────────── -->
+  <div class="log-panel" id="panel-RFID">
+    <div class="panel-header">
+      <h3>RFID Card Reader</h3>
+      <p class="small">Employee taps their RFID card on the reader device</p>
+    </div>
+    <div class="device-panel">
+      <div class="device-status-card">
+        <div class="device-icon">🏷</div>
+        <h4>RFID Tap-to-Log</h4>
+        <p class="small">RFID readers detect the employee's card tag and push time logs to the API. Each card's tag is mapped to an employee record (via employee_no or UUID).</p>
+        <div class="api-info">
+          <code>POST /attendance/api/timelog</code>
+          <pre>{
+  "rfid_tag": "A1B2C3D4E5",
+  "log_type": "IN",
+  "log_method": "RFID",
+  "device_id": "RFID-GATE-01",
+  "location": "Main Entrance"
+}</pre>
+        </div>
+        <div class="device-config">
+          <h5>Registered Readers</h5>
+          <table style="font-size:.85rem;">
+            <thead>
+              <tr><th>Device ID</th><th>Location</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="3" class="small" style="text-align:center;color:#94a3b8;">Configure readers in Settings → RFID</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Live Feed ───────────────────────────────────────────── -->
+<div class="card" style="margin-top:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <h3 style="margin:0;font-size:1.1rem;">Recent Time Logs</h3>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span class="live-dot"></span>
+      <span class="small">Auto-refreshes every 15s</span>
+      <select id="feed-filter" onchange="filterFeed()" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:.8rem;">
+        <option value="">All Methods</option>
+        <option value="WEB">Web / App</option>
+        <option value="QR">QR / Code</option>
+        <option value="PIN">PIN</option>
+        <option value="BIOMETRIC">Biometric</option>
+        <option value="FACE">Face</option>
+        <option value="RFID">RFID</option>
+      </select>
+    </div>
+  </div>
+  <div style="overflow-x:auto;">
+    <table id="log-feed">
+      <thead>
+        <tr>
+          <th style="width:50px;">#</th>
+          <th>Employee</th>
+          <th>Date & Time</th>
+          <th style="width:70px;">Type</th>
+          <th style="width:110px;">Method</th>
+          <th>Device</th>
+          <th style="width:60px;">Valid</th>
+        </tr>
+      </thead>
+      <tbody id="feed-body">
+        {% for l in recent_logs %}
+        <tr data-method="{{ l.log_method }}">
+          <td class="small">{{ l.id }}</td>
+          <td><strong>{{ l.full_name }}</strong> <span class="small">({{ l.employee_no }})</span></td>
+          <td>{{ l.log_datetime.strftime('%Y-%m-%d %H:%M:%S') if l.log_datetime else '' }}</td>
+          <td>
+            {% if l.log_type == 'IN' %}
+              <span class="badge badge-success">IN</span>
+            {% else %}
+              <span class="badge badge-warning">OUT</span>
+            {% endif %}
+          </td>
+          <td><span class="method-badge method-{{ l.log_method }}">{{ l.log_method }}</span></td>
+          <td class="small">{{ l.device_id or '—' }}</td>
+          <td>
+            {% if l.is_valid %}
+              <span class="badge badge-success">✓</span>
+            {% else %}
+              <span class="badge badge-danger">✗</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not recent_logs %}
+        <tr id="no-logs-row"><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">No time logs recorded yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+/* ── Tab bar ──────────────────────────────────────────────── */
+.log-tabs {
+  display: flex; border-bottom: 2px solid #e2e8f0; overflow-x: auto;
+}
+.log-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 16px 12px; border: none; background: transparent; cursor: pointer;
+  border-bottom: 3px solid transparent; margin-bottom: -2px;
+  transition: all .2s; min-width: 120px; color: #64748b;
+}
+.log-tab:hover { background: #f8fafc; color: #334155; }
+.log-tab.active {
+  border-bottom-color: var(--primary); color: var(--primary); background: #f0f0ff;
+}
+.tab-icon { font-size: 1.5rem; }
+.tab-label { font-size: .85rem; font-weight: 600; }
+.tab-desc { font-size: .65rem; opacity: .7; }
+
+/* ── Panels ───────────────────────────────────────────────── */
+.log-panel { display: none; padding: 24px; }
+.log-panel.active { display: block; }
+.panel-header { margin-bottom: 16px; }
+.panel-header h3 { margin: 0 0 4px; font-size: 1.1rem; }
+
+/* ── Form layout ──────────────────────────────────────────── */
+.log-form { display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: flex; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: .8rem; font-weight: 600; color: #374151; }
+.form-group select, .form-group input[type=text], .form-group input[type=datetime-local] {
+  padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 10px;
+  font-size: .9rem; font-family: var(--font);
+}
+.flex-1 { flex: 1; }
+.flex-2 { flex: 2; }
+
+/* ── IN/OUT toggle ────────────────────────────────────────── */
+.toggle-group { display: flex; gap: 0; border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; }
+.toggle-btn {
+  flex: 1; text-align: center; padding: 10px; cursor: pointer;
+  font-size: .85rem; font-weight: 600; background: #fff; color: #64748b;
+  transition: all .15s; margin: 0;
+}
+.toggle-btn input { display: none; }
+.toggle-btn.active { background: var(--primary); color: #fff; }
+.toggle-btn:hover:not(.active) { background: #f1f5f9; }
+
+/* ── PIN numpad ───────────────────────────────────────────── */
+.pin-display {
+  font-size: 2rem; font-weight: 700; letter-spacing: 8px; padding: 20px;
+  background: #f8fafc; border-radius: 12px; margin-bottom: 16px;
+  font-family: 'Courier New', monospace; color: var(--primary);
+}
+.pin-toggle { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.pin-type-btn { min-width: 120px; }
+.numpad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  max-width: 300px; margin: 0 auto;
+}
+.numpad button {
+  padding: 18px; font-size: 1.4rem; font-weight: 600; border-radius: 12px;
+  background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0;
+  cursor: pointer; transition: all .1s;
+}
+.numpad button:active { transform: scale(.95); background: #e2e8f0; }
+.numpad .key-clear { background: #fef2f2; color: #dc2626; border-color: #fecaca; font-size: 1rem; }
+.numpad .key-enter { background: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
+.pin-status { margin-top: 12px; min-height: 24px; font-size: .9rem; }
+
+/* ── QR status ────────────────────────────────────────────── */
+.qr-status { min-height: 24px; font-size: .9rem; }
+
+/* ── Device panels ────────────────────────────────────────── */
+.device-panel { display: flex; justify-content: center; }
+.device-status-card {
+  text-align: center; max-width: 500px; padding: 20px;
+}
+.device-icon { font-size: 3rem; margin-bottom: 8px; }
+.api-info {
+  margin: 16px 0; text-align: left; background: #1e293b; color: #e2e8f0;
+  padding: 16px; border-radius: 10px;
+}
+.api-info code {
+  display: block; margin-bottom: 8px; color: #84cc16; font-size: .85rem;
+}
+.api-info pre {
+  margin: 0; font-size: .8rem; color: #cbd5e1; white-space: pre-wrap;
+}
+.device-config { margin-top: 16px; text-align: left; }
+.device-config h5 { margin: 0 0 8px; font-size: .85rem; }
+
+/* ── Method badges ────────────────────────────────────────── */
+.method-badge {
+  display: inline-block; font-size: .7rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 999px; letter-spacing: .05em;
+}
+.method-WEB      { background: #dbeafe; color: #1e40af; }
+.method-QR       { background: #fae8ff; color: #7e22ce; }
+.method-PIN      { background: #fef9c3; color: #854d0e; }
+.method-BIOMETRIC{ background: #dcfce7; color: #166534; }
+.method-FACE     { background: #ffe4e6; color: #be123c; }
+.method-RFID     { background: #f0fdfa; color: #115e59; }
+.method-MANUAL   { background: #f1f5f9; color: #475569; }
+.method-API      { background: #e0e7ff; color: #3730a3; }
+
+/* ── Live dot ─────────────────────────────────────────────── */
+.live-dot {
+  width: 8px; height: 8px; background: #16a34a; border-radius: 50%;
+  display: inline-block; animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .form-row { flex-direction: column; }
+  .log-tabs { overflow-x: auto; }
+  .log-tab { min-width: 80px; padding: 10px 8px; }
+  .tab-desc { display: none; }
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* ── Tab switching ────────────────────────────────────────── */
+function switchTab(btn) {
+  document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.log-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + btn.dataset.method).classList.add('active');
+  // Auto-focus scan input for QR
+  if (btn.dataset.method === 'QR') {
+    setTimeout(() => document.getElementById('qr-input').focus(), 100);
+  }
+}
+
+/* ── Toggle IN/OUT buttons ────────────────────────────────── */
+document.querySelectorAll('.toggle-group').forEach(g => {
+  g.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      g.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      btn.querySelector('input').checked = true;
+    });
+  });
+});
+
+/* ── Set datetime to now ──────────────────────────────────── */
+function setNow(inputId) {
+  var now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  document.getElementById(inputId).value = now.toISOString().slice(0,16);
+}
+
+/* ── QR Scanner ───────────────────────────────────────────── */
+(function() {
+  var qrInput = document.getElementById('qr-input');
+  var qrTimer = null;
+  if (!qrInput) return;
+  qrInput.addEventListener('input', function() {
+    clearTimeout(qrTimer);
+    qrTimer = setTimeout(function() {
+      var code = qrInput.value.trim();
+      if (code.length < 3) return;
+      // Look up employee from the dropdown
+      var found = null;
+      var opts = document.querySelector('#panel-WEB select[name=employee_id]').options;
+      for (var i = 0; i < opts.length; i++) {
+        if (opts[i].text.indexOf(code) !== -1 || opts[i].text.indexOf(code.toUpperCase()) !== -1) {
+          found = opts[i]; break;
+        }
+      }
+      if (found) {
+        document.getElementById('qr-emp-id').value = found.value;
+        document.getElementById('qr-status').innerHTML =
+          '<span style="color:#16a34a;font-weight:600;">✓ ' + found.text + '</span>';
+        // Auto-set datetime and submit after 1s
+        var now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('qr-datetime').value = now.toISOString().slice(0,16);
+        setTimeout(function() {
+          document.getElementById('qr-form').submit();
+        }, 1200);
+      } else {
+        document.getElementById('qr-status').innerHTML =
+          '<span style="color:#dc2626;">✗ Employee not found for: ' + code + '</span>';
+      }
+    }, 500);
+  });
+})();
+
+/* ── PIN Pad ──────────────────────────────────────────────── */
+var pinBuffer = '';
+function pinKey(n) {
+  if (pinBuffer.length >= 10) return;
+  pinBuffer += n;
+  updatePinDisplay();
+}
+function pinClear() {
+  pinBuffer = '';
+  updatePinDisplay();
+  document.getElementById('pin-status').innerHTML = '';
+}
+function updatePinDisplay() {
+  var display = '';
+  for (var i = 0; i < 6; i++) {
+    display += (i < pinBuffer.length) ? pinBuffer[i] : '_';
+    if (i < 5) display += ' ';
+  }
+  if (pinBuffer.length > 6) display = pinBuffer.split('').join(' ');
+  document.getElementById('pin-display').textContent = display;
+}
+function setPinType(btn, type) {
+  document.querySelectorAll('.pin-type-btn').forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('btn-outline');
+  });
+  btn.classList.add('active');
+  btn.classList.remove('btn-outline');
+  document.getElementById('pin-log-type').value = type;
+}
+function pinSubmit() {
+  if (pinBuffer.length < 1) return;
+  // Look up by employee_no
+  var opts = document.querySelector('#panel-WEB select[name=employee_id]').options;
+  var found = null;
+  for (var i = 0; i < opts.length; i++) {
+    if (opts[i].text.indexOf('(' + pinBuffer + ')') !== -1) {
+      found = opts[i]; break;
+    }
+  }
+  if (found) {
+    document.getElementById('pin-emp-id').value = found.value;
+    var now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('pin-datetime').value = now.toISOString().slice(0,16);
+    document.getElementById('pin-status').innerHTML =
+      '<span style="color:#16a34a;font-weight:600;">✓ ' + found.text + '</span>';
+    setTimeout(function() {
+      document.getElementById('pin-form').submit();
+    }, 800);
+  } else {
+    document.getElementById('pin-status').innerHTML =
+      '<span style="color:#dc2626;">✗ Invalid PIN: ' + pinBuffer + '</span>';
+    pinBuffer = '';
+    updatePinDisplay();
+  }
+}
+
+/* ── Feed filter ──────────────────────────────────────────── */
+function filterFeed() {
+  var method = document.getElementById('feed-filter').value;
+  document.querySelectorAll('#feed-body tr[data-method]').forEach(function(row) {
+    row.style.display = (!method || row.dataset.method === method) ? '' : 'none';
+  });
+}
+
+/* ── Auto-refresh feed ────────────────────────────────────── */
+setInterval(function() {
+  fetch('/attendance/api/timelog/recent?limit=50')
+    .then(r => r.json())
+    .then(function(logs) {
+      if (!logs.length) return;
+      var tbody = document.getElementById('feed-body');
+      var noRow = document.getElementById('no-logs-row');
+      if (noRow) noRow.remove();
+      tbody.innerHTML = '';
+      logs.forEach(function(l) {
+        var dt = l.log_datetime ? l.log_datetime.replace('T', ' ').slice(0,19) : '';
+        var typeBadge = l.log_type === 'IN'
+          ? '<span class="badge badge-success">IN</span>'
+          : '<span class="badge badge-warning">OUT</span>';
+        var validBadge = l.is_valid
+          ? '<span class="badge badge-success">✓</span>'
+          : '<span class="badge badge-danger">✗</span>';
+        tbody.innerHTML +=
+          '<tr data-method="' + l.log_method + '">' +
+          '<td class="small">' + l.id + '</td>' +
+          '<td><strong>' + l.full_name + '</strong> <span class="small">(' + l.employee_no + ')</span></td>' +
+          '<td>' + dt + '</td>' +
+          '<td>' + typeBadge + '</td>' +
+          '<td><span class="method-badge method-' + l.log_method + '">' + l.log_method + '</span></td>' +
+          '<td class="small">' + (l.device_id || '—') + '</td>' +
+          '<td>' + validBadge + '</td></tr>';
+      });
+      filterFeed(); // re-apply filter
+    })
+    .catch(function(){});
+}, 15000);
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block page_title %}{% if plan %}Edit Plan{% else %}New Benefit Plan{% endif %}{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{% if plan %}Edit Plan{% else %}New Benefit Plan{% endif %}</h2>
+  <a href="/benefits/plans" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Back to Plans</a>
+</div>
+<div class="card" style="padding:1.25rem;max-width:600px;">
+  <form method="post" action="/benefits/plans/new">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Plan Type *</label>
+        <select name="plan_type_id" required style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+          {% for pt in plan_types %}<option value="{{ pt.id }}">{{ pt.name }} ({{ pt.category }})</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Plan Code *</label>
+        <input type="text" name="code" required maxlength="30" placeholder="MED-BASIC" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;font-family:monospace;" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_-]/g,'')">
+      </div>
+      <div style="grid-column:span 2;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Plan Name *</label>
+        <input type="text" name="name" required maxlength="150" placeholder="Basic Medical Plan" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+      <div style="grid-column:span 2;">
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Description</label>
+        <textarea name="description" rows="2" placeholder="Plan coverage details..." style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;"></textarea>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Provider</label>
+        <input type="text" name="provider" maxlength="100" placeholder="PhilHealth, Maxicare..." style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Coverage Level</label>
+        <select name="coverage_level" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+          <option value="INDIVIDUAL">Individual</option>
+          <option value="INDIVIDUAL_PLUS_ONE">Individual + 1</option>
+          <option value="FAMILY">Family</option>
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Employer Cost (monthly)</label>
+        <input type="number" name="employer_cost" step="0.01" value="0" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Employee Cost (monthly)</label>
+        <input type="number" name="employee_cost" step="0.01" value="0" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+      </div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end;">
+      <a href="/benefits/plans" style="padding:8px 18px;font-size:.875rem;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#374151;">Cancel</a>
+      <button type="submit" style="padding:8px 22px;font-size:.875rem;font-weight:700;border:none;border-radius:6px;background:var(--primary,#4f46e5);color:#fff;cursor:pointer;">Create Plan</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

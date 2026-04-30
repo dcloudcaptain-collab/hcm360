@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ branding.company_name or 'HCM360' }} — Sign in</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+
+  <style>
+    /* ── Theme variables ─────────────────────────────── */
+    :root {
+      --primary:    {{ branding.primary_color or '#1e40af' }};
+      --primary-2:  {{ theme.properties.secondary_color if theme and theme.properties else '#4f46e5' }};
+      --text:       #0f172a;
+      --muted:      #64748b;
+      --card:       #ffffff;
+      --line:       #e2e8f0;
+      --font:       {{ theme.properties.font_family if theme and theme.properties else 'Inter, "Segoe UI", system-ui, -apple-system, Arial, sans-serif' }};
+
+      /* ── Login background palette (requested greens) ── */
+      --bg-primary:    #006E00;
+      --bg-secondary:  #0A640A;
+      --bg-accent:     #00780A;
+      --bg-dark:       #004D00;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; height:100%; font-family:var(--font); color:var(--text); }
+
+    /* ── Stage ───────────────────────────────────────── */
+    .stage {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      background: linear-gradient(135deg,
+                  var(--bg-dark) 0%,
+                  var(--bg-primary) 45%,
+                  var(--bg-accent) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    @media (max-width: 960px) {
+      .stage { grid-template-columns: 1fr; }
+      .stage .hero { display:none; }
+    }
+
+    /* ── Hero (left) — wallpaper + overlay ───────────── */
+    .hero {
+      position: relative;
+      color: #fff;
+      padding: 3.5rem 3rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 100vh;
+    }
+    {% if branding.login_show_wallpaper == 'true' and branding.login_wallpaper_url %}
+    .hero::before {
+      content: "";
+      position: absolute; inset: 0;
+      background-image: url("{{ branding.login_wallpaper_url }}");
+      background-size: cover; background-position: center;
+      opacity: .45;
+      z-index: 0;
+    }
+    {% endif %}
+    .hero::after {
+      content: "";
+      position: absolute; inset: 0;
+      /* Overlay uses the same requested green palette so the wallpaper
+         tints cohesively with the stage background. */
+      background: linear-gradient(135deg,
+                  rgba(0,77,0,.70)   0%,    /* --bg-dark      */
+                  rgba(10,100,10,.60) 50%,  /* --bg-secondary */
+                  rgba(0,120,10,.55)  100%);/* --bg-accent    */
+      z-index: 0;
+    }
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero .brand {
+      display: flex; align-items: center; gap: .7rem;
+      font-size: 1.05rem; font-weight: 700; letter-spacing: .02em;
+    }
+    .hero .brand .logo-dot {
+      width: 34px; height: 34px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 9px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem; letter-spacing: -.01em;
+    }
+
+    .hero .pitch h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -.015em;
+      line-height: 1.15;
+      margin: 0 0 .85rem;
+    }
+    .hero .pitch p {
+      font-size: 1rem;
+      opacity: .9;
+      line-height: 1.6;
+      max-width: 520px;
+      margin: 0 0 1.25rem;
+    }
+    .hero .bullets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: .6rem .9rem;
+      list-style: none;
+      padding: 0; margin: 0;
+      max-width: 560px;
+    }
+    .hero .bullets li {
+      display: flex; align-items: flex-start; gap: .5rem;
+      font-size: .85rem;
+      opacity: .95;
+    }
+    .hero .bullets li::before {
+      content: "✓"; color: #86efac; font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .hero .foot {
+      font-size: .78rem;
+      opacity: .7;
+      letter-spacing: .02em;
+    }
+
+    /* ── Form panel (right) ──────────────────────────── */
+    .panel {
+      background: #fff;
+      padding: 3rem 2.75rem;
+      display: flex; flex-direction: column;
+      justify-content: center;
+      position: relative;
+      min-height: 100vh;
+    }
+    .panel .inner { width: 100%; max-width: 420px; margin: 0 auto; }
+    .panel h2 {
+      margin: 0 0 .35rem;
+      font-size: 1.6rem; font-weight: 800;
+      letter-spacing: -.015em;
+    }
+    .panel .sub {
+      color: var(--muted); font-size: .9rem;
+      margin-bottom: 2rem;
+    }
+
+    .field { display: flex; flex-direction: column; gap: .35rem; margin-bottom: 1rem; }
+    .field label {
+      font-size: .75rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .field select, .field input {
+      width: 100%;
+      padding: .8rem .9rem;
+      border: 1.5px solid var(--line);
+      border-radius: 9px;
+      background: #fff;
+      font-size: .95rem;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field select:focus, .field input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+    .field select { cursor: pointer; }
+
+    .btn-primary {
+      width: 100%;
+      padding: .95rem 1rem;
+      margin-top: .5rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-size: .95rem;
+      font-weight: 700;
+      letter-spacing: .01em;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(15,23,42,.12);
+      transition: transform .1s, box-shadow .15s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(15,23,42,.18);
+    }
+
+    .help {
+      margin-top: 1.4rem;
+      padding: .75rem .9rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #eef2f7;
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .help strong { color: var(--text); }
+
+    /* ── Bottom "Powered by" ─────────────────────────── */
+    .powered {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+      text-align: center;
+      font-size: .76rem;
+      color: var(--muted);
+      letter-spacing: .03em;
+    }
+    .powered strong { color: var(--text); font-weight: 700; letter-spacing: .01em; }
+
+    /* compliance row */
+    .compliance {
+      display: flex; gap: .55rem; flex-wrap: wrap;
+      justify-content: center; margin-top: .85rem;
+    }
+    .compliance span {
+      font-size: .65rem;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- ─── Left hero ─── -->
+  <section class="hero">
+    <div class="brand">
+      <span class="logo-dot">{{ (branding.logo_text or branding.short_name or 'H')[:2] }}</span>
+      <span>{{ branding.short_name or branding.company_name or 'HCM360' }}</span>
+    </div>
+
+    <div class="pitch">
+      <h1>{{ branding.company_name or 'HCM360' }}</h1>
+      <p>{{ branding.login_tagline or branding.tagline or 'Intelligent HR for Growing Enterprises.' }}</p>
+      <ul class="bullets">
+        <li>Civil Service-compliant forms (CSC 6 / 7 / 33 / 210 / 212)</li>
+        <li>Multi-tenant with RA 10173 privacy built-in</li>
+        <li>AI-powered cross-module analytics (ARIA)</li>
+        <li>32 drag-drop report sources + scheduled email delivery</li>
+        <li>Face-match + GPS geotag attendance</li>
+        <li>Full payroll: SSS · PhilHealth · HDMF · BIR · GSIS</li>
+      </ul>
+    </div>
+
+    <div class="foot">
+      © {{ branding.company_name or 'HCM360' }} — all rights reserved.
+    </div>
+  </section>
+
+  <!-- ─── Right sign-in panel ─── -->
+  <section class="panel">
+    <div class="inner">
+      <h2>Sign in</h2>
+      <div class="sub">
+        Select your account to access the {{ branding.short_name or branding.company_name or 'HCM360' }} workspace.
+      </div>
+
+      <form method="post" action="/login/select" autocomplete="off">
+        <div class="field">
+          <label for="user_id">Account</label>
+          <select id="user_id" name="user_id" required>
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.display_name }} — {{ u.role_code }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button type="submit" class="btn-primary">
+          Enter workspace &nbsp;&nbsp;→
+        </button>
+      </form>
+
+      <div class="help">
+        <strong>POC build — no password required.</strong> Seeded users
+        include Super Admin, HR Admin, Manager, and Employee so you can
+        preview every role's experience immediately.
+      </div>
+
+      <div class="compliance">
+        <span>ISO 27001-ready</span>
+        <span>RA 10173</span>
+        <span>CSC PRIME-HRM</span>
+      </div>
+
+      <div class="powered">
+        Powered by <strong>{{ branding.login_powered_by or 'CXTech Solutions' }}</strong>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

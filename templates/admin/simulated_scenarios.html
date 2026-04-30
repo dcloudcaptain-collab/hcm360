@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block page_title %}Simulated Login Scenarios{% endblock %}
+{% block content %}
+<section class="card">
+  <h3>Quick Scenario Launcher</h3>
+  <table><thead><tr><th>Scenario</th><th>Launch</th></tr></thead><tbody>
+  {% for s in scenarios %}
+  <tr><td>{{ s.label }}</td><td><a href="{{ s.route }}?as_user={{ s.user_id }}">Use seeded scenario</a></td></tr>
+  {% endfor %}
+  </tbody></table>
+  <p class="small">Primary login still uses the no-password simulated login screen. These are quick scenario shortcuts for testing flows.</p>
+</section>
+{% endblock %}

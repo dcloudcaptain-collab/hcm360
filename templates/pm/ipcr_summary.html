@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block page_title %}IPCR Summary{% endblock %}
+{% block content %}
+<style>
+  @media print {
+    .sidebar, .topbar, .top-actions, .no-print { display: none !important; }
+    .main { margin: 0 !important; padding: 0 !important; }
+    .layout { display: block !important; }
+    .card { box-shadow: none !important; border: 1px solid #ccc !important; }
+  }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;" class="no-print">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">IPCR Summary Sheet</h2>
+  <div style="display:flex;gap:.5rem;align-items:center;">
+    <a href="{{ url_for('pm.ipcr_csc_pdf', employee_id=employee_id, cycle_id=cycle.id if cycle else 0) }}"
+       target="_blank"
+       data-hint="Generate the official CSC IPCR form as a PDF (with MFO weights, ratings, signatures, and the adjectival scale)."
+       style="padding:7px 14px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:7px;font-size:.85rem;font-weight:600;text-decoration:none;">
+      📄 CSC IPCR PDF
+    </a>
+    <button onclick="window.print()" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;background:none;cursor:pointer;">Print this view</button>
+    {% if session.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER','EXECUTIVE') %}
+    <a href="{{ url_for('pm.ipcr_templates') }}"
+       data-hint="Open the CSC IPCR template library — spawn pre-loaded MFO sets in one click."
+       style="font-size:.85rem;color:var(--primary,#4f46e5);padding:7px 0;">📋 Templates</a>
+    {% endif %}
+    <a href="/pm/ipcr?cycle_id={{ cycle.id if cycle else '' }}" style="font-size:.85rem;color:var(--primary,#4f46e5);padding:7px 0;">← IPCR List</a>
+  </div>
+</div>
+
+{# Summary card #}
+{% if summary %}
+<div class="card" style="padding:1.25rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;">
+    <div>
+      <div style="font-size:1.1rem;font-weight:700;">{{ summary.employee_name }}</div>
+      <div style="font-size:.85rem;color:#6b7280;">{{ summary.department_name or '' }} &nbsp;·&nbsp; {{ summary.cycle_name }}</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:2rem;font-weight:800;line-height:1;
+                  color:{% if summary.final_numerical_rating >= 4.5 %}#16a34a{% elif summary.final_numerical_rating >= 3.5 %}#2563eb{% elif summary.final_numerical_rating >= 2.5 %}#d97706{% else %}#dc2626{% endif %};">
+        {{ '%.2f'|format(summary.final_numerical_rating) }}
+      </div>
+      <div style="font-size:.85rem;font-weight:700;
+                  color:{% if summary.final_numerical_rating >= 4.5 %}#16a34a{% elif summary.final_numerical_rating >= 3.5 %}#2563eb{% elif summary.final_numerical_rating >= 2.5 %}#d97706{% else %}#dc2626{% endif %};">
+        {{ summary.adjectival_rating }}
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem;">
+    <div style="flex:1;min-width:100px;padding:.5rem .75rem;border-radius:6px;background:rgba(99,102,241,.05);text-align:center;">
+      <div style="font-size:.7rem;font-weight:600;color:#6b7280;text-transform:uppercase;">PBB Eligible</div>
+      <div style="font-size:1rem;font-weight:700;color:{% if summary.pbb_eligible %}#16a34a{% else %}#dc2626{% endif %};">
+        {{ 'Yes' if summary.pbb_eligible else 'No' }}
+      </div>
+    </div>
+    <div style="flex:1;min-width:100px;padding:.5rem .75rem;border-radius:6px;background:rgba(99,102,241,.05);text-align:center;">
+      <div style="font-size:.7rem;font-weight:600;color:#6b7280;text-transform:uppercase;">Step Increment</div>
+      <div style="font-size:1rem;font-weight:700;color:{% if summary.step_increment_eligible %}#16a34a{% else %}#dc2626{% endif %};">
+        {{ 'Eligible' if summary.step_increment_eligible else 'Not Eligible' }}
+      </div>
+    </div>
+    {% if summary.approved_at %}
+    <div style="flex:1;min-width:100px;padding:.5rem .75rem;border-radius:6px;background:rgba(99,102,241,.05);text-align:center;">
+      <div style="font-size:.7rem;font-weight:600;color:#6b7280;text-transform:uppercase;">Approved</div>
+      <div style="font-size:.85rem;font-weight:600;">{{ summary.approved_at.strftime('%b %d, %Y') }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% elif computed %}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;background:rgba(217,119,6,.06);border:1px dashed rgba(217,119,6,.3);">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <strong style="font-size:.9rem;">Computed Rating: {{ '%.2f'|format(computed.final_numerical_rating) }} — {{ computed.adjectival_rating }}</strong>
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.2rem;">
+        Core: {{ computed.core_avg or '—' }} · Support: {{ computed.support_avg or '—' }} · Strategic: {{ computed.strategic_avg or '—' }}
+      </div>
+    </div>
+    <form method="post" action="/pm/ipcr/{{ employee_id }}/{{ cycle.id }}/finalize" class="no-print">
+      <button type="submit" style="padding:7px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Finalize & Approve
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# Detailed entries table #}
+<section class="card" style="padding:0;overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.825rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 10px;text-align:left;">Function</th>
+        <th style="padding:8px 10px;text-align:left;">Performance Indicator</th>
+        <th style="padding:8px 10px;text-align:center;">Target</th>
+        <th style="padding:8px 10px;text-align:center;">Actual</th>
+        <th style="padding:8px 10px;text-align:center;">Q</th>
+        <th style="padding:8px 10px;text-align:center;">E</th>
+        <th style="padding:8px 10px;text-align:center;">T</th>
+        <th style="padding:8px 10px;text-align:center;">Avg</th>
+        <th style="padding:8px 10px;text-align:center;">Wt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for i in entries %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:7px 10px;">
+          <span style="font-size:.72rem;font-weight:600;padding:1px 7px;border-radius:999px;
+            background:{% if i.function_type == 'CORE' %}rgba(79,70,229,.1){% elif i.function_type == 'SUPPORT' %}rgba(22,163,74,.1){% else %}rgba(217,119,6,.1){% endif %};
+            color:{% if i.function_type == 'CORE' %}#4f46e5{% elif i.function_type == 'SUPPORT' %}#16a34a{% else %}#d97706{% endif %};">
+            {{ i.function_type }}
+          </span>
+        </td>
+        <td style="padding:7px 10px;">{{ i.performance_indicator }}</td>
+        <td style="padding:7px 10px;text-align:center;color:#6b7280;">{{ i.target_value if i.target_value is not none else '—' }}</td>
+        <td style="padding:7px 10px;text-align:center;">{{ i.actual_value if i.actual_value is not none else '—' }}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:600;">{{ '%.1f'|format(i.quality_rating) if i.quality_rating is not none else '—' }}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:600;">{{ '%.1f'|format(i.efficiency_rating) if i.efficiency_rating is not none else '—' }}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:600;">{{ '%.1f'|format(i.timeliness_rating) if i.timeliness_rating is not none else '—' }}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:800;
+                   color:{% if i.average_rating is not none and i.average_rating >= 4.5 %}#16a34a{% elif i.average_rating is not none and i.average_rating >= 3.5 %}#2563eb{% elif i.average_rating is not none and i.average_rating >= 2.5 %}#d97706{% else %}#6b7280{% endif %};">
+          {{ '%.2f'|format(i.average_rating) if i.average_rating is not none else '—' }}
+        </td>
+        <td style="padding:7px 10px;text-align:center;color:#9ca3af;">{{ i.weight }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" style="padding:2rem;text-align:center;color:#9ca3af;">No IPCR entries found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{# Adjectival scale reference #}
+<div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap;font-size:.75rem;" class="no-print">
+  {% for range, label, color in [('4.50–5.00','Outstanding','#16a34a'),('3.50–4.49','Very Satisfactory','#2563eb'),('2.50–3.49','Satisfactory','#d97706'),('1.50–2.49','Unsatisfactory','#dc2626'),('<1.50','Poor','#991b1b')] %}
+  <span style="padding:3px 10px;border-radius:999px;background:{{ color }}15;color:{{ color }};font-weight:600;">
+    {{ range }} {{ label }}
+  </span>
+  {% endfor %}
+</div>
+
+{% endblock %}

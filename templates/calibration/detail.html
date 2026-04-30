@@ -1,0 +1,270 @@
+{% extends 'base.html' %}
+{% block page_title %}Calibration — {{ s.name }}{% endblock %}
+{% block content %}
+
+<style>
+  .ninebox-grid {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr 1fr 30px;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .ninebox-cell {
+    padding: .6rem;
+    min-height: 90px;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    align-content: flex-start;
+  }
+  .ninebox-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .ninebox-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #6b7280;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    padding: .4rem;
+  }
+  .ninebox-row-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #6b7280;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+    padding: .3rem;
+  }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ s.name }}</h2>
+    <div style="font-size:.8rem;color:#6b7280;margin-top:.15rem;">
+      {{ s.cycle_name or '' }}
+      {% if s.department_name %}&middot; {{ s.department_name }}{% endif %}
+      {% if s.facilitator_name %}&middot; Facilitator: {{ s.facilitator_name }}{% endif %}
+      &middot;
+      <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.68rem;font-weight:600;
+        background:{% if s.status == 'FINALIZED' %}#dcfce7{% else %}#f1f5f9{% endif %};
+        color:{% if s.status == 'FINALIZED' %}#166534{% else %}#374151{% endif %};">
+        {{ s.status }}
+      </span>
+    </div>
+  </div>
+  <div style="display:flex;gap:.5rem;">
+    {% if s.status != 'FINALIZED' %}
+    <form method="POST" action="{{ url_for('calibration.finalize', session_id=s.id) }}" style="margin:0;">
+      <button type="submit" onclick="return confirm('Finalize this session? This cannot be undone.')"
+              style="padding:7px 16px;background:#059669;color:#fff;border:none;border-radius:7px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Finalize Session
+      </button>
+    </form>
+    {% endif %}
+    <a href="{{ url_for('calibration.index') }}" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.85rem;color:#374151;text-decoration:none;">&larr; All Sessions</a>
+  </div>
+</div>
+
+<!-- 9-Box Grid -->
+<div class="card" style="padding:1rem;margin-bottom:1.5rem;">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:.6rem;">9-Box Talent Grid</div>
+  <div class="ninebox-grid">
+    <!-- Header row -->
+    <div class="ninebox-header"></div>
+    <div class="ninebox-header">Low Potential</div>
+    <div class="ninebox-header">Med Potential</div>
+    <div class="ninebox-header">High Potential</div>
+
+    <!-- Row 3: High Performance (top) -->
+    <div class="ninebox-row-label">High Perf</div>
+    {% for pot in [1, 2, 3] %}
+    <div class="ninebox-cell" style="background:{% if pot == 3 %}#dcfce7{% elif pot == 2 %}#fef9c3{% else %}#fef3c7{% endif %};">
+      {% for a in matrix.get((3, pot), []) %}
+      <span class="ninebox-badge" style="background:{% if pot == 3 %}#bbf7d0{% elif pot == 2 %}#fef08a{% else %}#fde68a{% endif %};color:#374151;">
+        {{ a.employee_name }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- Row 2: Med Performance -->
+    <div class="ninebox-row-label">Med Perf</div>
+    {% for pot in [1, 2, 3] %}
+    <div class="ninebox-cell" style="background:{% if pot == 3 %}#fef9c3{% elif pot == 2 %}#fef9c3{% else %}#fed7aa{% endif %};">
+      {% for a in matrix.get((2, pot), []) %}
+      <span class="ninebox-badge" style="background:{% if pot >= 2 %}#fef08a{% else %}#fdba74{% endif %};color:#374151;">
+        {{ a.employee_name }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- Row 1: Low Performance (bottom) -->
+    <div class="ninebox-row-label">Low Perf</div>
+    {% for pot in [1, 2, 3] %}
+    <div class="ninebox-cell" style="background:{% if pot == 1 %}#fee2e2{% elif pot == 2 %}#fed7aa{% else %}#fef3c7{% endif %};">
+      {% for a in matrix.get((1, pot), []) %}
+      <span class="ninebox-badge" style="background:{% if pot == 1 %}#fca5a5{% elif pot == 2 %}#fdba74{% else %}#fde68a{% endif %};color:#374151;">
+        {{ a.employee_name }}
+      </span>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <!-- Bottom axis label -->
+    <div style="grid-column:1/5;text-align:center;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;padding:.3rem;background:#f9fafb;border:1px solid #e5e7eb;">
+      Potential &rarr;
+    </div>
+  </div>
+</div>
+
+<!-- Assessment Form -->
+{% if s.status != 'FINALIZED' %}
+<div class="card" style="padding:1.25rem;margin-bottom:1.5rem;">
+  <div style="font-size:.85rem;font-weight:700;margin-bottom:.6rem;">Assess Employee</div>
+  <form method="POST" action="{{ url_for('calibration.assess', session_id=s.id) }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.85rem;">
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Employee</label>
+        <select name="employee_id" required
+                style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="">-- Select --</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}">{{ e.full_name }}{% if e.position_title %} ({{ e.position_title }}){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+        <div>
+          <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Performance (1-3)</label>
+          <select name="performance_score" required
+                  style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+            <option value="">--</option>
+            <option value="1">1 - Low</option>
+            <option value="2">2 - Medium</option>
+            <option value="3">3 - High</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Potential (1-3)</label>
+          <select name="potential_score" required
+                  style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+            <option value="">--</option>
+            <option value="1">1 - Low</option>
+            <option value="2">2 - Medium</option>
+            <option value="3">3 - High</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Risk of Loss</label>
+        <select name="risk_of_loss"
+                style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="">-- Optional --</option>
+          <option value="LOW">Low</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="HIGH">High</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Impact of Loss</label>
+        <select name="impact_of_loss"
+                style="width:100%;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;">
+          <option value="">-- Optional --</option>
+          <option value="LOW">Low</option>
+          <option value="MEDIUM">Medium</option>
+          <option value="HIGH">High</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:.85rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Development Action</label>
+      <textarea name="development_action" rows="2" placeholder="Recommended development actions..."
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;"></textarea>
+    </div>
+
+    <div style="margin-top:.6rem;">
+      <label style="display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:.25rem;">Notes</label>
+      <textarea name="notes" rows="2" placeholder="Additional notes..."
+                style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;resize:vertical;"></textarea>
+    </div>
+
+    <div style="margin-top:.85rem;">
+      <button type="submit"
+              style="padding:8px 20px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;">
+        Save Assessment
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- Assessments Table -->
+{% if assessments %}
+<div class="card" style="padding:0;overflow:hidden;">
+  <div style="padding:.6rem .85rem;font-size:.85rem;font-weight:700;background:#f9fafb;border-bottom:1px solid #e5e7eb;">All Assessments</div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb;">
+        <th style="text-align:left;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Employee</th>
+        <th style="text-align:left;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Position</th>
+        <th style="text-align:center;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Perf</th>
+        <th style="text-align:center;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Potential</th>
+        <th style="text-align:center;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Box</th>
+        <th style="text-align:center;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Risk</th>
+        <th style="text-align:center;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Impact</th>
+        <th style="text-align:left;padding:.5rem .85rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;">Dev Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in assessments %}
+      <tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:.5rem .85rem;font-weight:600;">{{ a.employee_name }}</td>
+        <td style="padding:.5rem .85rem;">{{ a.position_title or '-' }}</td>
+        <td style="padding:.5rem .85rem;text-align:center;">{{ a.performance_score }}</td>
+        <td style="padding:.5rem .85rem;text-align:center;">{{ a.potential_score }}</td>
+        <td style="padding:.5rem .85rem;text-align:center;">
+          <span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:.72rem;font-weight:700;
+            background:{% if a.performance_score == 3 and a.potential_score == 3 %}#dcfce7{% elif a.performance_score == 1 and a.potential_score == 1 %}#fee2e2{% else %}#fef9c3{% endif %};
+            color:{% if a.performance_score == 3 and a.potential_score == 3 %}#166534{% elif a.performance_score == 1 and a.potential_score == 1 %}#991b1b{% else %}#92400e{% endif %};">
+            {{ a.box_label }}
+          </span>
+        </td>
+        <td style="padding:.5rem .85rem;text-align:center;">{{ a.risk_of_loss or '-' }}</td>
+        <td style="padding:.5rem .85rem;text-align:center;">{{ a.impact_of_loss or '-' }}</td>
+        <td style="padding:.5rem .85rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.development_action or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

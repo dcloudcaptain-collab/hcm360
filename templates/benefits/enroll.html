@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block page_title %}Enroll Employee{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Enroll Employee in Benefit Plan</h2>
+  <a href="/benefits" style="font-size:.82rem;color:var(--primary,#4f46e5);">← Dashboard</a>
+</div>
+<div class="card" style="padding:1.25rem;max-width:500px;">
+  <form method="post" action="/benefits/enroll">
+    <div style="margin-bottom:.85rem;">
+      <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Employee *</label>
+      <select name="employee_id" required style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+        <option value="">— Select employee —</option>
+        {% for e in employees %}<option value="{{ e.id }}">{{ e.name }} ({{ e.employee_no }})</option>{% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom:.85rem;">
+      <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Benefit Plan *</label>
+      <select name="plan_id" required style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+        <option value="">— Select plan —</option>
+        {% for p in plans %}<option value="{{ p.id }}">{{ p.name }} ({{ p.type_name }} — ER:₱{{ '{:,.0f}'.format(p.employer_cost) }} / EE:₱{{ '{:,.0f}'.format(p.employee_cost) }})</option>{% endfor %}
+      </select>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label style="display:block;font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;margin-bottom:.25rem;">Coverage Level</label>
+      <select name="coverage_level" style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:.875rem;box-sizing:border-box;">
+        <option value="INDIVIDUAL">Individual (1x)</option>
+        <option value="INDIVIDUAL_PLUS_ONE">Individual + 1 (1.5x)</option>
+        <option value="FAMILY">Family (2.5x)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+      <a href="/benefits" style="padding:8px 18px;font-size:.875rem;border:1px solid #d1d5db;border-radius:6px;text-decoration:none;color:#374151;">Cancel</a>
+      <button type="submit" style="padding:8px 22px;font-size:.875rem;font-weight:700;border:none;border-radius:6px;background:var(--primary,#4f46e5);color:#fff;cursor:pointer;">Enroll</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

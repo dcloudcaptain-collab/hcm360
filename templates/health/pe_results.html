@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block page_title %}PE Results{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">PE Results</h2>
+  <a href="/health/pe" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Schedules</a>
+</div>
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead><tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+      <th style="padding:8px 12px;text-align:left;">Employee</th><th style="padding:8px 12px;text-align:left;">Department</th>
+      <th style="padding:8px 12px;text-align:center;">Exam Date</th><th style="padding:8px 12px;text-align:center;">Result</th>
+      <th style="padding:8px 12px;text-align:left;">Findings</th><th style="padding:8px 12px;text-align:center;">Follow-up</th>
+    </tr></thead>
+    <tbody>
+      {% for r in results %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:500;">{{ r.employee_name }}</td>
+        <td style="padding:8px 12px;color:#6b7280;">{{ r.department_name or '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;color:#6b7280;">{{ r.exam_date.strftime('%b %d, %Y') if r.exam_date else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if r.overall_result == 'FIT' %}#dcfce7{% elif r.overall_result == 'CONDITIONAL' %}#fef9c3{% elif r.overall_result == 'UNFIT' %}#fee2e2{% elif r.overall_result == 'NO_SHOW' %}#f1f5f9{% else %}#e0e7ff{% endif %};
+            color:{% if r.overall_result == 'FIT' %}#166534{% elif r.overall_result == 'CONDITIONAL' %}#854d0e{% elif r.overall_result == 'UNFIT' %}#991b1b{% elif r.overall_result == 'NO_SHOW' %}#374151{% else %}#4338ca{% endif %};">{{ r.overall_result }}</span>
+        </td>
+        <td style="padding:8px 12px;font-size:.8rem;color:#374151;">{{ (r.findings[:60] + '…') if r.findings and r.findings|length > 60 else (r.findings or '—') }}</td>
+        <td style="padding:8px 12px;text-align:center;">{% if r.follow_up_required %}<span style="color:#d97706;font-weight:700;">Yes</span>{% else %}—{% endif %}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No results for this PE schedule.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block page_title %}Travel Order {{ r.control_no }}{% endblock %}
+{% block extra_css %}{% include 'lgu_forms/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>✈️ {{ r.control_no }}</h2>
+       <div class="sub">Status: <span class="status-badge s-{{ r.status|lower|replace('_','-') }}">{{ r.status.replace('_',' ') }}</span></div></div>
+  <div style="display:flex;gap:.4rem;">
+    <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+    <a href="/travel-orders/" class="btn btn-ghost">← Back</a>
+  </div>
+</div>
+
+<div class="print-form">
+  <div class="header">
+    <h1>TRAVEL ORDER</h1>
+    <div style="font-size:.72rem;color:#6b7280;">Control No. {{ r.control_no }}</div>
+  </div>
+
+  <div class="kv">
+    <span>Employee</span><span>{{ r.full_name }} ({{ r.employee_no }})</span>
+    <span>Department</span><span>{{ r.department_name or '—' }}</span>
+    <span>Position</span><span>{{ r.position_title or '—' }}</span>
+  </div>
+
+  <div class="sec-title">Travel Details</div>
+  <div class="kv">
+    <span>Purpose</span><span>{{ r.purpose }}</span>
+    <span>Destination</span><span>{{ r.destination }}</span>
+    <span>Date From</span><span>{{ r.date_from.strftime('%B %d, %Y') }}{% if r.time_from %} {{ r.time_from.strftime('%I:%M %p') }}{% endif %}</span>
+    <span>Date To</span><span>{{ r.date_to.strftime('%B %d, %Y') }}{% if r.time_to %} {{ r.time_to.strftime('%I:%M %p') }}{% endif %}</span>
+    <span>Mode of Transport</span><span>{{ r.mode_of_transport or '—' }}</span>
+    <span>Estimated Cost</span><span>{{ '₱{:,.2f}'.format(r.estimated_cost|float) if r.estimated_cost else '—' }}</span>
+    <span>Funds Source</span><span>{{ r.funds_source or '—' }}</span>
+    <span>Companions</span><span>{{ r.companions or '—' }}</span>
+    <span>Remarks</span><span>{{ r.remarks or '—' }}</span>
+  </div>
+
+  <div class="sec-title">Approval Chain</div>
+  <div class="kv">
+    <span>Immediate Supervisor</span>
+    <span>{% if r.supervisor_action_at %}✓ Approved {{ r.supervisor_action_at.strftime('%b %d, %Y') }}{% else %}Pending{% endif %}
+      {% if r.supervisor_remarks %} — {{ r.supervisor_remarks }}{% endif %}</span>
+    <span>Head of Office</span>
+    <span>{% if r.head_action_at %}✓ Approved {{ r.head_action_at.strftime('%b %d, %Y') }}{% else %}Pending{% endif %}
+      {% if r.head_remarks %} — {{ r.head_remarks }}{% endif %}</span>
+  </div>
+
+  <div class="signature">
+    <div class="box">Applicant<br><span style="font-size:.75rem;">{{ r.full_name }}</span></div>
+    <div class="box">Head of Office</div>
+  </div>
+</div>
+
+{% if session.role_code in ('SUPER_ADMIN','HR_ADMIN','MANAGER')
+      and r.status in ('PENDING_SUPERVISOR','PENDING_HEAD') %}
+<div class="card" style="margin-top:1rem;max-width:760px;margin:1rem auto;">
+  <h3>Take Action</h3>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+    {% if r.status == 'PENDING_SUPERVISOR' %}
+    <button onclick="act('APPROVE','supervisor')" class="btn btn-amber">📋 Endorse</button>
+    {% else %}
+    <button onclick="act('APPROVE','head')" class="btn btn-green">✓ Final Approve</button>
+    {% endif %}
+    <button onclick="act('REJECT','head')" class="btn btn-red">✗ Reject</button>
+  </div>
+  <textarea id="remarks" placeholder="Remarks (optional)" style="width:100%;margin-top:.6rem;padding:.5rem;border:1px solid #d1d5db;border-radius:7px;min-height:60px;"></textarea>
+</div>
+<script>
+  async function act(action, level) {
+    const remarks = document.getElementById('remarks').value;
+    const r = await fetch(`/travel-orders/{{ r.id }}/action`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action, level, remarks}),
+    });
+    if ((await r.json()).ok) location.reload();
+  }
+</script>
+{% endif %}
+{% endblock %}

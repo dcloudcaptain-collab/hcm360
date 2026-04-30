@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block page_title %}IPCR Templates{% endblock %}
+
+{% block content %}
+<style>
+  .it-head { display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem; }
+  .it-head h2 { margin:0;font-size:1.3rem;font-weight:800; }
+  .it-sub { font-size:.85rem;color:#6b7280; }
+  .it-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:1rem; }
+  .it-card {
+     background:#fff;border:1px solid #e5e7eb;border-radius:12px;
+     padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:.5rem;
+     transition:box-shadow .15s, border-color .15s;
+  }
+  .it-card:hover { border-color:#4f46e5;box-shadow:0 6px 20px rgba(79,70,229,.1); }
+  .it-card h3 { margin:0;font-size:1rem;font-weight:700;color:#111827; }
+  .it-pos { font-size:.78rem;color:#4338ca;font-weight:600; }
+  .it-desc { font-size:.78rem;color:#6b7280;line-height:1.5;min-height:3em; }
+  .it-meta { display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.2rem; }
+  .chip {
+     font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:999px;
+     text-transform:uppercase;letter-spacing:.04em;
+  }
+  .chip-cnt  { background:#eef2ff;color:#4338ca; }
+  .chip-typ  { background:#dcfce7;color:#166534; }
+  .it-card details { font-size:.78rem;color:#374151; }
+  .it-card details summary { cursor:pointer;font-weight:600;color:#4f46e5;padding:.25rem 0; }
+  .it-card details ol { padding-left:1.25rem;margin:.4rem 0;line-height:1.55; }
+  .btn { display:inline-flex;align-items:center;padding:8px 14px;border-radius:7px;
+         font-size:.82rem;font-weight:600;text-decoration:none;cursor:pointer;
+         border:none;font-family:inherit; }
+  .btn-primary { background:#4f46e5;color:#fff; }
+  .btn-secondary { background:#fff;color:#374151;border:1.5px solid #d1d5db; }
+
+  .modal {
+     display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;
+     align-items:center;justify-content:center;
+  }
+  .modal.open { display:flex; }
+  .modal-card {
+     background:#fff;border-radius:12px;padding:1.5rem;max-width:520px;width:92%;
+     box-shadow:0 20px 60px rgba(0,0,0,.25);
+  }
+  .field { display:flex;flex-direction:column;gap:.3rem;margin-bottom:.85rem; }
+  .field label { font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em; }
+  .field input, .field select {
+     padding:.55rem .7rem;border:1.5px solid #d1d5db;border-radius:7px;
+     font-size:.88rem;font-family:inherit;
+  }
+  .field input:focus, .field select:focus { outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+</style>
+
+<div class="it-head">
+  <div>
+    <h2>📋 IPCR Templates Library</h2>
+    <div class="it-sub"
+         data-hint="CSC-aligned starter IPCR sets — pick a template, choose an employee + cycle, and the system spawns the full MFO list ready for evaluation.">
+      Pre-loaded CSC Major Final Outputs for common LGU positions. Click <strong>Use template</strong> to spawn a complete IPCR for any employee in a single step.
+    </div>
+  </div>
+  <div>
+    <a href="{{ url_for('pm.ipcr') }}" class="btn btn-secondary">← Back to IPCR</a>
+  </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+    <div style="padding:.65rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:.88rem;
+                background:{% if cat=='error' %}#fee2e2{% else %}#dcfce7{% endif %};
+                color:{% if cat=='error' %}#991b1b{% else %}#166534{% endif %};">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<div class="it-grid">
+  {% for t in templates %}
+  <div class="it-card">
+    <h3>{{ t.title }}</h3>
+    {% if t.target_position %}<div class="it-pos">For: {{ t.target_position }}</div>{% endif %}
+    <div class="it-desc">{{ t.description or '' }}</div>
+    <div class="it-meta">
+      <span class="chip chip-cnt">{{ t.item_count }} MFOs</span>
+      {% set types = [] %}
+      {% for it in t['items'] %}
+        {% if it.function_type and it.function_type not in types %}{% set _ = types.append(it.function_type) %}{% endif %}
+      {% endfor %}
+      {% for ty in types %}<span class="chip chip-typ">{{ ty }}</span>{% endfor %}
+    </div>
+    <details>
+      <summary>Preview MFOs</summary>
+      <ol>
+        {% for it in t['items'] %}
+        <li><strong>{{ it.performance_indicator }}</strong> — <em>{{ it.target }}</em> · weight {{ '%.0f%%'|format((it.weight or 0)*100) }}</li>
+        {% endfor %}
+      </ol>
+    </details>
+    <div style="margin-top:.4rem;">
+      <button type="button" class="btn btn-primary"
+              onclick="openSpawn('{{ t.code }}', '{{ t.title|e }}')"
+              data-hint="Spawn this complete MFO set for a chosen employee + cycle.">
+        ⚡ Use template
+      </button>
+    </div>
+  </div>
+  {% else %}
+  <div style="padding:2rem;text-align:center;color:#6b7280;background:#fff;border:2px dashed #e5e7eb;border-radius:12px;grid-column:1/-1;">
+    No templates seeded yet.
+  </div>
+  {% endfor %}
+</div>
+
+
+<!-- Spawn modal -->
+<div class="modal" id="spawnModal">
+  <div class="modal-card">
+    <h3 style="margin:0 0 .35rem;font-size:1.1rem;">Spawn IPCR from template</h3>
+    <p style="margin:0 0 1rem;font-size:.8rem;color:#6b7280;">
+      Using <strong id="spawnTpl">—</strong>. The system will copy each MFO into
+      <code>performance.perf_ipcr</code> for the chosen employee + cycle.
+    </p>
+    <form method="post" action="{{ url_for('pm.ipcr_spawn') }}">
+      <input type="hidden" name="template_code" id="tplCodeHidden">
+      <div class="field">
+        <label for="employee_id">Employee</label>
+        <select name="employee_id" id="employee_id" required>
+          <option value="">Select an employee…</option>
+          {% for e in employees %}
+          <option value="{{ e.id }}">{{ e.name }} ({{ e.employee_no }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="cycle_id">Performance Cycle</label>
+        <select name="cycle_id" id="cycle_id" required>
+          <option value="">Select a cycle…</option>
+          {% for c in cycles %}
+          <option value="{{ c.id }}">{{ c.name }} ({{ c.period_from.strftime('%b %Y') }} – {{ c.period_to.strftime('%b %Y') }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label style="text-transform:none;font-weight:500;">
+          <input type="checkbox" name="replace" value="1">
+          Replace any existing IPCR rows for this employee+cycle
+        </label>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.6rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeSpawn()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Spawn IPCR</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openSpawn(code, title){
+  document.getElementById('tplCodeHidden').value = code;
+  document.getElementById('spawnTpl').textContent = title;
+  document.getElementById('spawnModal').classList.add('open');
+}
+function closeSpawn(){
+  document.getElementById('spawnModal').classList.remove('open');
+}
+document.getElementById('spawnModal').addEventListener('click', e => {
+  if (e.target.id === 'spawnModal') closeSpawn();
+});
+</script>
+{% endblock %}

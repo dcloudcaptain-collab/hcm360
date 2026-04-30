@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.env
+backups/*.dump
+uploads/*
+!uploads/.gitkeep
+*.log
+.DS_Store
+
+# Old snapshot copies of the project — not part of source
+hcm360_0401/
+lvm/

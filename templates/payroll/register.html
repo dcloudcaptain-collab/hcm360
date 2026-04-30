@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block page_title %}Payroll Register{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Payroll Register</h2>
+  {% if run_id %}
+  <div style="display:flex;gap:.5rem;">
+    <a href="/payroll/register/export?run_id={{ run_id }}&fmt=xlsx"
+       style="padding:7px 14px;background:#16a34a;color:#fff;border-radius:7px;font-size:.875rem;font-weight:600;text-decoration:none;">↓ Excel</a>
+    <a href="/payroll/register/export?run_id={{ run_id }}&fmt=csv"
+       style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">↓ CSV</a>
+  </div>
+  {% endif %}
+</div>
+
+{# Run selector #}
+<form method="get" class="card" style="padding:.75rem 1rem;display:flex;gap:.75rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;text-transform:uppercase;color:#6b7280;display:block;margin-bottom:.25rem;">Pay Run</label>
+    <select name="run_id" style="border:1px solid #d1d5db;border-radius:6px;padding:5px 10px;font-size:.875rem;min-width:260px;">
+      <option value="">-- Select a Pay Run --</option>
+      {% for r in runs %}
+      <option value="{{ r.id }}" {% if run_id==r.id %}selected{% endif %}>
+        Run #{{ r.id }} — {{ r.cutoff_start }} to {{ r.cutoff_end }} ({{ r.status }})
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:6px 16px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Load</button>
+</form>
+
+{% if rows %}
+{# Totals summary #}
+{% set total_gross = rows | sum(attribute='gross_pay') %}
+{% set total_net   = rows | sum(attribute='net_pay') %}
+{% set total_tax   = rows | sum(attribute='tax_withheld') %}
+<div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
+  <div class="card" style="flex:1;min-width:130px;padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;">{{ rows|length }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Employees</div>
+  </div>
+  <div class="card" style="flex:1;min-width:130px;padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;font-family:monospace;">₱{{ '{:,.0f}'.format(total_gross) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Gross Pay</div>
+  </div>
+  <div class="card" style="flex:1;min-width:130px;padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;font-family:monospace;color:#dc2626;">₱{{ '{:,.0f}'.format(total_tax) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Tax Withheld</div>
+  </div>
+  <div class="card" style="flex:1;min-width:130px;padding:.75rem 1rem;text-align:center;">
+    <div style="font-size:1.3rem;font-weight:800;font-family:monospace;color:#166534;">₱{{ '{:,.0f}'.format(total_net) }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Total Net Pay</div>
+  </div>
+</div>
+
+<section class="card" style="padding:0;overflow-x:auto;">
+  <table style="width:100%;border-collapse:collapse;font-size:.8rem;white-space:nowrap;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:9px 12px;text-align:left;">Employee</th>
+        <th style="padding:9px 10px;text-align:right;">Basic Pay</th>
+        <th style="padding:9px 10px;text-align:right;">OT Pay</th>
+        <th style="padding:9px 10px;text-align:right;">Gross</th>
+        <th style="padding:9px 10px;text-align:right;">SSS</th>
+        <th style="padding:9px 10px;text-align:right;">PhilHealth</th>
+        <th style="padding:9px 10px;text-align:right;">HDMF</th>
+        <th style="padding:9px 10px;text-align:right;">Tax</th>
+        <th style="padding:9px 10px;text-align:right;">Loans</th>
+        <th style="padding:9px 10px;text-align:right;">Total Ded.</th>
+        <th style="padding:9px 12px;text-align:right;font-weight:700;color:#166534;">Net Pay</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);{% if loop.index is odd %}background:rgba(0,0,0,.015);{% endif %}">
+        <td style="padding:7px 12px;font-weight:500;">
+          {{ r.full_name }}
+          <div style="font-size:.68rem;color:#9ca3af;">{{ r.employee_no }}</div>
+        </td>
+        {% for val in [r.basic_pay, r.ot_pay, r.gross_pay, r.sss_ee, r.philhealth_ee, r.pagibig_ee, r.tax_withheld, r.loan_deductions, r.total_deductions] %}
+        <td style="padding:7px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(val or 0) }}</td>
+        {% endfor %}
+        <td style="padding:7px 12px;text-align:right;font-family:monospace;font-weight:700;color:#166534;">{{ '{:,.2f}'.format(r.net_pay or 0) }}</td>
+      </tr>
+      {% endfor %}
+      <tr style="border-top:2px solid rgba(0,0,0,.15);background:rgba(0,0,0,.04);font-weight:700;">
+        <td style="padding:8px 12px;">TOTAL</td>
+        {% for attr in ['basic_pay','ot_pay','gross_pay','sss_ee','philhealth_ee','pagibig_ee','tax_withheld','loan_deductions','total_deductions'] %}
+        <td style="padding:8px 10px;text-align:right;font-family:monospace;">{{ '{:,.2f}'.format(rows|sum(attribute=attr)) }}</td>
+        {% endfor %}
+        <td style="padding:8px 12px;text-align:right;font-family:monospace;color:#166534;">{{ '{:,.2f}'.format(rows|sum(attribute='net_pay')) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+{% elif run_id %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">No payroll records found for this run.</div>
+{% else %}
+<div class="card" style="padding:2rem;text-align:center;color:#9ca3af;">Select a pay run above to view the register.</div>
+{% endif %}
+
+{% endblock %}

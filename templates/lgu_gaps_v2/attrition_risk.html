@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block page_title %}Attrition Risk Dashboard{% endblock %}
+{% block extra_css %}{% include 'lgu_gaps_v2/_shared.html' %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>⚠️ Attrition Risk Dashboard</h2>
+       <div class="sub">AI-assisted retention risk scoring based on tenure, engagement, attendance, and leave patterns</div></div>
+  {% if session.role_code in ('SUPER_ADMIN', 'HR_ADMIN') %}
+  <button id="btnScan" class="btn btn-primary">🔍 Run Risk Scan</button>
+  {% endif %}
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi red" data-hint="Employees with risk score ≥ 0.6. High priority for retention conversations — look at the factor chips to understand why.">
+    <div class="lbl">High Risk</div>
+    <div class="num">{{ summary.high_count or 0 }}</div>
+    <div style="font-size:.78rem;color:#6b7280;">
+      M: {{ summary.high_male or 0 }} · F: {{ summary.high_female or 0 }}
+    </div>
+  </div>
+  <div class="kpi amber" data-hint="Employees with risk score 0.3–0.6. Monitor for deteriorating signals.">
+    <div class="lbl">Medium Risk</div>
+    <div class="num">{{ summary.medium_count or 0 }}</div>
+  </div>
+  <div class="kpi green" data-hint="Employees with risk score &lt; 0.3. Stable retention profile.">
+    <div class="lbl">Low Risk</div>
+    <div class="num">{{ summary.low_count or 0 }}</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">Last Scan</div>
+    <div style="font-size:.95rem;font-weight:700;">{{ summary.last_scan.strftime('%b %d, %Y %I:%M %p') if summary.last_scan else 'Never' }}</div>
+  </div>
+</div>
+
+<div class="filters">
+  <a href="?" class="{{ 'active' if not risk_filter else '' }}">All</a>
+  <a href="?risk=HIGH"   class="{{ 'active' if risk_filter == 'HIGH' else '' }}">High</a>
+  <a href="?risk=MEDIUM" class="{{ 'active' if risk_filter == 'MEDIUM' else '' }}">Medium</a>
+  <a href="?risk=LOW"    class="{{ 'active' if risk_filter == 'LOW' else '' }}">Low</a>
+</div>
+
+{% if rows %}
+<table class="dt">
+  <thead>
+    <tr><th>Employee</th><th>Department</th><th>Tenure</th>
+        <th>Risk Score</th><th>Level</th><th>Factors</th></tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr>
+      <td>
+        <div style="font-weight:600;">{{ r.full_name }}</div>
+        <div style="font-size:.75rem;color:#6b7280;font-family:monospace;">{{ r.employee_no }}</div>
+      </td>
+      <td>{{ r.department_name or '—' }}<br>
+        <span style="font-size:.75rem;color:#9ca3af;">{{ r.position_title or '' }}</span></td>
+      <td>{{ r.tenure_years or 0 }} yr</td>
+      <td>
+        <div style="font-family:monospace;font-weight:700;">{{ '%.2f'|format(r.risk_score|float) }}</div>
+        <div class="progress-bar" style="width:120px;">
+          <div style="background:{% if r.risk_level == 'HIGH' %}#dc2626{% elif r.risk_level == 'MEDIUM' %}#f59e0b{% else %}#16a34a{% endif %};width:{{ (r.risk_score|float * 100)|round|int }}%;"></div>
+        </div>
+      </td>
+      <td><span class="status-badge s-{{ r.risk_level|lower }}">{{ r.risk_level }}</span></td>
+      <td style="max-width:360px;">
+        {% if r.factors %}
+          {% set factors = r.factors if r.factors is iterable and r.factors is not string else [] %}
+          {% for f in factors %}
+          <span class="factor-chip">{{ f }}</span>
+          {% endfor %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="card" style="text-align:center;padding:2.5rem;color:#9ca3af;">
+  <div style="font-size:2rem;">📊</div>
+  <div style="font-weight:600;">No risk predictions yet.</div>
+  <div style="font-size:.85rem;margin-top:.25rem;">Click <em>Run Risk Scan</em> to score all active employees.</div>
+</div>
+{% endif %}
+
+<script>
+  document.getElementById('btnScan')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnScan');
+    btn.disabled = true; btn.textContent = '⏳ Scanning…';
+    const r = await fetch('/reports/attrition-risk/scan', {method:'POST'});
+    const j = await r.json();
+    alert(`Scored ${j.scored} employees (${j.inserted} predictions saved).`);
+    location.reload();
+  });
+</script>
+{% endblock %}

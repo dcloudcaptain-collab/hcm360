@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block page_title %}Headcount Report{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  {% if by_dept %}
+  new Chart(document.getElementById('deptChart'), {
+    type: 'bar',
+    data: {
+      labels: {{ by_dept | map(attribute='department') | list | tojson }},
+      datasets: [{
+        label: 'Headcount',
+        data: {{ by_dept | map(attribute='total') | list | tojson }},
+        backgroundColor: 'rgba(99,102,241,.75)',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+  {% endif %}
+
+  {% if trend %}
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: {{ trend | map(attribute='month') | list | tojson }},
+      datasets: [{
+        label: 'Headcount',
+        data: {{ trend | map(attribute='headcount') | list | tojson }},
+        borderColor: '#4f46e5', borderWidth: 2,
+        fill: true, backgroundColor: 'rgba(99,102,241,.1)', tension: 0.4,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } }
+    }
+  });
+  {% endif %}
+});
+</script>
+{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Headcount Report</h2>
+  <a href="/reports/export" style="padding:7px 14px;border:1px solid #d1d5db;border-radius:7px;font-size:.875rem;color:#374151;text-decoration:none;">↓ Export</a>
+</div>
+
+{# Summary stats #}
+{% if attrition %}
+<div style="display:flex;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:var(--primary,#4f46e5);">{{ attrition.total_active or 0 }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Active Employees</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:#16a34a;">{{ attrition.new_hires_30d or 0 }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">New Hires (30d)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:#dc2626;">{{ attrition.separated_30d or 0 }}</div>
+    <div style="font-size:.75rem;color:#6b7280;">Separated (30d)</div>
+  </div>
+  <div class="card" style="flex:1;min-width:120px;padding:.85rem;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:#d97706;">
+      {{ '%.1f'|format(attrition.attrition_rate or 0) }}%
+    </div>
+    <div style="font-size:.75rem;color:#6b7280;">Attrition Rate (12mo)</div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid two" style="gap:1.25rem;margin-bottom:1.25rem;">
+  {# Bar chart — by department #}
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">Headcount by Department</h3>
+    <div style="position:relative;height:220px;">
+      <canvas id="deptChart"></canvas>
+    </div>
+  </section>
+
+  {# Trend line #}
+  <section class="card" style="padding:1rem;">
+    <h3 style="margin:0 0 .75rem;font-size:.95rem;font-weight:700;">6-Month Trend</h3>
+    <div style="position:relative;height:220px;">
+      <canvas id="trendChart"></canvas>
+    </div>
+  </section>
+</div>
+
+{# Department table #}
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.7rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:10px 14px;text-align:left;">Department</th>
+        <th style="padding:10px 14px;">Active</th>
+        <th style="padding:10px 14px;">Probationary</th>
+        <th style="padding:10px 14px;">Contractual</th>
+        <th style="padding:10px 14px;">Total</th>
+        <th style="padding:10px 14px;">% of Org</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set total_org = by_dept | sum(attribute='total') %}
+      {% for r in by_dept %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:9px 14px;font-weight:500;">{{ r.department }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ r.active or 0 }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ r.probationary or 0 }}</td>
+        <td style="padding:9px 14px;text-align:center;">{{ r.on_leave or 0 }}</td>
+        <td style="padding:9px 14px;text-align:center;font-weight:700;">{{ r.total }}</td>
+        <td style="padding:9px 14px;text-align:center;">
+          <div style="display:flex;align-items:center;gap:.4rem;">
+            <div style="flex:1;height:6px;background:rgba(0,0,0,.08);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;background:var(--primary,#4f46e5);border-radius:3px;
+                width:{{ ((r.total / total_org) * 100)|round(1) if total_org else 0 }}%;"></div>
+            </div>
+            <span style="font-size:.8rem;color:#6b7280;white-space:nowrap;">
+              {{ ((r.total / total_org) * 100)|round(1) if total_org else 0 }}%
+            </span>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#9ca3af;">No data available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

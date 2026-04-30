@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block page_title %}Onboarding — {{ checklist.employee_name }}{% endblock %}
+{% block content %}
+
+{% set ck = checklist %}
+{% set stage_list = ['REQUIREMENTS','WELCOME','TRANSITION','SIGNOFF','READY','ACTIVATED'] %}
+{% set stage_idx = stage_list.index(ck.stage) if ck.stage in stage_list else 0 %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+  <div>
+    <h2 style="margin:0;font-size:1.25rem;font-weight:700;">{{ ck.employee_name }}</h2>
+    <p style="margin:.2rem 0 0;font-size:.82rem;color:#6b7280;">{{ ck.position_title or '' }} · {{ ck.department_name or '' }} · {{ ck.employee_no }}</p>
+  </div>
+  <a href="/onboarding" style="font-size:.82rem;color:var(--primary,#4f46e5);">← All Onboardings</a>
+</div>
+
+{# ── Stage Progress Bar ──────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;gap:0;align-items:center;">
+    {% for s in stage_list %}
+    {% set si = loop.index0 %}
+    {% set is_done = si < stage_idx %}
+    {% set is_current = si == stage_idx %}
+    <div style="flex:1;text-align:center;">
+      <div style="width:28px;height:28px;border-radius:50%;margin:0 auto .3rem;display:flex;align-items:center;justify-content:center;
+        font-size:.7rem;font-weight:800;
+        {% if is_done %}background:#16a34a;color:#fff;{% elif is_current %}background:var(--primary,#4f46e5);color:#fff;{% else %}background:#e5e7eb;color:#9ca3af;{% endif %}">
+        {% if is_done %}✓{% else %}{{ si + 1 }}{% endif %}
+      </div>
+      <div style="font-size:.65rem;font-weight:{% if is_current %}700{% else %}400{% endif %};color:{% if is_current %}var(--primary,#4f46e5){% elif is_done %}#16a34a{% else %}#9ca3af{% endif %};text-transform:uppercase;letter-spacing:.03em;">{{ s }}</div>
+    </div>
+    {% if not loop.last %}
+    <div style="flex:.5;height:2px;background:{% if si < stage_idx %}#16a34a{% else %}#e5e7eb{% endif %};margin-bottom:1.2rem;"></div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% if session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') and ck.stage != 'ACTIVATED' %}
+  <form method="post" action="/onboarding/{{ ck.id }}/advance" style="text-align:center;margin-top:.75rem;">
+    <button style="padding:6px 20px;font-size:.82rem;font-weight:700;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;cursor:pointer;">Advance to Next Stage →</button>
+  </form>
+  {% endif %}
+</div>
+
+{# ── Employee Info + Buddy ───────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+  <div class="card" style="padding:1rem;">
+    <div style="font-size:.72rem;text-transform:uppercase;color:#9ca3af;margin-bottom:.5rem;">Employee Details</div>
+    <div style="font-size:.88rem;"><strong>Hired:</strong> {{ ck.date_hired }}</div>
+    <div style="font-size:.88rem;"><strong>Email:</strong> {{ ck.work_email or '—' }}</div>
+    <div style="font-size:.88rem;"><strong>Mobile:</strong> {{ ck.mobile_no or '—' }}</div>
+    <div style="font-size:.88rem;"><strong>Target Completion:</strong> {{ ck.target_date or '—' }}</div>
+  </div>
+  <div class="card" style="padding:1rem;">
+    <div style="font-size:.72rem;text-transform:uppercase;color:#9ca3af;margin-bottom:.5rem;">Buddy Assignment</div>
+    {% if buddy %}
+    <div style="font-size:.88rem;font-weight:600;">{{ buddy.buddy_name }}</div>
+    <div style="font-size:.8rem;color:#6b7280;">{{ buddy.buddy_position or '' }} · {{ buddy.buddy_department or '' }}</div>
+    <div style="font-size:.8rem;color:#6b7280;">{{ buddy.buddy_email or '' }}</div>
+    {% if buddy.signed_off_at %}
+    <div style="font-size:.78rem;color:#16a34a;font-weight:600;margin-top:.35rem;">Signed off {{ buddy.signed_off_at.strftime('%b %d, %Y') }}</div>
+    {% endif %}
+    {% else %}
+    <div style="color:#9ca3af;font-size:.85rem;">No buddy assigned yet.</div>
+    {% endif %}
+    {% if session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') %}
+    <form method="post" action="/onboarding/{{ ck.id }}/assign-buddy" style="display:flex;gap:.5rem;margin-top:.5rem;">
+      <select name="buddy_id" style="flex:1;border:1px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:.82rem;">
+        <option value="">— Assign buddy —</option>
+        {% for e in employees %}
+        <option value="{{ e.id }}">{{ e.name }}</option>
+        {% endfor %}
+      </select>
+      <button style="padding:5px 12px;font-size:.82rem;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:5px;cursor:pointer;">Assign</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{# ── Requirements (Stage 1) ──────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Pre-Employment Requirements</strong>
+    {% set verified = requirements|selectattr('status','equalto','VERIFIED')|list|length %}
+    <span style="font-size:.78rem;color:#6b7280;">{{ verified }}/{{ requirements|length }} verified</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Requirement</th>
+        <th style="padding:6px 8px;">Status</th>
+        <th style="padding:6px 8px;">Submitted</th>
+        <th style="padding:6px 8px;">Verified By</th>
+        <th style="padding:6px 8px;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in requirements %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;font-weight:500;">{{ r.requirement_type|replace('_',' ') }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          {% set sc = {'PENDING':'#6b7280','SUBMITTED':'#2563eb','VERIFIED':'#16a34a','REJECTED':'#dc2626'} %}
+          <span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ sc.get(r.status,'#6b7280') }}15;color:{{ sc.get(r.status,'#6b7280') }};">{{ r.status }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;font-size:.8rem;">{{ r.submitted_at.strftime('%b %d') if r.submitted_at else '—' }}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:.8rem;">{{ r.verified_by_name or '—' }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          {% if r.status == 'PENDING' %}
+          <form method="post" action="/onboarding/req/{{ r.id }}/submit" style="display:inline;">
+            <button style="font-size:.75rem;padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer;">Submit</button>
+          </form>
+          {% elif r.status == 'SUBMITTED' and session.get('role_code') in ('SUPER_ADMIN','HR_ADMIN') %}
+          <form method="post" action="/onboarding/req/{{ r.id }}/verify" style="display:inline;">
+            <button style="font-size:.75rem;padding:3px 10px;border-radius:4px;background:#16a34a;color:#fff;border:none;cursor:pointer;">Verify</button>
+          </form>
+          <form method="post" action="/onboarding/req/{{ r.id }}/reject" style="display:inline;margin-left:4px;">
+            <button style="font-size:.75rem;padding:3px 10px;border-radius:4px;background:#dc2626;color:#fff;border:none;cursor:pointer;">Reject</button>
+          </form>
+          {% elif r.status == 'VERIFIED' %}
+          <span style="font-size:.8rem;color:#16a34a;">✓</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── Welcome Items (Stage 2) ─────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Welcome Phase</strong>
+    {% set wdone = welcome_items|selectattr('is_completed')|list|length %}
+    <span style="font-size:.78rem;color:#6b7280;">{{ wdone }}/{{ welcome_items|length }} completed</span>
+  </div>
+  {% for wi in welcome_items %}
+  <div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-top:1px solid rgba(0,0,0,.05);">
+    {% if wi.is_completed %}
+    <span style="width:22px;height:22px;border-radius:50%;background:#16a34a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0;">✓</span>
+    {% else %}
+    <span style="width:22px;height:22px;border-radius:50%;border:2px solid #d1d5db;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#9ca3af;flex-shrink:0;">{{ loop.index }}</span>
+    {% endif %}
+    <div style="flex:1;">
+      <div style="font-size:.88rem;font-weight:500;{% if wi.is_completed %}text-decoration:line-through;color:#9ca3af;{% endif %}">{{ wi.title }}</div>
+      <div style="font-size:.75rem;color:#9ca3af;">{{ wi.description or '' }}</div>
+    </div>
+    <span style="font-size:.68rem;font-weight:600;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:#64748b;">{{ wi.item_type }}</span>
+    {% if not wi.is_completed %}
+    <form method="post" action="/onboarding/welcome/{{ wi.id }}/complete">
+      <button style="font-size:.75rem;padding:4px 12px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">Complete</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{# ── Transition Checklist (Stage 3) ──────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+    <strong style="font-size:.9rem;">Transition Checklist</strong>
+    {% set cdone = items|selectattr('is_completed')|list|length %}
+    <span style="font-size:.78rem;color:#6b7280;">{{ cdone }}/{{ items|length }} completed</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="color:#9ca3af;font-size:.72rem;text-transform:uppercase;">
+        <th style="padding:6px 8px;text-align:left;">Task</th>
+        <th style="padding:6px 8px;">Category</th>
+        <th style="padding:6px 8px;">Owner</th>
+        <th style="padding:6px 8px;">Due</th>
+        <th style="padding:6px 8px;">Status</th>
+        <th style="padding:6px 8px;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr style="border-top:1px solid rgba(0,0,0,.05);">
+        <td style="padding:6px 8px;{% if item.is_completed %}text-decoration:line-through;color:#9ca3af;{% endif %}">{{ item.item_name }}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;">{{ item.category }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          <span style="font-size:.7rem;font-weight:600;padding:2px 7px;border-radius:4px;background:#f1f5f9;color:#64748b;">{{ item.owner_role }}</span>
+        </td>
+        <td style="padding:6px 8px;text-align:center;font-size:.78rem;font-family:monospace;">{{ item.due_date or '—' }}</td>
+        <td style="padding:6px 8px;text-align:center;">
+          {% if item.is_completed %}
+          <span style="font-size:.75rem;color:#16a34a;font-weight:600;">Done</span>
+          {% else %}
+          <span style="font-size:.75rem;color:#d97706;font-weight:600;">Pending</span>
+          {% endif %}
+        </td>
+        <td style="padding:6px 8px;text-align:center;">
+          {% if not item.is_completed %}
+          <form method="post" action="/onboarding/item/{{ item.id }}/complete" style="display:inline;">
+            <button style="font-size:.75rem;padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer;">✓ Done</button>
+          </form>
+          {% else %}
+          <span style="font-size:.78rem;color:#9ca3af;">{{ item.completed_by_name or '' }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{# ── Sign-offs (Stage 4) ─────────────────────────────────────────── #}
+<div class="card" style="padding:1rem;margin-bottom:1.25rem;">
+  <strong style="font-size:.9rem;display:block;margin-bottom:.75rem;">Sign-offs</strong>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+    {% for so in signoffs %}
+    <div style="border:1px solid {% if so.status=='APPROVED' %}#16a34a{% elif so.status=='REJECTED' %}#dc2626{% else %}#d1d5db{% endif %};border-radius:8px;padding:1rem;text-align:center;">
+      <div style="font-size:.72rem;text-transform:uppercase;color:#6b7280;letter-spacing:.04em;">{{ so.signoff_type }}</div>
+      <div style="font-size:1.2rem;margin:.5rem 0;">
+        {% if so.status == 'APPROVED' %}✅{% elif so.status == 'REJECTED' %}❌{% else %}⏳{% endif %}
+      </div>
+      <div style="font-size:.82rem;font-weight:600;color:{% if so.status=='APPROVED' %}#16a34a{% elif so.status=='REJECTED' %}#dc2626{% else %}#6b7280{% endif %};">{{ so.status }}</div>
+      {% if so.signed_by_name %}
+      <div style="font-size:.75rem;color:#9ca3af;">{{ so.signed_by_name }} · {{ so.signed_at.strftime('%b %d') if so.signed_at else '' }}</div>
+      {% endif %}
+      {% if so.remarks %}
+      <div style="font-size:.75rem;color:#6b7280;margin-top:.25rem;font-style:italic;">{{ so.remarks }}</div>
+      {% endif %}
+      {% if so.status == 'PENDING' %}
+      <form method="post" action="/onboarding/{{ ck.id }}/signoff" style="margin-top:.5rem;">
+        <input type="hidden" name="signoff_type" value="{{ so.signoff_type }}">
+        <input type="text" name="remarks" placeholder="Remarks..." style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px 8px;font-size:.8rem;margin-bottom:.35rem;box-sizing:border-box;">
+        <div style="display:flex;gap:.35rem;">
+          <button name="action" value="approve" style="flex:1;padding:5px;font-size:.78rem;background:#16a34a;color:#fff;border:none;border-radius:4px;cursor:pointer;">Approve</button>
+          <button name="action" value="reject" style="flex:1;padding:5px;font-size:.78rem;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;">Reject</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}

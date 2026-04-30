@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block page_title %}Training Needs Analysis{% endblock %}
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="margin:0;font-size:1.25rem;font-weight:700;">Training Needs Analysis</h2>
+  <a href="/ld/programs" style="font-size:.85rem;color:var(--primary,#4f46e5);">← Programs</a>
+</div>
+
+<form method="get" style="display:flex;gap:.6rem;margin-bottom:1.25rem;flex-wrap:wrap;align-items:flex-end;">
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Cycle</label>
+    <select name="cycle_id" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All Cycles</option>
+      {% for c in cycles %}
+      <option value="{{ c.id }}" {% if cycle_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label style="font-size:.75rem;font-weight:600;color:#6b7280;display:block;margin-bottom:.2rem;">Department</label>
+    <select name="department_id" style="border:1px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:.875rem;">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+      <option value="{{ d.id }}" {% if dept_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" style="padding:7px 14px;background:var(--primary,#4f46e5);color:#fff;border:none;border-radius:6px;font-size:.875rem;cursor:pointer;">Filter</button>
+</form>
+
+{# Priority summary #}
+{% set high = entries|selectattr('priority','eq','HIGH')|list|length %}
+{% set med = entries|selectattr('priority','eq','MEDIUM')|list|length %}
+{% set low = entries|selectattr('priority','eq','LOW')|list|length %}
+<div style="display:flex;gap:.75rem;margin-bottom:1.25rem;">
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#dc2626;">{{ high }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">High Priority</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#d97706;">{{ med }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Medium</span>
+  </div>
+  <div class="card" style="padding:.5rem 1rem;display:flex;align-items:center;gap:.5rem;">
+    <span style="font-size:1.1rem;font-weight:800;color:#16a34a;">{{ low }}</span>
+    <span style="font-size:.8rem;color:#6b7280;">Low</span>
+  </div>
+</div>
+
+<section class="card" style="padding:0;overflow:hidden;">
+  <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+    <thead>
+      <tr style="background:rgba(0,0,0,.03);text-transform:uppercase;font-size:.68rem;letter-spacing:.05em;color:#6b7280;">
+        <th style="padding:8px 12px;text-align:left;">Employee</th>
+        <th style="padding:8px 12px;text-align:left;">Department</th>
+        <th style="padding:8px 12px;text-align:left;">Competency Gap</th>
+        <th style="padding:8px 12px;text-align:left;">Recommended Training</th>
+        <th style="padding:8px 12px;text-align:center;">Priority</th>
+        <th style="padding:8px 12px;text-align:center;">Source</th>
+        <th style="padding:8px 12px;text-align:center;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in entries %}
+      <tr style="border-top:1px solid rgba(0,0,0,.06);">
+        <td style="padding:8px 12px;font-weight:500;">{{ t.employee_name }}</td>
+        <td style="padding:8px 12px;color:#6b7280;">{{ t.department_name or '—' }}</td>
+        <td style="padding:8px 12px;">{{ t.competency_gap[:60] }}{% if t.competency_gap|length > 60 %}…{% endif %}</td>
+        <td style="padding:8px 12px;color:#374151;">{{ t.recommended_training[:50] if t.recommended_training else '—' }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if t.priority == 'HIGH' %}#fee2e2{% elif t.priority == 'MEDIUM' %}#fef9c3{% else %}#dcfce7{% endif %};
+            color:{% if t.priority == 'HIGH' %}#991b1b{% elif t.priority == 'MEDIUM' %}#854d0e{% else %}#166534{% endif %};">
+            {{ t.priority }}
+          </span>
+        </td>
+        <td style="padding:8px 12px;text-align:center;font-size:.78rem;color:#6b7280;">{{ t.source }}</td>
+        <td style="padding:8px 12px;text-align:center;">
+          <span style="font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;
+            background:{% if t.status == 'COMPLETED' %}#dcfce7{% elif t.status == 'ENROLLED' %}#dbeafe{% elif t.status == 'DEFERRED' %}#f1f5f9{% else %}#fef9c3{% endif %};
+            color:{% if t.status == 'COMPLETED' %}#166534{% elif t.status == 'ENROLLED' %}#1e40af{% elif t.status == 'DEFERRED' %}#374151{% else %}#854d0e{% endif %};">
+            {{ t.status }}
+          </span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="padding:2rem;text-align:center;color:#9ca3af;">No TNA entries found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}
