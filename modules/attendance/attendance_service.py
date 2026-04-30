@@ -256,6 +256,20 @@ def admin_override_dtr(employee_id, work_date, new_time_in, new_time_out,
     new_time_in_ts  = f'{work_date} {new_time_in}'  if new_time_in  else None
     new_time_out_ts = f'{work_date} {new_time_out}' if new_time_out else None
 
+    # ── HR validation rules (T001-T004) — bypassable via /admin/validations ──
+    from services import validation_service
+    val_payload = {
+        'time_in':           new_time_in_ts,
+        'time_out':          new_time_out_ts,
+        'hours_worked':      float(new_hours) if new_hours is not None else 0,
+        'pay_period_locked': False,    # caller can set; not currently checked here
+        'shift_overlap':     False,
+    }
+    val_result = validation_service.validate('DTR', val_payload)
+    if validation_service.has_blockers(val_result):
+        msg = '; '.join(f"[{e['rule_code']}] {e['message']}" for e in val_result['errors'])
+        return {'ok': False, 'message': msg, 'validation': val_result}
+
     with get_cursor(commit=True) as cur:
         # Write audit log first
         cur.execute("""

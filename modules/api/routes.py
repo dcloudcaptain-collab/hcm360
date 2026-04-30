@@ -4,8 +4,31 @@ from services.kpi_service import get_dashboard_metrics
 from services.search_service import search_all
 from services.workflow_service import get_instances
 from services import notification_service
+from services import validation_service
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
+
+
+# ── HR validations: inline form check ─────────────────────────────────────
+@bp.route('/validations/check', methods=['POST'])
+def validations_check():
+    """POST {category, payload, ctx?} → {errors:[...], warnings:[...], master_enforce:bool}.
+
+    Used by client-side forms to surface validation messages without a full submit.
+    Always available to logged-in users (any role can validate input they're typing).
+    """
+    if not session.get('user_id'):
+        return jsonify({'ok': False, 'message': 'Login required'}), 401
+    body = request.get_json(silent=True) or {}
+    category = (body.get('category') or '').strip().upper()
+    payload  = body.get('payload')  or {}
+    ctx      = body.get('ctx')      or {}
+    if category not in ('EMPLOYEE', 'LEAVE', 'DTR', 'COMPENSATION'):
+        return jsonify({'ok': False, 'message': 'Unknown category'}), 400
+    res = validation_service.validate(category, payload, **ctx)
+    res['ok'] = True
+    res['master_enforce'] = validation_service.is_master_enforced()
+    return jsonify(res)
 
 
 # ── Notification endpoints (used by bell icon in base.html) ──────────────────

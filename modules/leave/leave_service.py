@@ -115,6 +115,20 @@ def submit_request(employee_id, leave_type_id, date_from, date_to,
         """, (employee_id, leave_type_id))
         bal = cur.fetchone()
 
+    # ── HR validation rules (L001-L005) — bypassable via /admin/validations ──
+    from services import validation_service
+    val_payload = {
+        'employee_id':       employee_id,
+        'start_date':        d_from,
+        'end_date':          d_to,
+        'requested_days':    total_days,
+        'available_balance': float(bal['balance']) if bal else 0.0,
+    }
+    val_result = validation_service.validate('LEAVE', val_payload)
+    if validation_service.has_blockers(val_result):
+        msg = '; '.join(f"[{e['rule_code']}] {e['message']}" for e in val_result['errors'])
+        return {'ok': False, 'message': msg, 'validation': val_result}
+
     if bal and float(bal['balance']) < total_days:
         return {'ok': False, 'message': f'Insufficient leave balance. Available: {bal["balance"]} days.'}
 

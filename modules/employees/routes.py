@@ -213,6 +213,11 @@ def employee_new():
             emp_id = emp_svc.create_employee(request.form, user_id=session.get('user_id'))
             flash('Employee created successfully.', 'success')
             return redirect(url_for('employees.employee_detail', employee_id=emp_id))
+        except emp_svc.ValidationBlocked as ve:
+            for err in ve.result.get('errors', []):
+                flash(f"[{err['rule_code']}] {err['message']}", 'error')
+            for w in ve.result.get('warnings', []):
+                flash(f"[{w['rule_code']}] {w['message']}", 'warning')
         except Exception as e:
             flash(f'Error creating employee: {e}', 'error')
     options = emp_svc.get_form_options()
@@ -243,6 +248,11 @@ def employee_edit(employee_id):
             emp_svc.update_employee(employee_id, request.form, user_id=session.get('user_id'))
             flash('Employee updated successfully.', 'success')
             return redirect(url_for('employees.employee_detail', employee_id=employee_id))
+        except emp_svc.ValidationBlocked as ve:
+            for err in ve.result.get('errors', []):
+                flash(f"[{err['rule_code']}] {err['message']}", 'error')
+            for w in ve.result.get('warnings', []):
+                flash(f"[{w['rule_code']}] {w['message']}", 'warning')
         except Exception as e:
             flash(f'Error updating employee: {e}', 'error')
     employee = emp_svc.get_employee(employee_id)

@@ -17,8 +17,60 @@ from services.settings_service import (
     EDITABLE_BRANDING_KEYS, get_branding, save_branding_bulk,
 )
 from services.theme_service import activate_theme, list_themes
+from services import validation_service
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+
+# ── Validation rules admin (SUPER_ADMIN + IT_ADMIN only) ──────────────
+def _can_manage_validations():
+    return g.current_user and g.current_user['role_code'] in ('SUPER_ADMIN', 'IT_ADMIN')
+
+
+@bp.route('/validations')
+def validations():
+    if not _can_manage_validations():
+        # HR_MANAGER and other admin-tab roles get a read-only view
+        if not (g.current_user and g.current_user['role_code'] in ('HR_MANAGER', 'HR_ADMIN')):
+            flash('Access denied — administrators only.', 'error')
+            return redirect(url_for('dashboard.index'))
+
+    rules = validation_service.get_rules()
+    by_category = {}
+    for r in rules:
+        by_category.setdefault(r['category'], []).append(r)
+    return render_template(
+        'admin/validations.html',
+        rules_by_category=by_category,
+        master_enforced=validation_service.is_master_enforced(),
+        can_edit=_can_manage_validations(),
+        category_labels={
+            'EMPLOYEE':     '👤 Employee Records',
+            'LEAVE':        '📅 Leave & Absence',
+            'DTR':          '🕐 Time & Attendance',
+            'COMPENSATION': '💰 Compensation',
+        },
+    )
+
+
+@bp.route('/validations/master', methods=['POST'])
+def validations_set_master():
+    if not _can_manage_validations():
+        return jsonify({'ok': False, 'message': 'Access denied'}), 403
+    body = request.get_json(silent=True) or {}
+    enforce = bool(body.get('enforce', True))
+    validation_service.set_master_enforce(enforce, g.current_user['id'] if g.current_user else None)
+    return jsonify({'ok': True, 'master_enforce': enforce})
+
+
+@bp.route('/validations/<rule_code>/toggle', methods=['POST'])
+def validations_toggle_rule(rule_code):
+    if not _can_manage_validations():
+        return jsonify({'ok': False, 'message': 'Access denied'}), 403
+    body = request.get_json(silent=True) or {}
+    enforce = bool(body.get('enforce', True))
+    validation_service.set_rule_enforce(rule_code, enforce, g.current_user['id'] if g.current_user else None)
+    return jsonify({'ok': True, 'rule_code': rule_code, 'is_enforced': enforce})
 
 
 @bp.route('/themes', methods=['GET', 'POST'])

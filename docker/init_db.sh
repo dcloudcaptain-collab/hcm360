@@ -106,5 +106,6 @@ run 75_portal_landing.sql
 run 76_menu_realignment.sql
 run 77_access_matrix_realignment.sql
 run 78_role_taxonomy.sql
+run 79_validation_rules.sql
 
 echo "[init_db] Initialisation complete."

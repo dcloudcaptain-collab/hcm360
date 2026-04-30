@@ -107,8 +107,28 @@ def _ensure_user_for_employee(cur, employee_id, data, is_active=True):
     return cur.fetchone()['id']
 
 
+class ValidationBlocked(Exception):
+    """Raised when an industry-standard HR validation rule blocks a write.
+    `result` carries the full {'errors': [...], 'warnings': [...]} payload."""
+    def __init__(self, result):
+        self.result = result
+        codes = ', '.join(e['rule_code'] for e in result.get('errors', []))
+        super().__init__(f'Validation blocked by: {codes}')
+
+
+def _run_employee_validations(data, exclude_id=None):
+    """Run validations and raise ValidationBlocked if any ERRORs survive bypass.
+    Returns the result dict so callers can also surface warnings."""
+    from services import validation_service  # local import to avoid cycles
+    res = validation_service.validate('EMPLOYEE', dict(data), id=exclude_id)
+    if validation_service.has_blockers(res):
+        raise ValidationBlocked(res)
+    return res
+
+
 def create_employee(data, user_id=None):
     """Create a new employee + matching core.users row. Returns the new employee's id."""
+    _run_employee_validations(data)
     with get_cursor(commit=True) as cur:
         cur.execute("SELECT id FROM core.companies LIMIT 1")
         co_id = cur.fetchone()['id']
@@ -158,6 +178,7 @@ def create_employee(data, user_id=None):
 
 def update_employee(employee_id, data, user_id=None):
     """Update an existing employee record + keep linked user row in sync."""
+    _run_employee_validations(data, exclude_id=employee_id)
     is_active = data.get('status', 'ACTIVE') == 'ACTIVE'
     with get_cursor(commit=True) as cur:
         cur.execute("""
