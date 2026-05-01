@@ -32,16 +32,26 @@ def index():
 
 @bp.route('/executive')
 def executive_briefing():
-    """Executive briefing page — generates a fresh briefing on load."""
+    """Executive briefing page — generates a fresh briefing on load.
+
+    Anthropic API failures (low credit, rate-limit, network, etc.) are caught
+    so the page renders a graceful 'AI unavailable' state instead of a 500.
+    """
     available = ai_service.is_available()
     briefing = None
+    ai_error = None
     if available:
         name, role = _current_user_info()
-        briefing = ai_service.generate_briefing(_company_name(), name, role)
+        try:
+            briefing = ai_service.generate_briefing(_company_name(), name, role)
+        except Exception as e:
+            ai_error = str(e)
+            available = False  # surface as offline for the template
     return render_template(
         'ai/executive_briefing.html',
         briefing=briefing,
-        ai_available=available
+        ai_available=available,
+        ai_error=ai_error,
     )
 
 
@@ -101,7 +111,10 @@ def refresh_briefing():
     if not ai_service.is_available():
         return jsonify({"error": "ARIA offline."}), 503
     name, role = _current_user_info()
-    result = ai_service.generate_briefing(_company_name(), name, role)
+    try:
+        result = ai_service.generate_briefing(_company_name(), name, role)
+    except Exception as e:
+        return jsonify({"error": f"ARIA temporarily unavailable: {e}"}), 503
     return jsonify(result)
 
 

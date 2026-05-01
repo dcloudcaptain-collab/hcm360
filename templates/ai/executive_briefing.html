@@ -119,11 +119,18 @@
 
 {% else %}
   <div class="offline-banner">
-    <h3>✦ ARIA is not configured</h3>
-    <p>Add your Anthropic API key to activate the AI Executive Assistant.</p>
-    <br>
-    <p>Set the environment variable: <code>ANTHROPIC_API_KEY=sk-ant-...</code></p>
-    <p>Then restart the application.</p>
+    {% if ai_error %}
+      <h3>✦ ARIA is temporarily unavailable</h3>
+      <p>The AI service returned an error. Try again later or contact your administrator.</p>
+      <br>
+      <p style="font-size:.78rem;color:#9ca3af;">Detail: {{ ai_error|truncate(220) }}</p>
+    {% else %}
+      <h3>✦ ARIA is not configured</h3>
+      <p>Add your Anthropic API key to activate the AI Executive Assistant.</p>
+      <br>
+      <p>Set the environment variable: <code>ANTHROPIC_API_KEY=sk-ant-...</code></p>
+      <p>Then restart the application.</p>
+    {% endif %}
     <br>
     <a href="/ai/assistant"><button class="btn-chat" style="margin-right:8px">Preview Chat UI</button></a>
   </div>
